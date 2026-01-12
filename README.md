@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://nestjs.com/img/logo-small.svg" width="100" alt="NestJS Logo" />
+  <img src="https://nestjs.com/img/logo-small.svg" width="85" alt="NestJS Logo" />
 </p>
 
 <h1 align="center">ZERA Backend API</h1>
