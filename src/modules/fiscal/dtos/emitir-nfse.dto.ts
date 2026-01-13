@@ -1,13 +1,37 @@
 export class EmitirNfseDto {
   prestador!: {
     cnpj: string
+    inscricaoMunicipal?: string
+    razaoSocial: string
+    endereco: {
+      logradouro: string
+      numero: string
+      bairro: string
+      municipio: string
+      uf: string
+      cep: string
+    }
   }
 
   tomador!: {
     cpfCnpj: string
+    razaoSocial: string
+    email?: string
+    endereco: {
+      logradouro: string
+      numero: string
+      bairro: string
+      municipio: string
+      uf: string
+      cep: string
+    }
   }
 
-  servico!: Record<string, any>
+  servico!: {
+    codigoMunicipal: string
+    descricao: string
+    valor: number
+  }
 
   referenciaExterna!: string
 }

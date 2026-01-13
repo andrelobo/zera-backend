@@ -14,15 +14,20 @@ export class EmitirNfseService {
   async execute(input: EmitirNfseInput) {
     const emission = await this.repository.create({
       provider: 'PLUGNOTAS',
-      prestadorCnpj: input.prestador.cnpj,
-      tomadorDocumento: input.tomador.cpfCnpj,
       payload: input,
     })
 
     const result = await this.provider.emitirNfse(input)
 
+    if (result?.externalId) {
+      await this.repository.setExternalId(
+        emission._id.toString(),
+        result.externalId,
+      )
+    }
+
     return {
-      emissionId: emission.id,
+      emissionId: emission._id.toString(),
       result,
     }
   }
