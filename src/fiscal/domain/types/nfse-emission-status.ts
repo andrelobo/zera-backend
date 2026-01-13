@@ -1,0 +1,7 @@
+export enum NfseEmissionStatus {
+  PENDING = 'PENDING',
+  PROCESSING = 'PROCESSING',
+  AUTHORIZED = 'AUTHORIZED',
+  REJECTED = 'REJECTED',
+  ERROR = 'ERROR',
+}
