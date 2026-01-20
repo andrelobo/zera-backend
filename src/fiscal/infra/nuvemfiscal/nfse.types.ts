@@ -3,13 +3,47 @@ export type NuvemFiscalAmbiente = 'homologacao' | 'producao'
 export type NfseDpsRequest = {
   ambiente: NuvemFiscalAmbiente
   referencia?: string
-  prestador: unknown
-  tomador?: unknown
-  servico: unknown
-  valores?: unknown
-  intermediario?: unknown
-  obra?: unknown
-  informacoes_complementares?: string
+  infDPS: {
+    dhEmi: string
+    prest: {
+      CNPJ?: string
+      CPF?: string | null
+      IM?: string
+      xNome?: string
+    }
+    toma?: {
+      CPF?: string
+      CNPJ?: string
+      xNome?: string
+      email?: string
+      end?: {
+        xLgr?: string
+        nro?: string
+        xBairro?: string
+        cMun?: string
+        xMun?: string
+        UF?: string
+        CEP?: string
+      }
+    }
+    serv: {
+      cServ: {
+        cTribNac?: string
+        xDescServ?: string
+        cCnae?: string
+      }
+    }
+    valores: {
+      vServPrest: {
+        vServ: number
+      }
+      trib?: {
+        tribMun?: {
+          tribISSQN?: number
+        }
+      }
+    }
+  }
 }
 
 export type NfseResponse = {

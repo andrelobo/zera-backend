@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { getNuvemFiscalConfig } from './nuvemfiscal.config'
 import { NuvemFiscalAuthService } from './nuvemfiscal.auth.service'
 
@@ -24,6 +24,8 @@ function parseRetryAfterMs(value: string | null): number | undefined {
 
 @Injectable()
 export class NuvemFiscalHttp {
+  private readonly logger = new Logger(NuvemFiscalHttp.name)
+
   constructor(private readonly auth: NuvemFiscalAuthService) {}
 
   private buildUrl(path: string, query?: Record<string, any>) {
@@ -52,6 +54,7 @@ export class NuvemFiscalHttp {
       maxDelayMs?: number
     }
   }): Promise<T> {
+    const cfg = getNuvemFiscalConfig()
     const url = this.buildUrl(input.path, input.query)
 
     const maxAttempts = input.retry?.maxAttempts ?? Number(process.env.NUVEMFISCAL_HTTP_MAX_ATTEMPTS ?? 3)
@@ -61,6 +64,7 @@ export class NuvemFiscalHttp {
     let attempt = 0
     while (true) {
       attempt += 1
+      const startedAt = Date.now()
 
       try {
         const token = await this.auth.getAccessToken()
@@ -79,12 +83,15 @@ export class NuvemFiscalHttp {
               : input.body
         }
 
+        this.logger.log(`[${cfg.environment}] ${input.method} ${input.path} attempt=${attempt}`)
+
         const res = await fetch(url, {
           method: input.method,
           headers,
           body,
         })
 
+        const elapsed = Date.now() - startedAt
         const contentType = res.headers.get('content-type') ?? ''
         const isJson = contentType.includes('application/json')
 
@@ -104,6 +111,8 @@ export class NuvemFiscalHttp {
 
           const transient = res.status === 429 || (res.status >= 500 && res.status <= 599)
 
+          this.logger.warn(`[${cfg.environment}] ${input.method} ${input.path} status=${res.status} ms=${elapsed} transient=${transient}`)
+
           if (transient && attempt < maxAttempts) {
             const exp = Math.min(maxDelayMs, baseDelayMs * Math.pow(2, attempt - 1))
             const jitter = Math.floor(Math.random() * 200)
@@ -114,6 +123,8 @@ export class NuvemFiscalHttp {
 
           throw Object.assign(new Error(err.message), err)
         }
+
+        this.logger.log(`[${cfg.environment}] ${input.method} ${input.path} status=${res.status} ms=${elapsed}`)
 
         if (res.status === 204) {
           return undefined as unknown as T

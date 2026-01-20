@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { getNuvemFiscalConfig } from './nuvemfiscal.config'
 
 type OAuthTokenResponse = {
@@ -10,6 +10,7 @@ type OAuthTokenResponse = {
 
 @Injectable()
 export class NuvemFiscalAuthService {
+  private readonly logger = new Logger(NuvemFiscalAuthService.name)
   private accessToken: string | null = null
   private expiresAtMs: number = 0
 
@@ -27,6 +28,8 @@ export class NuvemFiscalAuthService {
 
     const tokenUrl = `${cfg.authBaseUrl}/oauth/token`
 
+    this.logger.log(`OAuth token request env=${cfg.environment} scope=${cfg.scope}`)
+
     const body = new URLSearchParams()
     body.set('grant_type', 'client_credentials')
     body.set('client_id', cfg.clientId)
@@ -43,6 +46,7 @@ export class NuvemFiscalAuthService {
 
     if (!res.ok) {
       const text = await res.text().catch(() => '')
+      this.logger.error(`OAuth token error status=${res.status}`)
       throw new Error(`NuvemFiscal token error: ${res.status} ${text}`)
     }
 
@@ -53,6 +57,8 @@ export class NuvemFiscalAuthService {
 
     this.accessToken = data.access_token
     this.expiresAtMs = Date.now() + ttlMs
+
+    this.logger.log(`OAuth token ok expiresIn=${data.expires_in}s tokenPrefix=${data.access_token.slice(0, 8)}`)
 
     return this.accessToken
   }

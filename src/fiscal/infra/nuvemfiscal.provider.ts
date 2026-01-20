@@ -6,6 +6,18 @@ import { NfseEmissionStatus } from '../domain/types/nfse-emission-status'
 import { getNuvemFiscalConfig } from './nuvemfiscal/nuvemfiscal.config'
 import { NfseApi } from './nuvemfiscal/nfse.api'
 
+function onlyDigits(v: string) {
+  return (v ?? '').replace(/\D+/g, '')
+}
+
+function todayYmd() {
+  const d = new Date()
+  const yyyy = String(d.getUTCFullYear())
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(d.getUTCDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
 @Injectable()
 export class NuvemFiscalProvider implements FiscalProvider {
   private readonly logger = new Logger(NuvemFiscalProvider.name)
@@ -14,50 +26,71 @@ export class NuvemFiscalProvider implements FiscalProvider {
 
   async emitirNfse(input: EmitirNfseInput): Promise<EmitirNfseResult> {
     const cfg = getNuvemFiscalConfig()
-
     const ambiente = cfg.environment === 'production' ? 'producao' : 'homologacao'
+    const tpAmb = ambiente === 'producao' ? 1 : 2
+
+    const cnpjPrest = onlyDigits(input.prestador.cnpj)
+    const docTom = onlyDigits(input.tomador.cpfCnpj)
+
+    const cMun = process.env.NFSE_CMUN_IBGE
+
+    if (!cMun) {
+      this.logger.warn('NFSE_CMUN_IBGE not set (IBGE code). Some municipalities may require it.')
+    }
 
     const payload = {
       ambiente,
       referencia: input.referenciaExterna,
-      prestador: {
-        cnpj: input.prestador.cnpj,
-        inscricao_municipal: input.prestador.inscricaoMunicipal,
-        razao_social: input.prestador.razaoSocial,
-        endereco: {
-          logradouro: input.prestador.endereco.logradouro,
-          numero: input.prestador.endereco.numero,
-          bairro: input.prestador.endereco.bairro,
-          municipio: input.prestador.endereco.municipio,
-          uf: input.prestador.endereco.uf,
-          cep: input.prestador.endereco.cep,
+      infDPS: {
+        tpAmb,
+        dhEmi: new Date().toISOString(),
+        verAplic: process.env.APP_VERSION ?? 'zera-backend',
+        dCompet: todayYmd(),
+        prest: {
+          CNPJ: cnpjPrest,
         },
-      },
-      tomador: {
-        cpf_cnpj: input.tomador.cpfCnpj,
-        razao_social: input.tomador.razaoSocial,
-        email: input.tomador.email,
-        endereco: {
-          logradouro: input.tomador.endereco.logradouro,
-          numero: input.tomador.endereco.numero,
-          bairro: input.tomador.endereco.bairro,
-          municipio: input.tomador.endereco.municipio,
-          uf: input.tomador.endereco.uf,
-          cep: input.tomador.endereco.cep,
+        toma: {
+          orgaoPublico: false,
+          ...(docTom.length === 11 ? { CPF: docTom } : { CNPJ: docTom }),
+          xNome: input.tomador.razaoSocial,
+          email: input.tomador.email,
+          ...(cMun
+            ? {
+                end: {
+                  endNac: {
+                    cMun,
+                    CEP: onlyDigits(input.tomador.endereco.cep),
+                  },
+                  xLgr: input.tomador.endereco.logradouro,
+                  nro: input.tomador.endereco.numero,
+                  xBairro: input.tomador.endereco.bairro,
+                },
+              }
+            : {}),
         },
-      },
-      servico: {
-        codigo_municipal: input.servico.codigoMunicipal,
-        descricao: input.servico.descricao,
-        valor: input.servico.valor,
+        serv: {
+          cServ: {
+            cTribNac: input.servico.codigoMunicipal,
+            xDescServ: input.servico.descricao,
+          },
+        },
+        valores: {
+          vServPrest: {
+            vServ: input.servico.valor,
+          },
+          trib: {
+            tribMun: {
+              tribISSQN: 1,
+            },
+          },
+        },
       },
     }
 
     this.logger.log('Emitindo NFS-e via NuvemFiscal', {
-      prestador: input.prestador.cnpj,
-      tomador: input.tomador.cpfCnpj,
-      referenciaExterna: input.referenciaExterna,
       ambiente,
+      prestador: cnpjPrest,
+      referenciaExterna: input.referenciaExterna,
     })
 
     const response = await this.nfseApi.emitirDps(payload as any)

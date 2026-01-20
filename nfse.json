@@ -1,0 +1,34 @@
+{
+  "prestador": {
+    "cnpj": "11222333000181",
+    "inscricaoMunicipal": "12345",
+    "razaoSocial": "EMPRESA TESTE LTDA",
+    "endereco": {
+      "logradouro": "Rua Teste",
+      "numero": "100",
+      "bairro": "Centro",
+      "municipio": "Manaus",
+      "uf": "AM",
+      "cep": "69000000"
+    }
+  },
+  "tomador": {
+    "cpfCnpj": "11144477735",
+    "razaoSocial": "CLIENTE TESTE",
+    "email": "cliente@teste.com",
+    "endereco": {
+      "logradouro": "Av Cliente",
+      "numero": "200",
+      "bairro": "Centro",
+      "municipio": "Manaus",
+      "uf": "AM",
+      "cep": "69000000"
+    }
+  },
+  "servico": {
+    "codigoMunicipal": "0107",
+    "descricao": "Servico de teste",
+    "valor": 100
+  },
+  "referenciaExterna": "teste-cli-002"
+}

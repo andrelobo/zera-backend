@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { BadRequestException, Inject, Injectable } from '@nestjs/common'
 import type { FiscalProvider } from '../domain/fiscal-provider.interface'
 import type { EmitirNfseInput } from '../domain/types/emitir-nfse.types'
 import type { EmitirNfseResult } from '../domain/types/emitir-nfse.result'
@@ -37,11 +37,22 @@ export class EmitirNfseService {
         emissionId: emission._id.toString(),
         result,
       }
-    } catch (error) {
+    } catch (error: any) {
+      const msg = error instanceof Error ? error.message : String(error)
       await this.repository.updateEmission(emission._id.toString(), {
         status: NfseEmissionStatus.ERROR,
-        error: error instanceof Error ? error.message : String(error),
+        error: msg,
       })
+
+      const status = error?.status
+      const body = error?.body
+
+      if (typeof status === 'number' && status >= 400 && status < 500) {
+        throw new BadRequestException({
+          message: 'NuvemFiscal rejected the request',
+          nuvemFiscal: body ?? null,
+        })
+      }
 
       throw error
     }

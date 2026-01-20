@@ -1,0 +1,15 @@
+{
+  "cpf_cnpj": "43115126000134",
+  "razao_social": "BURGUS LTDA",
+  "nome_fantasia": "ECONTABILIS LTDA",
+  "inscricao_municipal": "51754301",
+  "endereco": {
+    "logradouro": "Rua Saldanha Marinho",
+    "numero": "606",
+    "complemento": "Sala 255",
+    "bairro": "Centro",
+    "municipio": "Manaus",
+    "uf": "AM",
+    "cep": "69010040"
+  }
+}
