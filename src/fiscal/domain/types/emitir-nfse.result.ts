@@ -1,9 +1,8 @@
-import type { NfseEmissionStatus } from './nfse-emission-status'
-
-export type FiscalProviderName = 'PLUGNOTAS' | 'NUVEMFISCAL'
+import { NfseEmissionStatus } from './nfse-emission-status'
 
 export type EmitirNfseResult = {
   status: NfseEmissionStatus
-  provider: FiscalProviderName
-  externalId?: string | null
+  provider: string
+  externalId?: string
+  providerResponse?: Record<string, any>
 }

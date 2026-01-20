@@ -9,13 +9,13 @@ export class NfseEmission {
   @Prop({ required: true })
   provider: string
 
-  @Prop({ required: true, enum: NfseEmissionStatus })
+  @Prop({ required: true, type: String, enum: NfseEmissionStatus })
   status: NfseEmissionStatus
 
   @Prop({ type: Object, required: true })
   payload: Record<string, any>
 
-  @Prop()
+  @Prop({ index: true })
   externalId?: string
 
   @Prop()
@@ -26,3 +26,5 @@ export class NfseEmission {
 }
 
 export const NfseEmissionSchema = SchemaFactory.createForClass(NfseEmission)
+
+NfseEmissionSchema.index({ provider: 1, externalId: 1 }, { unique: false })
