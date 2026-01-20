@@ -2,8 +2,6 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import type { HydratedDocument } from 'mongoose'
 import { NfseEmissionStatus } from '../../../domain/types/nfse-emission-status'
 
-export type NfseEmissionDocument = HydratedDocument<NfseEmission>
-
 @Schema({ timestamps: true })
 export class NfseEmission {
   @Prop({ required: true })
@@ -23,7 +21,15 @@ export class NfseEmission {
 
   @Prop({ type: Object })
   providerResponse?: Record<string, any>
+
+  @Prop()
+  xmlBase64?: string
+
+  @Prop()
+  pdfBase64?: string
 }
+
+export type NfseEmissionDocument = HydratedDocument<NfseEmission>
 
 export const NfseEmissionSchema = SchemaFactory.createForClass(NfseEmission)
 

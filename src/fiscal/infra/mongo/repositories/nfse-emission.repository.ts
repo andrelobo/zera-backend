@@ -35,6 +35,8 @@ export class NfseEmissionRepository {
       externalId: string
       providerResponse: Record<string, any> | null
       error: string | null
+      xmlBase64: string | null
+      pdfBase64: string | null
     }>,
   ): Promise<void> {
     const update: Record<string, any> = {}
@@ -42,6 +44,8 @@ export class NfseEmissionRepository {
     if (patch.externalId !== undefined) update.externalId = patch.externalId
     if (patch.providerResponse !== undefined) update.providerResponse = patch.providerResponse
     if (patch.error !== undefined) update.error = patch.error
+    if (patch.xmlBase64 !== undefined) update.xmlBase64 = patch.xmlBase64
+    if (patch.pdfBase64 !== undefined) update.pdfBase64 = patch.pdfBase64
     if (patch.status !== undefined) update.status = patch.status
 
     const hasStatus = patch.status !== undefined
@@ -84,6 +88,8 @@ export class NfseEmissionRepository {
     providerResponse?: Record<string, any>
     error?: string
     provider?: string
+    xmlBase64?: string
+    pdfBase64?: string
   }): Promise<void> {
     const filter: Record<string, any> = {
       externalId: input.externalId,
@@ -94,14 +100,16 @@ export class NfseEmissionRepository {
       filter.provider = input.provider
     }
 
-    await this.model.updateOne(
-      filter,
-      {
-        status: input.status,
-        providerResponse: input.providerResponse,
-        error: input.error,
-      },
-    )
+    const update: Record<string, any> = {
+      status: input.status,
+      providerResponse: input.providerResponse,
+      error: input.error,
+    }
+
+    if (input.xmlBase64 !== undefined) update.xmlBase64 = input.xmlBase64
+    if (input.pdfBase64 !== undefined) update.pdfBase64 = input.pdfBase64
+
+    await this.model.updateOne(filter, update)
   }
 
   async findPending(input?: {

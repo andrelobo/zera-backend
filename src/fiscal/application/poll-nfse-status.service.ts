@@ -4,6 +4,10 @@ import { NfseApi } from '../infra/nuvemfiscal/nfse.api'
 import { mapNuvemFiscalStatusToDomain } from '../infra/nuvemfiscal/nfse.mapper'
 import { NfseEmissionStatus } from '../domain/types/nfse-emission-status'
 
+function toBase64(data: Uint8Array) {
+  return Buffer.from(data).toString('base64')
+}
+
 @Injectable()
 export class PollNfseStatusService {
   private readonly logger = new Logger(PollNfseStatusService.name)
@@ -22,6 +26,9 @@ export class PollNfseStatusService {
 
     if (!pending.length) return
 
+    const storeArtifacts =
+      (process.env.NFSE_STORE_ARTIFACTS ?? 'true').toLowerCase() === 'true'
+
     for (const emission of pending) {
       if (!emission.externalId) continue
 
@@ -36,6 +43,24 @@ export class PollNfseStatusService {
             providerResponse: resp as any,
             provider: 'NUVEMFISCAL',
           })
+          continue
+        }
+
+        if (status === NfseEmissionStatus.AUTHORIZED && storeArtifacts) {
+          const [xml, pdf] = await Promise.all([
+            this.nfseApi.baixarXmlNfse(emission.externalId),
+            this.nfseApi.baixarPdfNfse(emission.externalId),
+          ])
+
+          await this.repo.updateByExternalId({
+            externalId: emission.externalId,
+            status,
+            providerResponse: resp as any,
+            provider: 'NUVEMFISCAL',
+            xmlBase64: toBase64(xml),
+            pdfBase64: toBase64(pdf),
+          })
+
           continue
         }
 
