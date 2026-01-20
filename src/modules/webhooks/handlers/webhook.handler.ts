@@ -1,12 +1,22 @@
-import { Injectable } from '@nestjs/common'
-import { UpdateStatusService } from '../services/update-status.service'
+import { Injectable, Logger } from '@nestjs/common'
+import { WebhooksService } from '../webhooks.service'
 
 @Injectable()
 export class WebhookHandler {
-  constructor(private readonly updateStatus: UpdateStatusService) {}
+  private readonly logger = new Logger(WebhookHandler.name)
+
+  constructor(
+    private readonly webhooksService: WebhooksService,
+  ) {}
 
   async handle(payload: any, headers: any) {
-    const { externalId, status } = payload
-    return this.updateStatus.execute(externalId, status, payload)
+    this.logger.log('Webhook fiscal recebido', {
+      hasExternalId: !!payload?.externalId,
+      status: payload?.status,
+    })
+
+    await this.webhooksService.handleFiscalWebhook(payload)
+
+    return { received: true }
   }
 }

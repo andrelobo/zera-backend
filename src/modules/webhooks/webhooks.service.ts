@@ -4,8 +4,12 @@ import { Injectable, Logger } from '@nestjs/common'
 export class WebhooksService {
   private readonly logger = new Logger(WebhooksService.name)
 
-  process(payload: unknown) {
-    this.logger.log('Fiscal webhook received')
-    return { received: true }
+  async handleFiscalWebhook(payload: any) {
+    this.logger.log('Processando webhook fiscal (stub)', {
+      externalId: payload?.externalId,
+      status: payload?.status,
+    })
+
+    return { ok: true }
   }
 }

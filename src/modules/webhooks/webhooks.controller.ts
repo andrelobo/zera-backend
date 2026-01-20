@@ -1,32 +1,17 @@
-import { Body, Controller, Post } from '@nestjs/common'
-import { NfseEmissionRepository } from '../../fiscal/infra/mongo/repositories/nfse-emission.repository'
-import { NfseEmissionStatus } from '../../fiscal/domain/types/nfse-emission-status'
+import { Controller, Post, Body, Headers } from '@nestjs/common'
+import { WebhookHandler } from './handlers/webhook.handler'
 
 @Controller('webhooks/fiscal')
 export class WebhooksController {
   constructor(
-    private readonly repo: NfseEmissionRepository,
+    private readonly handler: WebhookHandler,
   ) {}
 
   @Post()
-  async receive(@Body() body: any) {
-    const externalId = body?.externalId
-    const status = body?.status
-
-    if (!externalId || !status) {
-      return { received: false, reason: 'missing externalId/status' }
-    }
-
-    const mappedStatus = (status in NfseEmissionStatus)
-      ? (status as NfseEmissionStatus)
-      : NfseEmissionStatus.PROCESSING
-
-    await this.repo.updateByExternalId({
-      externalId,
-      status: mappedStatus,
-      providerResponse: body,
-    })
-
-    return { received: true }
+  async receive(
+    @Body() payload: any,
+    @Headers() headers: any,
+  ) {
+    return this.handler.handle(payload, headers)
   }
 }

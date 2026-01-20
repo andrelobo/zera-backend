@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { HydratedDocument } from 'mongoose'
+import type { HydratedDocument } from 'mongoose'
 import { NfseEmissionStatus } from '../../../domain/types/nfse-emission-status'
 
 export type NfseEmissionDocument = HydratedDocument<NfseEmission>
