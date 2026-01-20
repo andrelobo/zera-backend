@@ -27,6 +27,18 @@ export class NfseEmission {
 
   @Prop()
   pdfBase64?: string
+
+  @Prop({ default: 0 })
+  pollAttempts: number
+
+  @Prop()
+  lastPollError?: string
+
+  @Prop()
+  lastPolledAt?: Date
+
+  @Prop({ index: true })
+  nextPollAt?: Date
 }
 
 export type NfseEmissionDocument = HydratedDocument<NfseEmission>

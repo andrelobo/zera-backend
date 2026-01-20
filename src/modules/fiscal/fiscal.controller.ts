@@ -69,6 +69,22 @@ export class FiscalController {
     }
   }
 
+  @Get(':id/artifacts')
+  async getArtifacts(@Param('id') id: string) {
+    const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null
+    if (!doc) return { found: false }
+
+    return {
+      found: true,
+      id: doc._id.toString(),
+      externalId: doc.externalId ?? null,
+      hasXml: Boolean(doc.xmlBase64),
+      hasPdf: Boolean(doc.pdfBase64),
+      status: doc.status,
+      updatedAt: (doc as any).updatedAt ?? null,
+    }
+  }
+
   @Get(':id/xml')
   async downloadXml(@Param('id') id: string, @Res() res: Response) {
     const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null
@@ -80,7 +96,10 @@ export class FiscalController {
 
     const buf = Buffer.from(doc.xmlBase64, 'base64')
     res.setHeader('Content-Type', 'application/xml')
-    res.setHeader('Content-Disposition', `attachment; filename="nfse-${doc.externalId ?? doc._id.toString()}.xml"`)
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="nfse-${doc.externalId ?? doc._id.toString()}.xml"`,
+    )
     return res.send(buf)
   }
 
@@ -95,7 +114,10 @@ export class FiscalController {
 
     const buf = Buffer.from(doc.pdfBase64, 'base64')
     res.setHeader('Content-Type', 'application/pdf')
-    res.setHeader('Content-Disposition', `attachment; filename="nfse-${doc.externalId ?? doc._id.toString()}.pdf"`)
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="nfse-${doc.externalId ?? doc._id.toString()}.pdf"`,
+    )
     return res.send(buf)
   }
 }

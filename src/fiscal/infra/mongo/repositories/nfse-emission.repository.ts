@@ -18,12 +18,16 @@ export class NfseEmissionRepository {
     externalId?: string
     providerResponse?: Record<string, any>
   }): Promise<NfseEmissionDocument> {
+    const now = new Date()
     return this.model.create({
       provider: input.provider,
       payload: input.payload,
       status: input.status ?? NfseEmissionStatus.PENDING,
       externalId: input.externalId,
       providerResponse: input.providerResponse,
+      pollAttempts: 0,
+      lastPolledAt: now,
+      nextPollAt: now,
     })
   }
 
@@ -37,6 +41,10 @@ export class NfseEmissionRepository {
       error: string | null
       xmlBase64: string | null
       pdfBase64: string | null
+      pollAttempts: number
+      lastPollError: string | null
+      lastPolledAt: Date | null
+      nextPollAt: Date | null
     }>,
   ): Promise<void> {
     const update: Record<string, any> = {}
@@ -46,6 +54,10 @@ export class NfseEmissionRepository {
     if (patch.error !== undefined) update.error = patch.error
     if (patch.xmlBase64 !== undefined) update.xmlBase64 = patch.xmlBase64
     if (patch.pdfBase64 !== undefined) update.pdfBase64 = patch.pdfBase64
+    if (patch.pollAttempts !== undefined) update.pollAttempts = patch.pollAttempts
+    if (patch.lastPollError !== undefined) update.lastPollError = patch.lastPollError
+    if (patch.lastPolledAt !== undefined) update.lastPolledAt = patch.lastPolledAt
+    if (patch.nextPollAt !== undefined) update.nextPollAt = patch.nextPollAt
     if (patch.status !== undefined) update.status = patch.status
 
     const hasStatus = patch.status !== undefined
@@ -62,24 +74,6 @@ export class NfseEmissionRepository {
         : { _id: id },
       update,
     )
-  }
-
-  async updateStatus(
-    id: string,
-    status: NfseEmissionStatus,
-    providerResponse?: Record<string, any>,
-  ): Promise<void> {
-    await this.model.updateOne(
-      {
-        _id: id,
-        $or: [{ status: NfseEmissionStatus.PENDING }, { status }],
-      },
-      { status, providerResponse },
-    )
-  }
-
-  async setExternalId(id: string, externalId: string): Promise<void> {
-    await this.model.updateOne({ _id: id }, { externalId })
   }
 
   async updateByExternalId(input: {
@@ -104,20 +98,61 @@ export class NfseEmissionRepository {
       status: input.status,
       providerResponse: input.providerResponse,
       error: input.error,
+      lastPolledAt: new Date(),
     }
 
     if (input.xmlBase64 !== undefined) update.xmlBase64 = input.xmlBase64
     if (input.pdfBase64 !== undefined) update.pdfBase64 = input.pdfBase64
 
+    if (input.status !== NfseEmissionStatus.PENDING) {
+      update.nextPollAt = null
+      update.lastPollError = null
+    }
+
     await this.model.updateOne(filter, update)
+  }
+
+  async markPollingTransientFailure(input: {
+    externalId: string
+    provider?: string
+    message: string
+    nextPollAt: Date
+  }): Promise<void> {
+    const filter: Record<string, any> = {
+      externalId: input.externalId,
+      status: NfseEmissionStatus.PENDING,
+    }
+
+    if (input.provider) {
+      filter.provider = input.provider
+    }
+
+    await this.model.updateOne(
+      filter,
+      {
+        $inc: { pollAttempts: 1 },
+        $set: {
+          lastPollError: input.message,
+          lastPolledAt: new Date(),
+          nextPollAt: input.nextPollAt,
+        },
+      },
+    )
   }
 
   async findPending(input?: {
     provider?: string
     limit?: number
     olderThanMs?: number
+    now?: Date
   }): Promise<NfseEmissionDocument[]> {
-    const filter: Record<string, any> = { status: NfseEmissionStatus.PENDING }
+    const now = input?.now ?? new Date()
+
+    const filter: Record<string, any> = {
+      status: NfseEmissionStatus.PENDING,
+      $or: [{ nextPollAt: { $lte: now } }, { nextPollAt: null }, { nextPollAt: { $exists: false } }],
+    }
+
     if (input?.provider) filter.provider = input.provider
     if (input?.olderThanMs && input.olderThanMs > 0) {
       filter.createdAt = { $lte: new Date(Date.now() - input.olderThanMs) }
