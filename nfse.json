@@ -1,15 +1,15 @@
 {
   "prestador": {
-    "cnpj": "11222333000181",
-    "inscricaoMunicipal": "12345",
-    "razaoSocial": "EMPRESA TESTE LTDA",
+    "cnpj": "43521115000134",
+    "inscricaoMunicipal": "51754301",
+    "razaoSocial": "BURGUS LTDA",
     "endereco": {
-      "logradouro": "Rua Teste",
-      "numero": "100",
+      "logradouro": "Rua Saldanha Marinho",
+      "numero": "606",
       "bairro": "Centro",
       "municipio": "Manaus",
       "uf": "AM",
-      "cep": "69000000"
+      "cep": "69010040"
     }
   },
   "tomador": {
@@ -30,5 +30,5 @@
     "descricao": "Servico de teste",
     "valor": 100
   },
-  "referenciaExterna": "teste-cli-002"
+  "referenciaExterna": "teste-cli-004"
 }

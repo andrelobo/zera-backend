@@ -1,0 +1,21 @@
+{
+    "cpf_cnpj": "43521115000134",
+    "created_at": "2026-01-19T18:58:16.209Z",
+    "updated_at": "2026-01-19T18:58:16.209Z",
+    "nome_razao_social": "BURGUS LTDA",
+    "nome_fantasia": "ECONTABILIS LTDA",
+    "fone": "9291594210",
+    "email": "contato@econtabilis.com",
+    "endereco": {
+        "logradouro": "SALDANHA MARINHO",
+        "numero": "606",
+        "complemento": "SALA  255                 COND  ALFREDO CUNHA",
+        "bairro": "CENTRO",
+        "codigo_municipio": "1302603",
+        "cidade": "MANAUS",
+        "uf": "AM",
+        "codigo_pais": "1058",
+        "pais": "Brasil",
+        "cep": "69010040"
+    }
+}

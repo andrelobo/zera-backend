@@ -34,10 +34,6 @@ export class NuvemFiscalProvider implements FiscalProvider {
 
     const cMun = process.env.NFSE_CMUN_IBGE
 
-    if (!cMun) {
-      this.logger.warn('NFSE_CMUN_IBGE not set (IBGE code). Some municipalities may require it.')
-    }
-
     const payload = {
       ambiente,
       referencia: input.referenciaExterna,
