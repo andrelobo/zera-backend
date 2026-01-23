@@ -13,6 +13,9 @@ especially by:
 
 This file is the **source of truth** for the current state of the codebase.
 
+Additional instruction for AI pair coding:
+- When proposing changes, always send the full target file content using `cat <<'EOF'` to make edits easier.
+
 ---
 
 ## 2. Project Overview
