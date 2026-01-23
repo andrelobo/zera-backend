@@ -1,0 +1,12 @@
+{
+  "ambiente": "producao",
+  "regTrib": {
+    "opSimpNac": 1,
+    "regEspTrib": 0
+  },
+  "rps": {
+    "lote": 1,
+    "serie": "NF",
+    "numero": 1
+  }
+}

@@ -30,16 +30,14 @@ export class NuvemFiscalProvider implements FiscalProvider {
     const tpAmb = ambiente === 'producao' ? 1 : 2
 
     const cnpjPrest = onlyDigits(input.prestador.cnpj)
-    const imPrest = onlyDigits(input.prestador.inscricaoMunicipal)
     const docTom = onlyDigits(input.tomador.cpfCnpj)
-
     const cMun = process.env.NFSE_CMUN_IBGE
 
     if (!cMun) {
       this.logger.warn('NFSE_CMUN_IBGE not set (IBGE code). Some municipalities may require it.')
     }
 
-    const payload = {
+    const payload: any = {
       ambiente,
       referencia: input.referenciaExterna,
       infDPS: {
@@ -49,26 +47,12 @@ export class NuvemFiscalProvider implements FiscalProvider {
         dCompet: todayYmd(),
         prest: {
           CNPJ: cnpjPrest,
-          inscricaoMunicipal: imPrest,
         },
         toma: {
           orgaoPublico: false,
           ...(docTom.length === 11 ? { CPF: docTom } : { CNPJ: docTom }),
           xNome: input.tomador.razaoSocial,
           email: input.tomador.email,
-          ...(cMun
-            ? {
-                end: {
-                  endNac: {
-                    cMun,
-                    CEP: onlyDigits(input.tomador.endereco.cep),
-                  },
-                  xLgr: input.tomador.endereco.logradouro,
-                  nro: input.tomador.endereco.numero,
-                  xBairro: input.tomador.endereco.bairro,
-                },
-              }
-            : {}),
         },
         serv: {
           cServ: {
@@ -89,13 +73,25 @@ export class NuvemFiscalProvider implements FiscalProvider {
       },
     }
 
+    if (cMun) {
+      payload.infDPS.toma.end = {
+        endNac: {
+          cMun,
+          CEP: onlyDigits(input.tomador.endereco.cep),
+        },
+        xLgr: input.tomador.endereco.logradouro,
+        nro: input.tomador.endereco.numero,
+        xBairro: input.tomador.endereco.bairro,
+      }
+    }
+
     this.logger.log('Emitindo NFS-e via NuvemFiscal', {
       ambiente,
       prestador: cnpjPrest,
       referenciaExterna: input.referenciaExterna,
     })
 
-    const response = await this.nfseApi.emitirDps(payload as any)
+    const response = await this.nfseApi.emitirDps(payload)
 
     return {
       status: NfseEmissionStatus.PENDING,
