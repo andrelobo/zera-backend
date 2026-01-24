@@ -1,34 +1,26 @@
 {
   "prestador": {
     "cnpj": "43521115000134",
-    "IM": "0051754301",
-    "razaoSocial": "BURGUS LTDA",
-    "endereco": {
-      "logradouro": "SALDANHA MARINHO",
-      "numero": "606",
-      "bairro": "CENTRO",
-      "municipio": "Manaus",
-      "uf": "AM",
-      "cep": "69010040"
-    }
+    "inscricaoMunicipal": "51754301"
   },
   "tomador": {
-    "cpfCnpj": "61020788100",
-    "razaoSocial": "ANDRE AUGUSTO DE HOLANDA LOBO",
+    "cpfCnpj": "00000000000000",
+    "razaoSocial": "CLIENTE TESTE LTDA",
     "email": "cliente@teste.com",
     "endereco": {
-      "logradouro": "R FREI JOSE DE LEONISSA",
-      "numero": "758",
-      "bairro": "NOVA CIDADE",
+      "logradouro": "RUA TESTE",
+      "numero": "100",
+      "bairro": "CENTRO",
       "municipio": "Manaus",
       "uf": "AM",
       "cep": "69017020"
     }
   },
   "servico": {
-    "codigoMunicipal": "171901",
-    "descricao": "SERVICO DE IRPF 2025/2024.",
-    "valor": 0.01
-  },
-  "referenciaExterna": "teste-cli-006"
+  "codigoMunicipal": "100",
+  "codigoNacional": "171901",
+  "descricao": "SERVICO DE IRPF 2025/2024.",
+  "valor": 500.00
+},
+  "referenciaExterna": "prod-final-001"
 }
