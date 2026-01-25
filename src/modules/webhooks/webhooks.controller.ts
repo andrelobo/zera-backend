@@ -1,6 +1,8 @@
 import { Controller, Post, Body, Headers } from '@nestjs/common'
+import { ApiOperation, ApiTags } from '@nestjs/swagger'
 import { WebhookHandler } from './handlers/webhook.handler'
 
+@ApiTags('webhooks')
 @Controller('webhooks/fiscal')
 export class WebhooksController {
   constructor(
@@ -8,6 +10,7 @@ export class WebhooksController {
   ) {}
 
   @Post()
+  @ApiOperation({ summary: 'Receive fiscal provider webhooks' })
   async receive(
     @Body() payload: any,
     @Headers() headers: any,

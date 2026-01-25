@@ -1,10 +1,12 @@
 import { Body, Controller, Get, Param, Post, Res } from '@nestjs/common'
 import type { Response } from 'express'
+import { ApiBody, ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { EmitirNfseService } from '../../fiscal/application/emitir-nfse.service'
 import { EmitirNfseDto } from './dtos/emitir-nfse.dto'
 import { NfseEmissionRepository } from '../../fiscal/infra/mongo/repositories/nfse-emission.repository'
 import type { NfseEmissionDocument } from '../../fiscal/infra/mongo/schemas/nfse-emission.schema'
 
+@ApiTags('nfse')
 @Controller('nfse')
 export class FiscalController {
   constructor(
@@ -13,11 +15,15 @@ export class FiscalController {
   ) {}
 
   @Post('emitir')
+  @ApiOperation({ summary: 'Emitir NFSe (DPS)' })
+  @ApiBody({ type: EmitirNfseDto })
+  @ApiResponse({ status: 201 })
   emitir(@Body() dto: EmitirNfseDto) {
     return this.emitirNfseService.execute(dto)
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get emission by id' })
   async getById(@Param('id') id: string) {
     const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null
     if (!doc) return { found: false }
@@ -35,6 +41,7 @@ export class FiscalController {
   }
 
   @Get('external/:externalId')
+  @ApiOperation({ summary: 'Get emission by externalId' })
   async getByExternalId(@Param('externalId') externalId: string) {
     const doc = (await this.repo.findByExternalId(externalId)) as NfseEmissionDocument | null
     if (!doc) return { found: false }
@@ -52,6 +59,7 @@ export class FiscalController {
   }
 
   @Get(':id/provider-response')
+  @ApiOperation({ summary: 'Get provider response for emission' })
   async getProviderResponse(@Param('id') id: string) {
     const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null
     if (!doc) return { found: false }
@@ -70,6 +78,7 @@ export class FiscalController {
   }
 
   @Get(':id/artifacts')
+  @ApiOperation({ summary: 'Get artifacts info' })
   async getArtifacts(@Param('id') id: string) {
     const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null
     if (!doc) return { found: false }
@@ -86,6 +95,8 @@ export class FiscalController {
   }
 
   @Get(':id/xml')
+  @ApiOperation({ summary: 'Download XML' })
+  @ApiProduces('application/xml')
   async downloadXml(@Param('id') id: string, @Res() res: Response) {
     const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null
     if (!doc) return res.status(404).json({ found: false })
@@ -104,6 +115,8 @@ export class FiscalController {
   }
 
   @Get(':id/pdf')
+  @ApiOperation({ summary: 'Download PDF' })
+  @ApiProduces('application/pdf')
   async downloadPdf(@Param('id') id: string, @Res() res: Response) {
     const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null
     if (!doc) return res.status(404).json({ found: false })

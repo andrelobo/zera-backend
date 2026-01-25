@@ -9,6 +9,8 @@ import { HealthModule } from './core/health/health.module'
 
 import { FiscalModule } from './modules/fiscal/fiscal.module'
 import { WebhooksModule } from './modules/webhooks/webhooks.module'
+import { AuthModule } from './modules/auth/auth.module'
+import { EmpresasModule } from './modules/empresas/empresas.module'
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module'
     }),
     MongoModule,
     HealthModule,
+    AuthModule,
+    EmpresasModule,
     FiscalModule,
     WebhooksModule,
   ],
