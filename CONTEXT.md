@@ -1,4 +1,3 @@
-
 # ZERA Backend – Project Context
 
 ## 1. Overview
@@ -23,6 +22,7 @@ Repo (main branch only):
 - REST API
 - Yarn
 - ESLint + Prettier
+- Swagger (OpenAPI) via @nestjs/swagger
 
 ---
 
@@ -47,7 +47,9 @@ Relevant structure:
     - nuvemfiscal/
       - nuvemfiscal.config.ts
       - nuvemfiscal.http.ts
+      - nuvemfiscal.auth.service.ts
       - nfse.api.ts
+      - cnpj.api.ts
       - nfse.types.ts
       - nfse.mapper.ts
     - mongo/
@@ -63,6 +65,25 @@ Relevant structure:
   - handlers/webhook.handler.ts
   - webhooks.service.ts
   - services/update-status.service.ts
+- src/modules/auth/
+  - auth.module.ts
+  - auth.controller.ts
+  - auth.service.ts
+  - jwt.strategy.ts
+  - guards/
+    - jwt-auth.guard.ts
+    - roles.guard.ts
+    - roles.decorator.ts
+  - schemas/user.schema.ts
+  - dtos/login.dto.ts
+  - dtos/bootstrap-admin.dto.ts
+- src/modules/empresas/
+  - empresas.module.ts
+  - empresas.controller.ts
+  - empresas.service.ts
+  - schemas/empresa.schema.ts
+  - dtos/create-empresa.dto.ts
+  - dtos/update-empresa.dto.ts
 
 Domain principles:
 - Provider decoupled (was PlugNotas, now NuvemFiscal)
@@ -82,7 +103,7 @@ Env vars:
 - NUVEMFISCAL_ENV: "sandbox" or "production"
 - NUVEMFISCAL_CLIENT_ID
 - NUVEMFISCAL_CLIENT_SECRET
-- NUVEMFISCAL_SCOPE: "empresa nfse"
+- NUVEMFISCAL_SCOPE: "empresa nfse cnpj"
 - NFSE_CMUN_IBGE: city IBGE code (currently 1302603 for Manaus)
 - APP_VERSION: used as verAplic in DPS (default "zera-backend")
 
@@ -94,7 +115,7 @@ Company in NuvemFiscal:
 - NFSe config set via PUT /empresas/{cpf_cnpj}/nfse
 
 OAuth:
-- We successfully get tokens with scope "empresa nfse"
+- We successfully get tokens with scope "empresa nfse cnpj"
 - Backend logs show:
   - OAuth token request env=sandbox scope=empresa nfse
   - OAuth token ok expiresIn=2592000s tokenPrefix=eyJ0eXAi
@@ -107,6 +128,8 @@ OAuth:
   - consultarNfse(id)
   - baixarXmlNfse(id)
   - baixarPdfNfse(id, query?)
+- CnpjApi:
+  - consultarCnpj(cnpj)
 - nfse.mapper.ts: maps provider status → NfseEmissionStatus enum
 
 ---
@@ -183,7 +206,69 @@ Configured by:
 
 ---
 
-## 6. Current NFSe Payload Mapping (NuvemFiscalProvider)
+## 6. Empresas (CRUD + CNPJ Lookup)
+
+### 6.1 Endpoints (auth required)
+
+- POST /empresas
+  - Body: { cnpj }
+  - Fetches CNPJ data from NuvemFiscal and saves
+
+- POST /empresas/preview
+  - Body: { cnpj }
+  - Fetches CNPJ data from NuvemFiscal and returns mapped payload without saving
+
+- GET /empresas
+- GET /empresas/:id
+- GET /empresas/cnpj/:cnpj
+- PATCH /empresas/:id
+- DELETE /empresas/:id
+
+### 6.2 Persistence
+
+Mongo schema Empresa:
+- cnpj (unique)
+- razaoSocial
+- nomeFantasia
+- inscricaoMunicipal
+- email
+- fone
+- endereco (logradouro, numero, complemento, bairro, codigoMunicipio, cidade, uf, codigoPais, pais, cep)
+- providerData (trimmed payload from NuvemFiscal)
+- timestamps: createdAt, updatedAt
+
+### 6.3 ProviderData Trim
+
+Saved providerData is trimmed for size and Mongo compatibility:
+- Identificação básica, situação cadastral, atividades, endereço, contatos, simples/simei
+- Removes heavy/irrelevant sections (ex: socios)
+
+---
+
+## 7. Auth (Admin)
+
+- JWT auth with @nestjs/jwt + passport
+- Only role: admin
+- Bootstrap flow (one-time): POST /auth/bootstrap with header x-admin-setup-token
+- Login: POST /auth/login returns accessToken
+
+Env vars:
+- JWT_SECRET
+- JWT_EXPIRES_IN (default 7d)
+- ADMIN_SETUP_TOKEN
+
+---
+
+## 8. Swagger (OpenAPI)
+
+Swagger UI is available at:
+- http://localhost:3000/docs
+
+Documented with @nestjs/swagger in controllers and DTOs.
+
+---
+
+## 9. Current NFSe Payload Mapping (NuvemFiscalProvider)
 
 EmitirNfseInput (simplified):
 
@@ -233,9 +318,9 @@ NuvemFiscalProvider.emitirNfse:
 
 ---
 
-## 7. Error History & Bottleneck
+## 10. Error History & Bottleneck
 
-### 7.1 Already handled / understood
+### 10.1 Already handled / understood
 
 1. InvalidJsonProperty: "prestador"
    - Wrong JSON shape; fixed by proper DPS object.
@@ -274,7 +359,7 @@ This proves that:
 - The company is enabled for NFSe in that municipality,
 - The problem is not business enablement but **how NuvemFiscal expects the DPS payload / config**.
 
-### 7.2 Current bottleneck (short)
+### 10.2 Current bottleneck (short)
 
 - Integration with NuvemFiscal (auth, HTTP, company, certificate, config) is OK.
 - Our backend successfully calls /nfse/dps and gets consistent error payloads.
@@ -287,7 +372,7 @@ At this point, trial-and-error of JSON field names is exhausted and unproductive
 
 ---
 
-## 8. Contact with NuvemFiscal Support (VERY IMPORTANT)
+## 11. Contact with NuvemFiscal Support (VERY IMPORTANT)
 
 We are actively requesting help from NuvemFiscal support.
 
@@ -299,7 +384,7 @@ Our support request includes:
 - Municipality: Manaus (IBGE 1302603)
 - Certificate: installed, valid to 2027
 - NFSe config: present (PUT /empresas/{cpf_cnpj}/nfse)
-- Scope: "empresa nfse"
+- Scope: "empresa nfse cnpj"
 - API: /nfse/dps being called from backend with valid OAuth tokens
 
 Error history described to support:
@@ -321,11 +406,11 @@ Until NuvemFiscal support answers these questions with precision, we are **not c
 
 ---
 
-## 9. Development Workflow (EOF Pattern)
+## 12. Development Workflow (EOF Pattern)
 
 Because the chat interface often breaks large files, we enforce a strict pattern for code changes.
 
-### 9.1 Creating or replacing files
+### 12.1 Creating or replacing files
 
 Any assistant must provide file changes like this:
 
@@ -343,7 +428,7 @@ Rules:
 - No splitting file into multiple code blocks.
 - Applies to all code files: .ts, .json, etc.
 
-### 9.2 Partial edits
+### 12.2 Partial edits
 
 We **prefer full-file rewrites** over "patch style" diffs.
 
@@ -352,30 +437,34 @@ If the assistant needs to modify only part of a file, they should:
 1. Optionally show a small `sed -n 'X,Yn'` snippet to help the user locate the section.
 2. Immediately follow with a **full file** rewrite using the EOF pattern.
 
-### 9.3 No comments unless requested
+### 12.3 No comments unless requested
 
 - Do not add comments in code unless explicitly requested.
 - Keep TypeScript clean and idiomatic.
 
 ---
 
-## 10. What Works vs What is Blocked
+## 13. What Works vs What is Blocked
 
-### 10.1 Working
+### 13.1 Working
 
 - NestJS app boots without TypeScript errors.
 - MongoDB (Atlas) connected.
-- FiscalModule + WebhooksModule wired into AppModule.
+- AuthModule + EmpresasModule + FiscalModule + WebhooksModule wired into AppModule.
+- Admin bootstrap and login with JWT.
+- Empresa CRUD with CNPJ lookup via NuvemFiscal.
+- Pre-visualização endpoint for CNPJ without persistence.
 - Emission persistence, status updates, externalId, providerResponse.
-- NuvemFiscal OAuth (scope "empresa nfse").
+- NuvemFiscal OAuth (scope "empresa nfse cnpj").
 - NFSe endpoints:
   - /nfse/emitir
   - /nfse/:id
   - /nfse/:id/provider-response
   - /nfse/:id/artifacts
 - Polling job (PollNfseStatusRunner) executes and updates emissions.
+- Swagger docs available at /docs.
 
-### 10.2 Blocked
+### 13.2 Blocked
 
 - NFSe authorization with NuvemFiscal for Manaus is failing on the provider/prefeitura side:
   - E50 (Inscrição Municipal inválida) and
@@ -385,9 +474,11 @@ We are **waiting for / depending on** NuvemFiscal support to clarify the contrac
 
 ---
 
-## 11. Summary (for tools/agents)
+## 14. Summary (for tools/agents)
 
 - Backend architecture is solid and stable.
+- Auth + Empresas CRUD + CNPJ lookup are implemented and working.
+- Swagger docs are enabled at /docs and help the frontend integration.
 - The “hard bug” is **not** in Node/Nest/Mongo, but in the exact DPS/NFSe contract with NuvemFiscal for Manaus using Padrão Nacional 2026.
 - Do **not** keep guessing field names.
 - Any further work on NFSe JSON structure should be based on:
