@@ -2,11 +2,8 @@ import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/
 import { JwtService } from '@nestjs/jwt'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
-import { randomBytes, scrypt as _scrypt, timingSafeEqual } from 'crypto'
-import { promisify } from 'util'
 import { User, UserDocument } from './schemas/user.schema'
-
-const scrypt = promisify(_scrypt)
+import { hashPassword, verifyPassword } from './password'
 
 @Injectable()
 export class AuthService {
@@ -23,7 +20,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials')
     }
 
-    const ok = await this.verifyPassword(password, user.passwordHash)
+    if (user.status === 'inactive') {
+      throw new UnauthorizedException('User is inactive')
+    }
+
+    const ok = await verifyPassword(password, user.passwordHash)
     if (!ok) {
       throw new UnauthorizedException('Invalid credentials')
     }
@@ -37,44 +38,51 @@ export class AuthService {
     return { accessToken }
   }
 
-  async bootstrapAdmin(email: string, password: string) {
+  async bootstrapAdmin(name: string, email: string, password: string) {
     const existingAdmins = await this.userModel.countDocuments({ role: 'admin' })
     if (existingAdmins > 0) {
       throw new BadRequestException('Admin already exists')
     }
 
     const normalized = email.trim().toLowerCase()
-    const passwordHash = await this.hashPassword(password)
+    const passwordHash = await hashPassword(password)
 
     try {
       const user = await this.userModel.create({
+        name: name.trim(),
         email: normalized,
         passwordHash,
         role: 'admin',
+        status: 'active',
       })
 
       return {
         id: user._id.toString(),
+        name: user.name,
         email: user.email,
         role: user.role,
+        status: user.status,
       }
     } catch (e) {
       throw new BadRequestException('Unable to create admin')
     }
   }
 
-  private async hashPassword(password: string) {
-    const salt = randomBytes(16).toString('hex')
-    const derived = (await scrypt(password, salt, 64)) as Buffer
-    return `scrypt$${salt}$${derived.toString('hex')}`
+  async resetAdminPassword(email: string, password: string) {
+    const normalized = email.trim().toLowerCase()
+    const passwordHash = await hashPassword(password)
+
+    const updated = await this.userModel.findOneAndUpdate(
+      { email: normalized, role: 'admin' },
+      { passwordHash },
+      { new: true },
+    )
+
+    if (!updated) {
+      throw new BadRequestException('Admin not found')
+    }
+
+    return { id: updated._id.toString(), email: updated.email, role: updated.role }
   }
 
-  private async verifyPassword(password: string, stored: string) {
-    const [algo, salt, hash] = stored.split('$')
-    if (algo !== 'scrypt' || !salt || !hash) return false
-    const derived = (await scrypt(password, salt, 64)) as Buffer
-    const hashBuf = Buffer.from(hash, 'hex')
-    if (hashBuf.length !== derived.length) return false
-    return timingSafeEqual(hashBuf, derived)
-  }
 }

@@ -70,6 +70,7 @@ Relevant structure:
   - auth.controller.ts
   - auth.service.ts
   - jwt.strategy.ts
+  - password.ts
   - guards/
     - jwt-auth.guard.ts
     - roles.guard.ts
@@ -77,6 +78,13 @@ Relevant structure:
   - schemas/user.schema.ts
   - dtos/login.dto.ts
   - dtos/bootstrap-admin.dto.ts
+  - dtos/reset-admin-password.dto.ts
+- src/modules/users/
+  - users.module.ts
+  - users.controller.ts
+  - users.service.ts
+  - dtos/create-user.dto.ts
+  - dtos/update-user.dto.ts
 - src/modules/empresas/
   - empresas.module.ts
   - empresas.controller.ts
@@ -109,7 +117,7 @@ Env vars:
 
 Company in NuvemFiscal:
 - CNPJ: 43521115000134 (BURGUS LTDA / ECONTABILIS LTDA)
-- Inscrição municipal: 0051754301
+- Inscricao municipal: 0051754301
 - Municipality: Manaus (1302603)
 - Certificate installed and valid to 2027
 - NFSe config set via PUT /empresas/{cpf_cnpj}/nfse
@@ -240,22 +248,56 @@ Mongo schema Empresa:
 ### 6.3 ProviderData Trim
 
 Saved providerData is trimmed for size and Mongo compatibility:
-- Identificação básica, situação cadastral, atividades, endereço, contatos, simples/simei
+- Identificacao basica, situacao cadastral, atividades, endereco, contatos, simples/simei
 - Removes heavy/irrelevant sections (ex: socios)
 
 ---
 
-## 7. Auth (Admin)
+## 7. Auth + Users
+
+### 7.1 Auth
 
 - JWT auth with @nestjs/jwt + passport
-- Only role: admin
 - Bootstrap flow (one-time): POST /auth/bootstrap with header x-admin-setup-token
+  - Disabled when NODE_ENV=production or BOOTSTRAP_ENABLED=false
+  - Now requires name, email, password
 - Login: POST /auth/login returns accessToken
+  - Users with status="inactive" are blocked
+- Reset admin password: POST /auth/admin/reset-password with header x-admin-setup-token
+  - Enabled when ADMIN_RESET_ENABLED=true
 
 Env vars:
 - JWT_SECRET
 - JWT_EXPIRES_IN (default 7d)
 - ADMIN_SETUP_TOKEN
+- BOOTSTRAP_ENABLED
+- ADMIN_RESET_ENABLED
+- CORS_ORIGINS (comma-separated, used by app.enableCors)
+
+### 7.2 Users (CRUD, admin-only)
+
+Roles:
+- admin
+- manager
+- user
+
+Status:
+- active
+- inactive
+
+User fields:
+- name (required)
+- email (unique, required)
+- passwordHash (required)
+- role (required)
+- status (required, default active)
+
+Endpoints:
+- GET /users
+- GET /users/:id
+- POST /users
+- PATCH /users/:id
+- DELETE /users/:id
 
 ---
 
@@ -304,7 +346,7 @@ NuvemFiscalProvider.emitirNfse:
   - imPrest   = digits(prestador.inscricaoMunicipal || "")
   - docTom    = digits(tomador.cpfCnpj)
 - Uses NFSE_CMUN_IBGE as cMun (1302603)
-- Builds DPS payload aligned with Padrão Nacional NFSe:
+- Builds DPS payload aligned with Padrao Nacional NFSe:
   - top-level: ambiente, referencia
   - infDPS:
     - tpAmb (1 production / 2 homologation)
@@ -338,34 +380,34 @@ NuvemFiscalProvider.emitirNfse:
 5. ConfigNfseNotFound
    - Solved by calling PUT /empresas/{cpf_cnpj}/nfse with the minimal valid NFSe configuration.
 
-6. E50 – "Inscricao Municipal do prestador inválida"
+6. E50 – "Inscricao Municipal do prestador invalida"
    - Appears as a municipal/national validation code when DPS/IM config do not match prefeitura expectations.
    - Changing IM format in NuvemFiscal (with/without leading zeros) changed the error behavior but did not fully solve the problem.
 
 7. X800 / ValidationFailed – QuantidadeRps vs InscricaoMunicipal
    - Message from XML validator:
-     - "Erro de Validação:  --> 1871 - Element 'QuantidadeRps': This element is not expected. Expected is ( InscricaoMunicipal )."
-   - Indicates a deeper issue on how the batch header / DPS / Inscrição Municipal is represented in the generated XML, and how the prefeitura’s rules are configured.
+     - "Erro de Validacao:  --> 1871 - Element 'QuantidadeRps': This element is not expected. Expected is ( InscricaoMunicipal )."
+   - Indicates a deeper issue on how the batch header / DPS / Inscricao Municipal is represented in the generated XML, and how the prefeitura's rules are configured.
 
-We also have a **successful NFSe XML** from the national portal (outside our system) using the same:
+We also have a successful NFSe XML from the national portal (outside our system) using the same:
 
 - CNPJ 43521115000134
-- Inscrição municipal 51754301
+- Inscricao municipal 51754301
 - Municipality Manaus 1302603
 - National standard 2026
 
 This proves that:
 
 - The company is enabled for NFSe in that municipality,
-- The problem is not business enablement but **how NuvemFiscal expects the DPS payload / config**.
+- The problem is not business enablement but how NuvemFiscal expects the DPS payload / config.
 
 ### 10.2 Current bottleneck (short)
 
 - Integration with NuvemFiscal (auth, HTTP, company, certificate, config) is OK.
 - Our backend successfully calls /nfse/dps and gets consistent error payloads.
-- The remaining blocker is the **combination of:**
-  - Padrão Nacional NFSe DPS JSON contract in NuvemFiscal (TInfDPS / TInfoPrestador / batch header),
-  - The company’s Inscrição Municipal and NFSe configuration,
+- The remaining blocker is the combination of:
+  - Padrao Nacional NFSe DPS JSON contract in NuvemFiscal (TInfDPS / TInfoPrestador / batch header),
+  - The company's Inscricao Municipal and NFSe configuration,
   - Municipality Manaus validation rules.
 
 At this point, trial-and-error of JSON field names is exhausted and unproductive.
@@ -380,7 +422,7 @@ Our support request includes:
 
 - CNPJ: 43521115000134 (BURGUS LTDA)
 - Environment: we first used sandbox in NuvemFiscal, but the company appears to be enabled only for production NFSe in Manaus.
-- Inscrição municipal in NuvemFiscal: 0051754301
+- Inscricao municipal in NuvemFiscal: 0051754301
 - Municipality: Manaus (IBGE 1302603)
 - Certificate: installed, valid to 2027
 - NFSe config: present (PUT /empresas/{cpf_cnpj}/nfse)
@@ -389,20 +431,20 @@ Our support request includes:
 
 Error history described to support:
 
-- Previous: E50 – Inscrição Municipal do prestador inválida
+- Previous: E50 – Inscricao Municipal do prestador invalida
 - Current: X800 / ValidationFailed: QuantidadeRps vs InscricaoMunicipal
-- We also have a **valid NFSe XML** issued via national portal for the same CNPJ/IM.
+- We also have a valid NFSe XML issued via national portal for the same CNPJ/IM.
 
 Explicit questions to support:
 
-1. What is the **exact JSON schema** expected for TNfseDpsPedidoEmissao / TInfoPrestador in Padrão Nacional NFSe, specifically for Manaus?
-2. How should Inscrição Municipal be supplied:
+1. What is the exact JSON schema expected for TNfseDpsPedidoEmissao / TInfoPrestador in Padrao Nacional NFSe, specifically for Manaus?
+2. How should Inscricao Municipal be supplied:
    - Only via company config in /empresas/{cpf_cnpj}, or
    - Also in DPS JSON; if yes, what is the exact property name and location?
 3. For Manaus, should we be using sandbox or production for NFSe testing with this company?
 4. Why does the validator claim it expects InscricaoMunicipal instead of QuantidadeRps in the specific XML node (1871)?
 
-Until NuvemFiscal support answers these questions with precision, we are **not changing the DPS payload structure again**.
+Until NuvemFiscal support answers these questions with precision, we are not changing the DPS payload structure again.
 
 ---
 
@@ -418,71 +460,3 @@ Any assistant must provide file changes like this:
 cat << 'EOF' > src/some/path/file.ts
 // full file content here
 // NO truncation, NO "..." placeholders
-EOF
-```
-
-Rules:
-
-- Use `cat << 'EOF' > ...` (with quotes around EOF).
-- Single block containing the entire file.
-- No splitting file into multiple code blocks.
-- Applies to all code files: .ts, .json, etc.
-
-### 12.2 Partial edits
-
-We **prefer full-file rewrites** over "patch style" diffs.
-
-If the assistant needs to modify only part of a file, they should:
-
-1. Optionally show a small `sed -n 'X,Yn'` snippet to help the user locate the section.
-2. Immediately follow with a **full file** rewrite using the EOF pattern.
-
-### 12.3 No comments unless requested
-
-- Do not add comments in code unless explicitly requested.
-- Keep TypeScript clean and idiomatic.
-
----
-
-## 13. What Works vs What is Blocked
-
-### 13.1 Working
-
-- NestJS app boots without TypeScript errors.
-- MongoDB (Atlas) connected.
-- AuthModule + EmpresasModule + FiscalModule + WebhooksModule wired into AppModule.
-- Admin bootstrap and login with JWT.
-- Empresa CRUD with CNPJ lookup via NuvemFiscal.
-- Pre-visualização endpoint for CNPJ without persistence.
-- Emission persistence, status updates, externalId, providerResponse.
-- NuvemFiscal OAuth (scope "empresa nfse cnpj").
-- NFSe endpoints:
-  - /nfse/emitir
-  - /nfse/:id
-  - /nfse/:id/provider-response
-  - /nfse/:id/artifacts
-- Polling job (PollNfseStatusRunner) executes and updates emissions.
-- Swagger docs available at /docs.
-
-### 13.2 Blocked
-
-- NFSe authorization with NuvemFiscal for Manaus is failing on the provider/prefeitura side:
-  - E50 (Inscrição Municipal inválida) and
-  - ValidationFailed X800 (QuantidadeRps vs InscricaoMunicipal).
-
-We are **waiting for / depending on** NuvemFiscal support to clarify the contract and municipality-specific behavior. Only then is it reasonable to adjust the payload again.
-
----
-
-## 14. Summary (for tools/agents)
-
-- Backend architecture is solid and stable.
-- Auth + Empresas CRUD + CNPJ lookup are implemented and working.
-- Swagger docs are enabled at /docs and help the frontend integration.
-- The “hard bug” is **not** in Node/Nest/Mongo, but in the exact DPS/NFSe contract with NuvemFiscal for Manaus using Padrão Nacional 2026.
-- Do **not** keep guessing field names.
-- Any further work on NFSe JSON structure should be based on:
-  - Official NuvemFiscal docs / OpenAPI, and
-  - Concrete answers from NuvemFiscal support for this CNPJ/municipality.
-- All code changes must be delivered via `cat << 'EOF' > file` pattern.
-- We are already in contact with NuvemFiscal support and this must be treated as a known external dependency/blocker.

@@ -5,6 +5,19 @@ import { AppModule } from './app.module'
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
 
+  const corsOrigins =
+    process.env.CORS_ORIGINS?.split(',').map((origin) => origin.trim()) ?? [
+      'http://localhost:8080',
+      'http://127.0.0.1:8080',
+    ]
+
+  app.enableCors({
+    origin: corsOrigins,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+  })
+
   const config = new DocumentBuilder()
     .setTitle('ZERA API')
     .setDescription('ZERA Backend API')

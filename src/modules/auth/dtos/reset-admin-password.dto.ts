@@ -1,12 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger'
 
-export class BootstrapAdminDto {
-  @ApiProperty({ example: 'Admin Zera' })
-  name!: string
-
+export class ResetAdminPasswordDto {
   @ApiProperty({ example: 'admin@zera.com' })
   email!: string
 
-  @ApiProperty({ example: 'password' })
+  @ApiProperty({ example: 'new-strong-password' })
   password!: string
 }

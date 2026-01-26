@@ -11,6 +11,7 @@ import { FiscalModule } from './modules/fiscal/fiscal.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EmpresasModule } from './modules/empresas/empresas.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { EmpresasModule } from './modules/empresas/empresas.module';
     MongoModule,
     HealthModule,
     AuthModule,
+    UsersModule,
     EmpresasModule,
     FiscalModule,
     WebhooksModule,

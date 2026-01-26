@@ -15,6 +15,7 @@ Swagger (OpenAPI) UI:
 ### 2.1 Bootstrap Admin (one-time)
 
 Used only once to create the first admin user.
+Disabled in production or when `BOOTSTRAP_ENABLED=false`.
 
 Request:
 - POST /auth/bootstrap
@@ -22,6 +23,7 @@ Request:
 - Body:
 ```json
 {
+  "name": "Admin Zera",
   "email": "admin@zera.com",
   "password": "password"
 }
@@ -31,8 +33,10 @@ Response:
 ```json
 {
   "id": "...",
+  "name": "Admin Zera",
   "email": "admin@zera.com",
-  "role": "admin"
+  "role": "admin",
+  "status": "active"
 }
 ```
 
@@ -55,18 +59,117 @@ Response:
 }
 ```
 
+Notes:
+- Users with `status="inactive"` are blocked from login.
+
 ### 2.3 Using the token
 
 For all protected endpoints, include:
 - Authorization: Bearer <JWT>
 
+### 2.4 Reset Admin Password (via setup token)
+
+Enabled when `ADMIN_RESET_ENABLED=true`.
+
+Request:
+- POST /auth/admin/reset-password
+- Header: x-admin-setup-token: <ADMIN_SETUP_TOKEN>
+- Body:
+```json
+{
+  "email": "admin@zera.com",
+  "password": "new-strong-password"
+}
+```
+
+Response:
+```json
+{
+  "id": "...",
+  "email": "admin@zera.com",
+  "role": "admin"
+}
+```
+
 ---
 
-## 3. Empresas (CRUD + CNPJ lookup)
+## 3. Users (CRUD)
 
 All endpoints require admin auth.
 
-### 3.1 Create from CNPJ
+### 3.1 List
+
+- GET /users
+Response:
+```json
+[
+  {
+    "id": "...",
+    "name": "Nome completo",
+    "email": "email@exemplo.com",
+    "role": "user",
+    "status": "active",
+    "createdAt": "2026-01-26T12:00:00.000Z",
+    "updatedAt": "2026-01-26T12:00:00.000Z"
+  }
+]
+```
+
+### 3.2 Get by ID
+
+- GET /users/:id
+Response:
+```json
+{
+  "id": "...",
+  "name": "Nome completo",
+  "email": "email@exemplo.com",
+  "role": "user",
+  "status": "active",
+  "createdAt": "2026-01-26T12:00:00.000Z",
+  "updatedAt": "2026-01-26T12:00:00.000Z"
+}
+```
+
+### 3.3 Create
+
+- POST /users
+- Body:
+```json
+{
+  "name": "Nome completo",
+  "email": "email@exemplo.com",
+  "password": "senha-forte",
+  "role": "user",
+  "status": "active"
+}
+```
+
+### 3.4 Update
+
+- PATCH /users/:id
+- Body (partial):
+```json
+{
+  "name": "Nome atualizado",
+  "email": "novo@email.com",
+  "password": "nova-senha-forte",
+  "role": "manager",
+  "status": "inactive"
+}
+```
+
+### 3.5 Delete
+
+- DELETE /users/:id
+
+---
+
+## 4. Empresas (CRUD + CNPJ lookup)
+
+All endpoints require admin auth.
+
+### 4.1 Create from CNPJ
 
 Request:
 - POST /empresas
@@ -82,7 +185,7 @@ Behavior:
 - Maps data to Empresa fields
 - Saves in MongoDB
 
-### 3.2 Preview from CNPJ (no persistence)
+### 4.2 Preview from CNPJ (no persistence)
 
 Request:
 - POST /empresas/preview
@@ -97,19 +200,19 @@ Behavior:
 - Same mapping as create
 - Does not save
 
-### 3.3 List
+### 4.3 List
 
 - GET /empresas
 
-### 3.4 Get by ID
+### 4.4 Get by ID
 
 - GET /empresas/:id
 
-### 3.5 Get by CNPJ
+### 4.5 Get by CNPJ
 
 - GET /empresas/cnpj/:cnpj
 
-### 3.6 Update
+### 4.6 Update
 
 - PATCH /empresas/:id
 - Body (partial):
@@ -131,15 +234,15 @@ Behavior:
 }
 ```
 
-### 3.7 Delete
+### 4.7 Delete
 
 - DELETE /empresas/:id
 
 ---
 
-## 4. NFSe (Fiscal)
+## 5. NFSe (Fiscal)
 
-### 4.1 Emitir NFSe
+### 5.1 Emitir NFSe
 
 - POST /nfse/emitir
 - Body (exemplo):
@@ -180,7 +283,7 @@ Behavior:
 }
 ```
 
-### 4.2 Consultas
+### 5.2 Consultas
 
 - GET /nfse/:id
 - GET /nfse/external/:externalId
@@ -191,7 +294,7 @@ Behavior:
 
 ---
 
-## 5. Webhooks
+## 6. Webhooks
 
 - POST /webhooks/fiscal
 
@@ -199,13 +302,13 @@ Used by the fiscal provider to update status. No auth in the current setup.
 
 ---
 
-## 6. Health
+## 7. Health
 
 - GET /health
 
 ---
 
-## 7. Errors (common)
+## 8. Errors (common)
 
 - 400 Bad Request
   - Invalid CNPJ
@@ -217,7 +320,7 @@ Used by the fiscal provider to update status. No auth in the current setup.
 
 ---
 
-## 8. Notes for Frontend
+## 9. Notes for Frontend
 
 - Use the Swagger UI as the source of truth for payloads.
 - Empresa creation only needs CNPJ; rest is auto-filled.
@@ -226,13 +329,22 @@ Used by the fiscal provider to update status. No auth in the current setup.
 
 ---
 
-## 9. Quick Test (curl)
+## 10. Quick Test (curl)
 
 Login:
 ```bash
 curl -s -X POST http://127.0.0.1:3000/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@zera.com","password":"password"}'
+```
+
+Create user:
+```bash
+TOKEN="<JWT>"
+curl -s -X POST http://127.0.0.1:3000/users \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"name":"Nome completo","email":"email@exemplo.com","password":"senha-forte","role":"user","status":"active"}'
 ```
 
 Create empresa:

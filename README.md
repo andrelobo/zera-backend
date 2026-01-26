@@ -77,12 +77,34 @@ src/
 
 ## ⚙️ Configuração do Ambiente
 
-Crie um arquivo `.env` na raiz do projeto:
+Crie um arquivo `.env` na raiz do projeto (baseado em `.env.example`):
 
 ```env
 NODE_ENV=development
-PORT=3000
-MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>/<database>?retryWrites=true&w=majority&appName=zera
+APP_PORT=3000
+CORS_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
+
+MONGO_URI=mongodb+srv://<user>:<password>@<cluster>/<database>?retryWrites=true&w=majority&appName=zera
+
+NUVEMFISCAL_ENV=sandbox
+NUVEMFISCAL_SCOPE=empresa nfse cnpj
+NUVEMFISCAL_CLIENT_ID=
+NUVEMFISCAL_CLIENT_SECRET=
+
+JWT_SECRET=
+JWT_EXPIRES_IN=7d
+ADMIN_SETUP_TOKEN=
+BOOTSTRAP_ENABLED=true
+ADMIN_RESET_ENABLED=true
+
+NFSE_POLLING_ENABLED=true
+NFSE_POLLING_INTERVAL_MS=300000
+NFSE_POLLING_JITTER_MS=15000
+NFSE_POLLING_LIMIT=50
+NFSE_POLLING_OLDER_THAN_MS=30000
+
+NFSE_STORE_ARTIFACTS=true
+NFSE_CMUN_IBGE=1302603
 ```
 
 ---
