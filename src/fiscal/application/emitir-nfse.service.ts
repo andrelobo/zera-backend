@@ -17,6 +17,29 @@ export class EmitirNfseService {
     emissionId: string
     result: EmitirNfseResult
   }> {
+    const tomadorEndereco = input?.tomador?.endereco
+    if (!tomadorEndereco) {
+      throw new BadRequestException({
+        message: 'tomador.endereco is required',
+      })
+    }
+
+    const requiredTomadorEnderecoFields = [
+      'logradouro',
+      'numero',
+      'bairro',
+      'municipio',
+      'uf',
+      'cep',
+    ] as const
+    const missingFields = requiredTomadorEnderecoFields.filter((field) => !tomadorEndereco[field])
+    if (missingFields.length > 0) {
+      throw new BadRequestException({
+        message: 'tomador.endereco is missing required fields',
+        missingFields,
+      })
+    }
+
     const emission = await this.repository.create({
       provider: 'NUVEMFISCAL',
       status: NfseEmissionStatus.PENDING,
