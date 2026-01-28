@@ -5,6 +5,7 @@ import type { EmitirNfseResult } from '../domain/types/emitir-nfse.result'
 import { NfseEmissionStatus } from '../domain/types/nfse-emission-status'
 import { getNuvemFiscalConfig } from './nuvemfiscal/nuvemfiscal.config'
 import { NfseApi } from './nuvemfiscal/nfse.api'
+import { mapNuvemFiscalStatusToDomain } from './nuvemfiscal/nfse.mapper'
 
 function onlyDigits(v?: string) {
   return (v ?? '').replace(/\D+/g, '')
@@ -21,6 +22,7 @@ function todayYmd() {
 @Injectable()
 export class NuvemFiscalProvider implements FiscalProvider {
   private readonly logger = new Logger(NuvemFiscalProvider.name)
+  readonly providerName = 'NUVEMFISCAL'
 
   constructor(private readonly nfseApi: NfseApi) {}
 
@@ -95,9 +97,29 @@ export class NuvemFiscalProvider implements FiscalProvider {
 
     return {
       status: NfseEmissionStatus.PENDING,
-      provider: 'NUVEMFISCAL',
+      provider: this.providerName,
       externalId: response.id,
       providerResponse: response as any,
     }
+  }
+
+  async consultarNfse(externalId: string): Promise<{
+    status: NfseEmissionStatus
+    providerResponse: any
+  }> {
+    const resp = await this.nfseApi.consultarNfse(externalId)
+    const status = mapNuvemFiscalStatusToDomain(resp.status)
+    return { status, providerResponse: resp }
+  }
+
+  baixarXmlNfse(externalId: string): Promise<Uint8Array> {
+    return this.nfseApi.baixarXmlNfse(externalId)
+  }
+
+  baixarPdfNfse(
+    externalId: string,
+    query?: { logotipo?: boolean; mensagem_rodape?: string },
+  ): Promise<Uint8Array> {
+    return this.nfseApi.baixarPdfNfse(externalId, query)
   }
 }

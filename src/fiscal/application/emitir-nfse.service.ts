@@ -41,7 +41,7 @@ export class EmitirNfseService {
     }
 
     const emission = await this.repository.create({
-      provider: 'NUVEMFISCAL',
+      provider: this.provider.providerName,
       status: NfseEmissionStatus.PENDING,
       payload: input,
     })
@@ -72,8 +72,8 @@ export class EmitirNfseService {
 
       if (typeof status === 'number' && status >= 400 && status < 500) {
         throw new BadRequestException({
-          message: 'NuvemFiscal rejected the request',
-          nuvemFiscal: body ?? null,
+          message: `${this.provider.providerName} rejected the request`,
+          provider: body ?? null,
         })
       }
 

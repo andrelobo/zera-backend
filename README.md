@@ -86,10 +86,11 @@ CORS_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
 
 MONGO_URI=mongodb+srv://<user>:<password>@<cluster>/<database>?retryWrites=true&w=majority&appName=zera
 
-NUVEMFISCAL_ENV=sandbox
-NUVEMFISCAL_SCOPE=empresa nfse cnpj
-NUVEMFISCAL_CLIENT_ID=
-NUVEMFISCAL_CLIENT_SECRET=
+PLUGNOTAS_BASE_URL=https://api.sandbox.plugnotas.com.br
+PLUGNOTAS_API_KEY=
+PLUGNOTAS_CNPJ_PATH=/cnpj/{cnpj}
+PLUGNOTAS_NFSE_XML_PATH=/nfse/xml/{id}
+PLUGNOTAS_NFSE_PDF_PATH=/nfse/pdf/{id}
 
 JWT_SECRET=
 JWT_EXPIRES_IN=7d
@@ -106,6 +107,8 @@ NFSE_POLLING_OLDER_THAN_MS=30000
 NFSE_STORE_ARTIFACTS=true
 NFSE_CMUN_IBGE=1302603
 ```
+
+Observação: variáveis `NUVEMFISCAL_*` não são mais necessárias para o MVP atual (migração total para PlugNotas).
 
 ---
 
@@ -129,3 +132,22 @@ http://localhost:3000
 
 Health check:
 GET /health
+
+---
+
+## 📌 Endpoints NFSe (PlugNotas)
+
+Emissão:
+- `POST /nfse/emitir`
+
+Consulta interna:
+- `GET /nfse/:id`
+- `GET /nfse/:id/provider-response`
+
+Download (local, se artifacts foram salvos):
+- `GET /nfse/:id/xml`
+- `GET /nfse/:id/pdf`
+
+Download direto do provider (usa idNota da PlugNotas):
+- `GET /nfse/:id/remote/xml`
+- `GET /nfse/:id/remote/pdf`

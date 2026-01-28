@@ -6,6 +6,7 @@ export interface EmitirNfseInput {
     endereco: {
       logradouro: string
       numero: string
+      complemento?: string
       bairro: string
       municipio: string
       uf: string
@@ -20,6 +21,7 @@ export interface EmitirNfseInput {
     endereco: {
       logradouro: string
       numero: string
+      complemento?: string
       bairro: string
       municipio: string
       uf: string
@@ -29,6 +31,7 @@ export interface EmitirNfseInput {
 
   servico: {
     codigoMunicipal: string
+    codigoNacional?: string
     descricao: string
     valor: number
   }

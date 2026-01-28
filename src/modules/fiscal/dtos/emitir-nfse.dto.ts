@@ -23,6 +23,7 @@ export class EmitirNfseDto {
     endereco: {
       logradouro: string
       numero: string
+      complemento?: string
       bairro: string
       municipio: string
       uf: string
@@ -52,6 +53,7 @@ export class EmitirNfseDto {
     endereco: {
       logradouro: string
       numero: string
+      complemento?: string
       bairro: string
       municipio: string
       uf: string
@@ -68,6 +70,7 @@ export class EmitirNfseDto {
   })
   servico!: {
     codigoMunicipal: string
+    codigoNacional?: string
     descricao: string
     valor: number
   }

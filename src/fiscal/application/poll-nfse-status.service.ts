@@ -1,8 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import { NfseEmissionRepository } from '../infra/mongo/repositories/nfse-emission.repository'
-import { NfseApi } from '../infra/nuvemfiscal/nfse.api'
-import { mapNuvemFiscalStatusToDomain } from '../infra/nuvemfiscal/nfse.mapper'
 import { NfseEmissionStatus } from '../domain/types/nfse-emission-status'
+import type { FiscalProvider } from '../domain/fiscal-provider.interface'
 
 function toBase64(data: Uint8Array) {
   return Buffer.from(data).toString('base64')
@@ -30,12 +29,13 @@ export class PollNfseStatusService {
 
   constructor(
     private readonly repo: NfseEmissionRepository,
-    private readonly nfseApi: NfseApi,
+    @Inject('FiscalProvider')
+    private readonly provider: FiscalProvider,
   ) {}
 
   async runOnce(input?: { limit?: number; olderThanMs?: number }) {
     const pending = await this.repo.findPending({
-      provider: 'NUVEMFISCAL',
+      provider: this.provider.providerName,
       limit: input?.limit ?? 50,
       olderThanMs: input?.olderThanMs ?? 30_000,
       now: new Date(),
@@ -52,30 +52,29 @@ export class PollNfseStatusService {
       if (!emission.externalId) continue
 
       try {
-        const resp = await this.nfseApi.consultarNfse(emission.externalId)
-        const status = mapNuvemFiscalStatusToDomain(resp.status)
+        const { status, providerResponse } = await this.provider.consultarNfse(emission.externalId)
 
         if (status === NfseEmissionStatus.PENDING) {
           await this.repo.updateByExternalId({
             externalId: emission.externalId,
             status,
-            providerResponse: resp as any,
-            provider: 'NUVEMFISCAL',
+            providerResponse,
+            provider: this.provider.providerName,
           })
           continue
         }
 
         if (status === NfseEmissionStatus.AUTHORIZED && storeArtifacts) {
           const [xml, pdf] = await Promise.all([
-            this.nfseApi.baixarXmlNfse(emission.externalId),
-            this.nfseApi.baixarPdfNfse(emission.externalId),
+            this.provider.baixarXmlNfse(emission.externalId),
+            this.provider.baixarPdfNfse(emission.externalId),
           ])
 
           await this.repo.updateByExternalId({
             externalId: emission.externalId,
             status,
-            providerResponse: resp as any,
-            provider: 'NUVEMFISCAL',
+            providerResponse,
+            provider: this.provider.providerName,
             xmlBase64: toBase64(xml),
             pdfBase64: toBase64(pdf),
           })
@@ -86,8 +85,8 @@ export class PollNfseStatusService {
         await this.repo.updateByExternalId({
           externalId: emission.externalId,
           status,
-          providerResponse: resp as any,
-          provider: 'NUVEMFISCAL',
+          providerResponse,
+          provider: this.provider.providerName,
         })
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
@@ -101,7 +100,7 @@ export class PollNfseStatusService {
               externalId: emission.externalId,
               status: NfseEmissionStatus.ERROR,
               error: msg,
-              provider: 'NUVEMFISCAL',
+              provider: this.provider.providerName,
             })
             continue
           }
@@ -112,7 +111,7 @@ export class PollNfseStatusService {
 
           await this.repo.markPollingTransientFailure({
             externalId: emission.externalId,
-            provider: 'NUVEMFISCAL',
+            provider: this.provider.providerName,
             message: msg,
             nextPollAt,
           })
@@ -126,7 +125,7 @@ export class PollNfseStatusService {
           externalId: emission.externalId,
           status: NfseEmissionStatus.ERROR,
           error: msg,
-          provider: 'NUVEMFISCAL',
+          provider: this.provider.providerName,
         })
       }
     }

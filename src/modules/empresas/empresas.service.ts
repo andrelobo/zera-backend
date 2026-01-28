@@ -1,14 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
-import { CnpjApi } from '../../fiscal/infra/nuvemfiscal/cnpj.api'
+import { PlugNotasCnpjApi } from '../../fiscal/infra/plugnotas/cnpj.api'
 import { Empresa, EmpresaDocument } from './schemas/empresa.schema'
 
 @Injectable()
 export class EmpresasService {
   constructor(
     @InjectModel(Empresa.name) private readonly empresaModel: Model<EmpresaDocument>,
-    private readonly cnpjApi: CnpjApi,
+    private readonly cnpjApi: PlugNotasCnpjApi,
   ) {}
 
   async createFromCnpj(cnpj: string) {
@@ -75,7 +75,7 @@ export class EmpresasService {
       const providerStatus = e?.status
       const providerBody = e?.body
       throw new BadRequestException({
-        message: 'Falha ao consultar CNPJ na NuvemFiscal',
+        message: 'Falha ao consultar CNPJ na PlugNotas',
         providerStatus: providerStatus ?? null,
         providerError: providerBody ?? null,
       })

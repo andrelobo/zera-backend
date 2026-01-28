@@ -6,12 +6,11 @@ import { FiscalController } from './fiscal.controller'
 import { EmitirNfseService } from '../../fiscal/application/emitir-nfse.service'
 import { PollNfseStatusService } from '../../fiscal/application/poll-nfse-status.service'
 import { PollNfseStatusRunner } from '../../fiscal/application/poll-nfse-status.runner'
-import { NuvemFiscalProvider } from '../../fiscal/infra/nuvemfiscal.provider'
+import { PlugNotasProvider } from '../../fiscal/infra/plugnotas.provider'
 import { NfseEmissionRepository } from '../../fiscal/infra/mongo/repositories/nfse-emission.repository'
 import { NfseEmission, NfseEmissionSchema } from '../../fiscal/infra/mongo/schemas/nfse-emission.schema'
-import { NuvemFiscalAuthService } from '../../fiscal/infra/nuvemfiscal/nuvemfiscal.auth.service'
-import { NuvemFiscalHttp } from '../../fiscal/infra/nuvemfiscal/nuvemfiscal.http'
-import { NfseApi } from '../../fiscal/infra/nuvemfiscal/nfse.api'
+import { PlugNotasHttp } from '../../fiscal/infra/plugnotas/plugnotas.http'
+import { PlugNotasNfseApi } from '../../fiscal/infra/plugnotas/nfse.api'
 
 @Module({
   imports: [
@@ -23,12 +22,11 @@ import { NfseApi } from '../../fiscal/infra/nuvemfiscal/nfse.api'
     EmitirNfseService,
     PollNfseStatusService,
     PollNfseStatusRunner,
-    NuvemFiscalAuthService,
-    NuvemFiscalHttp,
-    NfseApi,
+    PlugNotasHttp,
+    PlugNotasNfseApi,
     {
       provide: 'FiscalProvider',
-      useClass: NuvemFiscalProvider,
+      useClass: PlugNotasProvider,
     },
   ],
   exports: [EmitirNfseService, PollNfseStatusService],

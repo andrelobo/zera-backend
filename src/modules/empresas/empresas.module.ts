@@ -4,16 +4,15 @@ import { MongooseModule } from '@nestjs/mongoose'
 import { EmpresasController } from './empresas.controller'
 import { EmpresasService } from './empresas.service'
 import { Empresa, EmpresaSchema } from './schemas/empresa.schema'
-import { NuvemFiscalAuthService } from '../../fiscal/infra/nuvemfiscal/nuvemfiscal.auth.service'
-import { NuvemFiscalHttp } from '../../fiscal/infra/nuvemfiscal/nuvemfiscal.http'
-import { CnpjApi } from '../../fiscal/infra/nuvemfiscal/cnpj.api'
+import { PlugNotasHttp } from '../../fiscal/infra/plugnotas/plugnotas.http'
+import { PlugNotasCnpjApi } from '../../fiscal/infra/plugnotas/cnpj.api'
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Empresa.name, schema: EmpresaSchema }]),
   ],
   controllers: [EmpresasController],
-  providers: [EmpresasService, NuvemFiscalAuthService, NuvemFiscalHttp, CnpjApi],
+  providers: [EmpresasService, PlugNotasHttp, PlugNotasCnpjApi],
   exports: [EmpresasService],
 })
 export class EmpresasModule {}
