@@ -46,17 +46,17 @@ ZERA aims to keep the UI extremely simple while producing valid NFSe documents.
 
 We issue NFSe for Manaus/AM (IBGE 1302603) using a fiscal provider API.
 
-Observed behavior:
+Observed behavior (NuvemFiscal, production):
 
 * NFSe request is accepted by provider
 * status becomes **pending**
-* later becomes **rejected**
+* later becomes **rejected/negada** with `E403`
 
 We confirmed the business/fiscal data is valid by issuing successfully through the **Portal Nacional** and obtaining the authorized XML.
 
 ### Current conclusion
 
-The rejection is related to how the provider generates the final XML for Manaus (structural layout mismatch / “lote” vs “unitária”), not to missing business fields.
+Root cause is still unclear. The provider returns `E403` and asks to "recuperar a relação dos erros", but there is no known endpoint returning the detailed errors. This blocks diagnosis and reinforces the decision to migrate providers.
 
 ---
 
@@ -200,3 +200,24 @@ Regras do ZERA:
 * O ZERA pode continuar **simplificando a UI**, desde que o **XML autorizado** seja a verdade fiscal.
 * “Mais campos no portal” não implica que o ZERA está errado; muitos campos são derivados/configurados no prestador.
 * O ponto crítico é a **conformidade estrutural do XML final** gerado pelo provider, especialmente para municípios rígidos.
+
+---
+
+# ATUALIZAÇÃO (28/01/2026) – PlugNotas Sandbox (NFSe Nacional)
+
+## 1. Emissão autorizada no sandbox
+
+* Emissão na PlugNotas Sandbox concluiu com **AUTORIZADA**
+* `retorno.situacao`: **AUTORIZADA**
+* `numeroNfse`: `2600`
+* `codigoVerificacao`: `5278FE6A7`
+* `dataAutorizacao`: `2026-01-28T17:08:08.675Z`
+
+## 2. Endpoints corretos de download (NFSe Nacional)
+
+Os endpoints corretos de download na PlugNotas (NFSe Nacional) são:
+
+* `GET /nfse/xml/{idNota}`
+* `GET /nfse/pdf/{idNota}`
+
+O backend inicialmente marcou **ERROR** ao usar endpoints antigos. Com os endpoints corretos e o `idNota`, o XML/PDF foram baixados com sucesso no sandbox.
