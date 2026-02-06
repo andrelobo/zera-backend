@@ -57,9 +57,11 @@ export class PlugNotasProvider implements FiscalProvider {
         emitente: {
           tipo: cnpjPrest.length === 14 ? 1 : 2,
           codigoCidade: cMun,
+          inscricaoMunicipal: input.prestador.inscricaoMunicipal,
         },
         prestador: {
           cpfCnpj: cnpjPrest,
+          inscricaoMunicipal: input.prestador.inscricaoMunicipal,
         },
         tomador: compact({
           cpfCnpj: docTom,
@@ -81,6 +83,7 @@ export class PlugNotasProvider implements FiscalProvider {
         servico: [
           compact({
             codigo: servicoCodigo,
+            codigoTributacao: input.servico.codigoTributacao,
             discriminacao: input.servico.descricao,
             valor: {
               servico: Number(toDecimalString(input.servico.valor)),
@@ -89,6 +92,10 @@ export class PlugNotasProvider implements FiscalProvider {
         ],
       }),
     ]
+
+    if (process.env.PLUGNOTAS_DEBUG_PAYLOAD === 'true') {
+      this.logger.warn('PlugNotas payload debug enabled', { payload })
+    }
 
     this.logger.log('Emitindo NFS-e via PlugNotas', {
       prestador: cnpjPrest,
@@ -111,6 +118,7 @@ export class PlugNotasProvider implements FiscalProvider {
       provider: this.providerName,
       externalId,
       providerResponse: response as any,
+      providerRequest: { payload },
     }
   }
 

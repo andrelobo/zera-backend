@@ -54,6 +54,7 @@ export class EmitirNfseService {
         status: result.status,
         externalId: result.externalId ?? undefined,
         providerResponse: result.providerResponse ?? undefined,
+        providerRequest: result.providerRequest ?? undefined,
       })
 
       return {

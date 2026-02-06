@@ -22,6 +22,9 @@ export class NfseEmission {
   @Prop({ type: Object })
   providerResponse?: Record<string, any>
 
+  @Prop({ type: Object })
+  providerRequest?: Record<string, any>
+
   @Prop()
   xmlBase64?: string
 

@@ -87,6 +87,7 @@ export class FiscalController {
       provider: doc.provider,
       externalId: doc.externalId ?? null,
       status: doc.status,
+      providerRequest: doc.providerRequest ?? null,
       providerResponse: doc.providerResponse ?? null,
       error: doc.error ?? null,
       createdAt: (doc as any).createdAt ?? null,

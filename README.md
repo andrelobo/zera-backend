@@ -21,17 +21,16 @@ O objetivo do projeto é **abstrair totalmente a complexidade fiscal**, permitin
 
 ## 🧱 Estado Atual do Projeto
 
-Este repositório encontra-se atualmente em:
+Este repositório já contempla o **MVP fiscal com PlugNotas** e módulos básicos de autenticação/usuários.
 
-> **Sprint 01 — Fundação & Infraestrutura**
-
-Funcionalidades implementadas até o momento:
-- Bootstrap do projeto NestJS
-- Conexão com MongoDB (Atlas) via Mongoose
-- Configuração por variáveis de ambiente
-- Endpoint de saúde (`GET /health`)
-- Dockerização completa da API
-- ESLint + Prettier configurados
+Funcionalidades implementadas:
+- Emissão assíncrona de NFS-e via PlugNotas (`POST /nfse/emitir`)
+- Persistência de emissões, status e polling com backoff
+- Download de XML/PDF (local e direto do provider)
+- Consulta de CNPJ (cadastro facilitado) via PlugNotas
+- Módulos de auth, users e empresas
+- Health check (`GET /health`)
+- Dockerização + configuração por `.env`
 
 📄 **Referência técnica completa:**  
 ➡️ Consulte o arquivo [`CONTEXT.md`](./CONTEXT.md) antes de sugerir alterações ou novas funcionalidades.
@@ -108,7 +107,6 @@ NFSE_STORE_ARTIFACTS=true
 NFSE_CMUN_IBGE=1302603
 ```
 
-Observação: variáveis `NUVEMFISCAL_*` não são mais necessárias para o MVP atual (migração total para PlugNotas).
 
 ---
 

@@ -80,7 +80,7 @@ Domain responsibilities:
 
 ---
 
-## 6. Next Steps
+## 6. Next Steps (histórico)
 
 * stabilize emission flow for Manaus
 * keep full traceability (request → provider id → status → XML)
@@ -110,8 +110,9 @@ Motivação (objetiva):
 * `PLUGNOTAS_BASE_URL=https://api.sandbox.plugnotas.com.br`
 * `PLUGNOTAS_API_KEY=...`
 * `PLUGNOTAS_CNPJ_PATH=/cnpj/{cnpj}` (consulta Receita Federal, cadastro facilitado)
-* `PLUGNOTAS_NFSE_XML_PATH=/nfse/{id}/xml` (ajustável se doc indicar outro)
-* `PLUGNOTAS_NFSE_PDF_PATH=/nfse/{id}/pdf` (ajustável se doc indicar outro)
+* `PLUGNOTAS_NFSE_XML_PATH=/nfse/xml/{id}` (ajustável se doc indicar outro)
+* `PLUGNOTAS_NFSE_PDF_PATH=/nfse/pdf/{id}` (ajustável se doc indicar outro)
+* `NFSE_CMUN_IBGE=1302603` (IBGE do município emissor, obrigatório no payload atual)
 
 ## C. NFSe Nacional – Pré-requisitos (PlugNotas)
 
@@ -203,6 +204,7 @@ Regras do ZERA:
 
 ---
 
+<<<<<<< HEAD
 # ATUALIZAÇÃO (28/01/2026) – PlugNotas Sandbox (NFSe Nacional)
 
 ## 1. Emissão autorizada no sandbox
@@ -221,3 +223,81 @@ Os endpoints corretos de download na PlugNotas (NFSe Nacional) são:
 * `GET /nfse/pdf/{idNota}`
 
 O backend inicialmente marcou **ERROR** ao usar endpoints antigos. Com os endpoints corretos e o `idNota`, o XML/PDF foram baixados com sucesso no sandbox.
+=======
+# ADDENDUM 2 (PT-BR) – Emissões NFSe Nacional Manaus (fev/2026)
+
+> **Resumo prático:** o backend foi ajustado e está enviando corretamente a **IM** no payload, mas as rejeições atuais são **E0312/E0314** por **códigos de tributação não administrados em produção** (Manaus). O bloqueio agora é **tabela municipal/competência**, não o payload.
+
+## 1) Ajustes feitos no backend
+
+* **IM enviada no payload do PlugNotas**: `emitente.inscricaoMunicipal` e `prestador.inscricaoMunicipal`.
+* **Registro do payload enviado**: persistimos `providerRequest` no Mongo para inspecionar o JSON real enviado ao PlugNotas.
+* **Campo opcional `codigoMunicipal`** no serviço (para testar sem cTribMun).
+* **Suporte a `codigoTributacao`** no serviço (workaround sugerido em doc PlugNotas).
+
+## 2) Evidências coletadas
+
+### 2.1 Payload enviado (PlugNotas)
+
+Confirmado no `providerRequest`:
+
+```json
+{
+  "emitente": { "codigoCidade": "1302603", "inscricaoMunicipal": "51754301" },
+  "prestador": { "cpfCnpj": "43521115000134", "inscricaoMunicipal": "51754301" },
+  "tomador": { "...": "..." },
+  "servico": [ { "codigo": "171901", "codigoTributacao": "001", "valor": { "servico": 1000 } } ]
+}
+```
+
+### 2.2 Resultado (produção)
+
+* **E0312**: `cTribNac` não administrado pelo município na competência.
+* **E0314**: `cTribMun` não existe/ não administrado na competência.
+
+Ou seja, **o payload está correto**; o bloqueio é **tabela de códigos válida em produção**.
+
+## 3) XML autorizado via Portal Nacional (homologação)
+
+XML autorizado pelo Portal Nacional (Manaus) mostrou:
+
+* `cTribNac = 171901`
+* `cTribMun = 100`
+* competência: **2026-01-21**
+
+Em produção, esses códigos retornam **E0312/E0314**.
+
+## 4) Conclusão atual
+
+Necessário obter **cTribNac/cTribMun válidos em produção** para Manaus (via contador/prefeitura/PlugNotas).  
+Sem isso, emissão seguirá rejeitando com E0312/E0314.
+
+## 5) Observação sobre ambientes (homologação x produção)
+
+* No backend atual, os ambientes suportados são `sandbox` e `production`.
+* O `sandbox` é o ambiente de **homologação** da PlugNotas (equivalentes no código).
+* Se a PlugNotas tiver uma URL de homologação diferente do sandbox, será necessário ajustar `PLUGNOTAS_BASE_URL` e aceitar `PLUGNOTAS_ENV=homologacao` no código.
+
+# STATUS ATUAL DO CÓDIGO (04 FEV 2026)
+# STATUS ATUAL DO CÓDIGO (04 FEV 2026)
+
+Este bloco reflete o **estado real do repositório** na data acima.
+
+## 1) Implementado
+
+* Provider ativo: **PlugNotas** via DI no módulo fiscal.
+* Emissão confirmada no **sandbox da PlugNotas** (NFSe emitida e retornada via API).
+* Emissão assíncrona com persistência, status PENDING e polling com backoff.
+* Download de XML/PDF (via artifacts salvos e via provider).
+* Consulta de CNPJ (cadastro facilitado) via PlugNotas.
+
+## 2) Parcial / pendente
+
+* **Webhooks**: endpoint existe, mas processamento é **stub** (sem validação de origem/assinatura e sem update de status).
+* **Pré-requisitos NFSe Nacional** (cidade homologada e habilitar empresa) **não estão implementados**.
+* **Idempotência**: `idIntegracao` usa `referenciaExterna`, mas não há constraint de unicidade no banco.
+
+## 3) Código legado
+
+* Implementações NuvemFiscal permanecem no repo, mas não são usadas pelo módulo fiscal atual.
+>>>>>>> 8759dbc (fix(nfse): log provider payload and support codigoTributacao)

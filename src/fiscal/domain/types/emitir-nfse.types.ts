@@ -30,8 +30,9 @@ export interface EmitirNfseInput {
   }
 
   servico: {
-    codigoMunicipal: string
+    codigoMunicipal?: string
     codigoNacional?: string
+    codigoTributacao?: string
     descricao: string
     valor: number
   }

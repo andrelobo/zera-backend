@@ -38,6 +38,7 @@ export class NfseEmissionRepository {
       status: NfseEmissionStatus
       externalId: string
       providerResponse: Record<string, any> | null
+      providerRequest: Record<string, any> | null
       error: string | null
       xmlBase64: string | null
       pdfBase64: string | null
@@ -51,6 +52,7 @@ export class NfseEmissionRepository {
     if (patch.provider !== undefined) update.provider = patch.provider
     if (patch.externalId !== undefined) update.externalId = patch.externalId
     if (patch.providerResponse !== undefined) update.providerResponse = patch.providerResponse
+    if (patch.providerRequest !== undefined) update.providerRequest = patch.providerRequest
     if (patch.error !== undefined) update.error = patch.error
     if (patch.xmlBase64 !== undefined) update.xmlBase64 = patch.xmlBase64
     if (patch.pdfBase64 !== undefined) update.pdfBase64 = patch.pdfBase64

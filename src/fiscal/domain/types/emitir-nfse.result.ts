@@ -5,4 +5,5 @@ export type EmitirNfseResult = {
   provider: string
   externalId?: string
   providerResponse?: Record<string, any>
+  providerRequest?: Record<string, any>
 }
