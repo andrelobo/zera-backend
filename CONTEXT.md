@@ -313,3 +313,34 @@ Para detalhes completos do cenário em produção, ver:
 
 * `REPORT_PLUGNOTAS_PROD_2026-02-06.md`
 * `endpoints-plug-notas.md`
+
+---
+
+# ATUALIZAÇÃO (09/02/2026) – Produção Manaus (PlugNotas)
+
+## 1) Emissão concluída até o provider
+
+* Emissão em produção passou a etapa de envio e retornou `PENDING` com `externalId`.
+* A empresa foi confirmada pela API de produção da PlugNotas.
+
+## 2) Rejeição atual
+
+* Status final: **REJECTED**
+* Código: **E0312**
+* Mensagem: *código de tributação nacional não administrado pelo município na competência da DPS.*
+
+## 3) Observação importante
+
+* Os códigos que funcionam no **Portal Nacional (homologação)** não são aceitos automaticamente em **produção**.
+* É necessário obter **cTribNac** (e possivelmente **cTribMun**) válidos para Manaus **na competência atual**.
+
+## 4) Ajustes recentes no backend (09/02/2026)
+
+* Payload mínimo está funcionando com:
+  * `prestador` + IM
+  * `tomador` com endereço completo
+  * `servico.codigoNacional` (6 dígitos), `codigoMunicipal` e `valor`
+* Campos opcionais aceitos pelo backend:
+  * `tomador.inscricaoMunicipal`
+  * `servico.iss`
+  * `servico.tributacaoTotal`
