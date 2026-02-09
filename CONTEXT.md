@@ -344,3 +344,52 @@ Para detalhes completos do cenário em produção, ver:
   * `tomador.inscricaoMunicipal`
   * `servico.iss`
   * `servico.tributacaoTotal`
+
+# ATUALIZAÇÃO (09/02/2026) – Testes em produção (cobertura para backend)
+
+## Objetivo
+
+Registrar evidências de que o backend está enviando payloads válidos e que as rejeições
+ocorrem por **códigos de tributação não administrados na competência** do município
+de Manaus (ambiente nacional, produção).
+
+## Evidências (resumo dos testes)
+
+### Teste A
+
+* `emissionId`: `698a59f224e4cd053339c21f`
+* `externalId`: `0a294998-f3dc-4544-96f9-ffc7c6908983`
+* Payload: `cTribNac=171901`, `cTribMun=100`
+* Resultado: **REJECTED** – **E0312** (código nacional não administrado na competência)
+
+### Teste B
+
+* `emissionId`: `698a5edf24e4cd053339c24d`
+* `externalId`: `0b36b977-bbed-459e-95c9-b1dde89ae274`
+* Payload: `cTribNac=171901`, `codigoTributacao=001`
+* Resultado: **REJECTED** – **E0314** (código municipal não administrado na competência)
+
+### Teste C
+
+* `emissionId`: `698a61c524e4cd053339c286`
+* `externalId`: `301af169-2a2c-42af-bf01-2e2435f12717`
+* Payload: `cTribNac=171901`, `codigoTributacao=001`, **sem** `cTribMun` no input
+* Resultado: **REJECTED** – **E0314**
+
+### Teste D
+
+* `emissionId`: `698a6ac424e4cd053339c294`
+* `externalId`: `ffd6e161-1db1-4b81-8dd3-570c4b3362d4`
+* Payload: `cTribNac=171901`, `codigoTributacao=001`, tentativa com `cTribMun=1719`
+* Resultado: **REJECTED** – **E0314**
+
+## Conclusão técnica
+
+* O backend envia corretamente os dados (prestador, tomador, serviço) e o provider aceita
+  a requisição, retornando processamento e status final.
+* As rejeições são consistentes e apontam para **tabela/competência municipal** no
+  ambiente nacional (Manaus) e **não para erro de payload** no backend.
+
+## Referências internas
+
+* Relatório completo: `REPORT_PLUGNOTAS_PROD_2026-02-09.md`

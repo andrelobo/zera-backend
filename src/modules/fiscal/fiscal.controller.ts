@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Inject, Param, Post, Res } from '@nestjs/common'
 import type { Response } from 'express'
-import { ApiBody, ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger'
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { EmitirNfseService } from '../../fiscal/application/emitir-nfse.service'
 import { EmitirNfseDto } from './dtos/emitir-nfse.dto'
 import { NfseEmissionRepository } from '../../fiscal/infra/mongo/repositories/nfse-emission.repository'
@@ -22,6 +22,7 @@ function extractIdNota(providerResponse: any): string | null {
 }
 
 @ApiTags('nfse')
+@ApiBearerAuth()
 @Controller('nfse')
 export class FiscalController {
   constructor(
