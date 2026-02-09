@@ -168,6 +168,11 @@ Motivação (objetiva):
 
 > Nota: o payload completo depende do município e do serviço. O ZERA deve manter um **mapeador** do domínio interno para o JSON do PlugNotas NFSe Nacional.
 
+Campos opcionais suportados pelo backend (quando exigidos pelo município):
+* `tomador.inscricaoMunicipal`
+* `servico.iss` (ex.: `tipoTributacao`, `exigibilidade`, `retido`, `aliquota`)
+* `servico.tributacaoTotal` (federal/estadual/municipal)
+
 ## E. Consulta de status
 
 Como a emissão é assíncrona:
@@ -204,7 +209,6 @@ Regras do ZERA:
 
 ---
 
-<<<<<<< HEAD
 # ATUALIZAÇÃO (28/01/2026) – PlugNotas Sandbox (NFSe Nacional)
 
 ## 1. Emissão autorizada no sandbox
@@ -223,7 +227,8 @@ Os endpoints corretos de download na PlugNotas (NFSe Nacional) são:
 * `GET /nfse/pdf/{idNota}`
 
 O backend inicialmente marcou **ERROR** ao usar endpoints antigos. Com os endpoints corretos e o `idNota`, o XML/PDF foram baixados com sucesso no sandbox.
-=======
+---
+
 # ADDENDUM 2 (PT-BR) – Emissões NFSe Nacional Manaus (fev/2026)
 
 > **Resumo prático:** o backend foi ajustado e está enviando corretamente a **IM** no payload, mas as rejeições atuais são **E0312/E0314** por **códigos de tributação não administrados em produção** (Manaus). O bloqueio agora é **tabela municipal/competência**, não o payload.
@@ -279,7 +284,6 @@ Sem isso, emissão seguirá rejeitando com E0312/E0314.
 * Se a PlugNotas tiver uma URL de homologação diferente do sandbox, será necessário ajustar `PLUGNOTAS_BASE_URL` e aceitar `PLUGNOTAS_ENV=homologacao` no código.
 
 # STATUS ATUAL DO CÓDIGO (04 FEV 2026)
-# STATUS ATUAL DO CÓDIGO (04 FEV 2026)
 
 Este bloco reflete o **estado real do repositório** na data acima.
 
@@ -293,11 +297,19 @@ Este bloco reflete o **estado real do repositório** na data acima.
 
 ## 2) Parcial / pendente
 
-* **Webhooks**: endpoint existe, mas processamento é **stub** (sem validação de origem/assinatura e sem update de status).
+* **Webhooks**: endpoint processa status e salva `providerResponse`; validação de origem é opcional via token compartilhado (sem assinatura criptográfica).
 * **Pré-requisitos NFSe Nacional** (cidade homologada e habilitar empresa) **não estão implementados**.
 * **Idempotência**: `idIntegracao` usa `referenciaExterna`, mas não há constraint de unicidade no banco.
 
 ## 3) Código legado
 
-* Implementações NuvemFiscal permanecem no repo, mas não são usadas pelo módulo fiscal atual.
->>>>>>> 8759dbc (fix(nfse): log provider payload and support codigoTributacao)
+* Implementações NuvemFiscal foram removidas do repositório.
+
+---
+
+# RELATÓRIO DE PRODUÇÃO (06/02/2026)
+
+Para detalhes completos do cenário em produção, ver:
+
+* `REPORT_PLUGNOTAS_PROD_2026-02-06.md`
+* `endpoints-plug-notas.md`

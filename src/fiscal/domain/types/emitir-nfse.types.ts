@@ -17,6 +17,7 @@ export interface EmitirNfseInput {
   tomador: {
     cpfCnpj: string
     razaoSocial: string
+    inscricaoMunicipal?: string
     email?: string
     endereco: {
       logradouro: string
@@ -35,6 +36,26 @@ export interface EmitirNfseInput {
     codigoTributacao?: string
     descricao: string
     valor: number
+    iss?: {
+      tipoTributacao?: number
+      exigibilidade?: number
+      retido?: boolean
+      aliquota?: number
+    }
+    tributacaoTotal?: {
+      federal?: {
+        valor?: number
+        valorPercentual?: number
+      }
+      estadual?: {
+        valor?: number
+        valorPercentual?: number
+      }
+      municipal?: {
+        valor?: number
+        valorPercentual?: number
+      }
+    }
   }
 
   referenciaExterna: string

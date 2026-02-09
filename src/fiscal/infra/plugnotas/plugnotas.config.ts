@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common'
+
 export type PlugNotasEnvironment = 'sandbox' | 'production'
 
 export type PlugNotasConfig = {
@@ -14,6 +16,7 @@ function inferEnvironment(baseUrl: string): PlugNotasEnvironment {
 }
 
 export function getPlugNotasConfig(): PlugNotasConfig {
+  const logger = new Logger('PlugNotasConfig')
   const baseUrl = process.env.PLUGNOTAS_BASE_URL ?? 'https://api.sandbox.plugnotas.com.br'
   const apiKey = process.env.PLUGNOTAS_API_KEY ?? ''
   const environment = (process.env.PLUGNOTAS_ENV as PlugNotasEnvironment) ?? inferEnvironment(baseUrl)
@@ -23,6 +26,13 @@ export function getPlugNotasConfig(): PlugNotasConfig {
 
   if (!apiKey) {
     throw new Error('PLUGNOTAS_API_KEY not set')
+  }
+
+  if ((process.env.PLUGNOTAS_DEBUG_CONFIG ?? 'false').toLowerCase() === 'true') {
+    const suffix = apiKey.slice(-4)
+    logger.log(
+      `PlugNotas config loaded env=${environment} baseUrl=${baseUrl} apiKeySuffix=****${suffix}`,
+    )
   }
 
   return {

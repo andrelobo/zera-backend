@@ -32,6 +32,11 @@ Funcionalidades implementadas:
 - Health check (`GET /health`)
 - Dockerização + configuração por `.env`
 
+Situação atual (produção Manaus/AM – fevereiro/2026):
+- Payload com IM validado, porém rejeições **E0312/E0314** por **códigos de tributação não administrados** na competência.
+- Necessário obter `cTribNac`/`cTribMun` válidos em produção (contador/prefeitura/PlugNotas).
+- Detalhes: `REPORT_PLUGNOTAS_PROD_2026-02-06.md`.
+
 📄 **Referência técnica completa:**  
 ➡️ Consulte o arquivo [`CONTEXT.md`](./CONTEXT.md) antes de sugerir alterações ou novas funcionalidades.
 
@@ -105,6 +110,9 @@ NFSE_POLLING_OLDER_THAN_MS=30000
 
 NFSE_STORE_ARTIFACTS=true
 NFSE_CMUN_IBGE=1302603
+
+WEBHOOK_SHARED_SECRET=
+WEBHOOK_SHARED_SECRET_HEADER=x-webhook-token
 ```
 
 
@@ -137,6 +145,11 @@ GET /health
 
 Emissão:
 - `POST /nfse/emitir`
+
+Campos adicionais aceitos no payload:
+- `tomador.inscricaoMunicipal` (opcional)
+- `servico.iss` (opcional)
+- `servico.tributacaoTotal` (opcional)
 
 Consulta interna:
 - `GET /nfse/:id`

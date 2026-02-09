@@ -35,6 +35,7 @@ export class EmitirNfseDto {
     example: {
       cpfCnpj: '11144477735',
       razaoSocial: 'Cliente Exemplo',
+      inscricaoMunicipal: '8214100099',
       email: 'cliente@example.com',
       endereco: {
         logradouro: 'Rua Exemplo',
@@ -49,6 +50,7 @@ export class EmitirNfseDto {
   tomador!: {
     cpfCnpj: string
     razaoSocial: string
+    inscricaoMunicipal?: string
     email?: string
     endereco: {
       logradouro: string
@@ -64,8 +66,20 @@ export class EmitirNfseDto {
   @ApiProperty({
     example: {
       codigoMunicipal: '0107',
+      codigoNacional: '100101',
       descricao: 'Serviços de informática',
       valor: 100,
+      iss: {
+        tipoTributacao: 6,
+        exigibilidade: 1,
+        retido: false,
+        aliquota: 2,
+      },
+      tributacaoTotal: {
+        federal: { valor: 0.1, valorPercentual: 1 },
+        estadual: { valor: 0.1, valorPercentual: 2 },
+        municipal: { valor: 0.1, valorPercentual: 3 },
+      },
     },
   })
   servico!: {
@@ -74,6 +88,26 @@ export class EmitirNfseDto {
     codigoTributacao?: string
     descricao: string
     valor: number
+    iss?: {
+      tipoTributacao?: number
+      exigibilidade?: number
+      retido?: boolean
+      aliquota?: number
+    }
+    tributacaoTotal?: {
+      federal?: {
+        valor?: number
+        valorPercentual?: number
+      }
+      estadual?: {
+        valor?: number
+        valorPercentual?: number
+      }
+      municipal?: {
+        valor?: number
+        valorPercentual?: number
+      }
+    }
   }
 
   @ApiProperty({ example: 'teste-cli-005' })

@@ -264,6 +264,7 @@ Behavior:
   "tomador": {
     "cpfCnpj": "11144477735",
     "razaoSocial": "Cliente Exemplo",
+    "inscricaoMunicipal": "8214100099",
     "email": "cliente@example.com",
     "endereco": {
       "logradouro": "Rua Exemplo",
@@ -279,7 +280,18 @@ Behavior:
     "codigoMunicipal": "0107",
     "codigoNacional": "100101",
     "descricao": "Serviços de informática",
-    "valor": 100
+    "valor": 100,
+    "iss": {
+      "tipoTributacao": 6,
+      "exigibilidade": 1,
+      "retido": false,
+      "aliquota": 2
+    },
+    "tributacaoTotal": {
+      "federal": { "valor": 0.1, "valorPercentual": 1 },
+      "estadual": { "valor": 0.1, "valorPercentual": 2 },
+      "municipal": { "valor": 0.1, "valorPercentual": 3 }
+    }
   },
   "referenciaExterna": "teste-cli-005"
 }
@@ -289,6 +301,7 @@ Notas importantes:
 - **NFSe Nacional exige `codigoNacional` com 6 dígitos.**
 - O backend mapeia para o formato PlugNotas (`servico[]`, `valor.servico` etc.).
 - `referenciaExterna` vira `idIntegracao` na PlugNotas.
+- Em produção (Manaus/AM), a prefeitura exige **códigos de tributação válidos na competência**. Sem isso, a emissão é rejeitada (E0312/E0314).
 
 ### 5.2 Consultas
 
@@ -307,7 +320,7 @@ Notas importantes:
 
 - POST /webhooks/fiscal
 
-Used by the fiscal provider to update status. No auth in the current setup.
+Used by the fiscal provider to update status. If `WEBHOOK_SHARED_SECRET` is set, the provider must send the token in `WEBHOOK_SHARED_SECRET_HEADER` (default `x-webhook-token`).
 
 ### 6.1 PlugNotas (recomendado)
 
@@ -334,6 +347,9 @@ Used by the fiscal provider to update status. No auth in the current setup.
   - Missing/invalid token
 - 403 Forbidden
   - Wrong role (non-admin)
+- Produção Manaus/AM (PlugNotas):
+  - E0312: código de tributação nacional não administrado na competência.
+  - E0314: código de tributação municipal inexistente/não administrado.
 
 ---
 

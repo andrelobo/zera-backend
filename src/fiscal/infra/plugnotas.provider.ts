@@ -66,6 +66,7 @@ export class PlugNotasProvider implements FiscalProvider {
         tomador: compact({
           cpfCnpj: docTom,
           razaoSocial: input.tomador.razaoSocial,
+          inscricaoMunicipal: input.tomador.inscricaoMunicipal,
           email: input.tomador.email,
           endereco: compact({
             descricaoCidade: input.tomador.endereco.municipio,
@@ -85,9 +86,11 @@ export class PlugNotasProvider implements FiscalProvider {
             codigo: servicoCodigo,
             codigoTributacao: input.servico.codigoTributacao,
             discriminacao: input.servico.descricao,
+            iss: input.servico.iss,
             valor: {
               servico: Number(toDecimalString(input.servico.valor)),
             },
+            tributacaoTotal: input.servico.tributacaoTotal,
           }),
         ],
       }),
