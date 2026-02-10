@@ -1,0 +1,200 @@
+[
+  {
+    "emitente": {
+      "tipo": 1,
+      "codigoCidade": 1302603
+    },
+    "rps": {
+      "dataEmissao": "2026-02-10T12:02:22.000Z",
+      "dataEmissaoTz": -3,
+      "dataVencimentoTz": -3,
+      "dataVencimento": "2026-02-10T12:02:22.000Z",
+      "serie": "01",
+      "numero": 7,
+      "tipo": "1",
+      "competenciaTz": -3
+    },
+    "dps": {
+      "numero": 7,
+      "serie": "01",
+      "id": "DPS130260324352111500013400001000000000000007"
+    },
+    "camposExtras": {
+      "copiasEmail": []
+    },
+    "prestador": {
+      "telefone": {
+        "ddd": "92",
+        "numero": "985930954"
+      },
+      "config": {
+        "rps": {
+          "serie": "01",
+          "numero": 6,
+          "numeracao": [
+            {
+              "serie": "01",
+              "numero": 6
+            }
+          ],
+          "lote": 0
+        },
+        "email": {
+          "envio": false
+        },
+        "producao": true,
+        "integracoes": []
+      },
+      "saasHandle": 4041768,
+      "cpfCnpj": "43521115000134",
+      "inscricaoMunicipal": "51754301",
+      "inscricaoEstadual": "Isento",
+      "razaoSocial": "BURGUS LTDA",
+      "nomeFantasia": "ECONTABILIS",
+      "certificado": "69851d759ab04b7a577ff628",
+      "simplesNacional": true,
+      "incentivadorCultural": false,
+      "incentivoFiscal": false,
+      "regimeTributario": 1,
+      "regimeTributarioEspecial": 6,
+      "email": "loboandre@hotmail.com",
+      "endereco": {
+        "tipoLogradouro": "RUA",
+        "logradouro": "SALDANHA MARINHO",
+        "numero": "606",
+        "complemento": "Sala 255",
+        "bairro": "Centro",
+        "codigoCidade": "1302603",
+        "descricaoCidade": "MANAUS",
+        "codigoPais": "1058",
+        "descricaoPais": "Brasil",
+        "estado": "AM",
+        "cep": "69010040"
+      }
+    },
+    "tomador": {
+      "cpfCnpj": "11144477735",
+      "inscricaoMunicipal": "8214100099",
+      "razaoSocial": "Cliente Exemplo",
+      "email": "cliente@example.com",
+      "endereco": {
+        "tipoLogradouro": "Rua",
+        "logradouro": "Rua Exemplo",
+        "numero": "100",
+        "tipoBairro": "Centro",
+        "bairro": "Centro",
+        "codigoCidade": "1302603",
+        "descricaoCidade": "Manaus",
+        "codigoPais": "1058",
+        "descricaoPais": "Brasil",
+        "estado": "AM",
+        "cep": "69010000"
+      }
+    },
+    "retorno": {
+      "mensagemRetorno": "Erro ao realizar a requisição. [{\"Codigo\":\"E0314\",\"Descricao\":\"O código de tributação municipal informado não existe ou não está administrado pelo município de incidência do ISSQN na data de competência informada na DPS.\"}]",
+      "situacao": "REJEITADA"
+    },
+    "cidadePrestacao": {
+      "codigo": "1302603",
+      "descricao": "MANAUS",
+      "tipoLogradouro": "RUA",
+      "logradouro": "SALDANHA MARINHO",
+      "numero": "606",
+      "complemento": "Sala 255",
+      "bairro": "Centro",
+      "estado": "AM",
+      "cep": "69010040",
+      "utilizarDadosTomador": false
+    },
+    "impressao": {
+      "camposCustomizados": {
+        "RazaoSocialPrestador": "BURGUS LTDA",
+        "RetencoesFederais": 0,
+        "InscricaoEstadualPrestador": "Isento",
+        "CepPrestador": "69010040",
+        "RegimeFiscal": "SIMPLES NACIONAL",
+        "ValorIss": "2.00",
+        "DataCompetencia": "2026-02-10T12:02:22-03:00",
+        "AliquotaPIS": "0.00",
+        "AliquotaCOFINS": "0.00",
+        "AliquotaINSS": "0.00",
+        "AliquotaIR": "0.00",
+        "AliquotaCSLL": "0.00",
+        "AliquotaCPP": "0.00"
+      }
+    },
+    "idIntegracao": "teste-cli-005",
+    "tipoAutorizacao": "WEBSERVICE",
+    "substituicao": false,
+    "servico": [
+      {
+        "iss": {
+          "tipoTributacao": 6,
+          "exigibilidade": 1,
+          "retido": false,
+          "aliquota": 2,
+          "valor": 2,
+          "valorRetido": 0,
+          "tipoRetencao": 1
+        },
+        "valor": {
+          "servico": 100,
+          "baseCalculo": 100,
+          "descontoCondicionado": 0,
+          "descontoIncondicionado": 0,
+          "liquido": 100,
+          "unitario": 100
+        },
+        "ibpt": {
+          "detalhado": {
+            "aliquota": {
+              "municipal": 4.98,
+              "estadual": 0,
+              "federal": 13.45
+            }
+          }
+        },
+        "tributacaoTotal": {
+          "federal": {
+            "valor": 0.1,
+            "valorPercentual": 1
+          },
+          "estadual": {
+            "valor": 0.1,
+            "valorPercentual": 2
+          },
+          "municipal": {
+            "valor": 0.1,
+            "valorPercentual": 3
+          }
+        },
+        "codigo": "100101",
+        "discriminacao": "Serviços de informática||Valor aprox. dos tributos, federais R$13.45, estaduais R$0.00, municipais R$4.98",
+        "codigoTributacao": "001",
+        "codigoCidadeIncidencia": "1302603",
+        "tributosFederaisRetidos": true,
+        "_id": "698b487f51b3beda9fefcf02"
+      }
+    ],
+    "status": "REJEITADO",
+    "tentativasReenvio": 0,
+    "protocol": "96cffb1a-4777-4243-b93c-caa88b66c6d3",
+    "enviarEmail": false,
+    "tomada": false,
+    "padrao": "NACIONAL",
+    "envioPrioritario": false,
+    "notaRepasse": false,
+    "deducao": [],
+    "logs": [],
+    "cce": [],
+    "email": [],
+    "webhook": [],
+    "parcelas": [],
+    "eventosNfse": [],
+    "despesas": [],
+    "concludedAt": "2026-02-10T15:02:24.868Z",
+    "id": "698b487f51b3beda9fefcf01",
+    "numeroNfse": ""
+  }
+]

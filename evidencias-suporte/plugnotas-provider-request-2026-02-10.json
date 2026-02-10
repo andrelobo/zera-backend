@@ -1,0 +1,63 @@
+{
+  "payload": [
+    {
+      "idIntegracao": "teste-cli-005",
+      "emitente": {
+        "tipo": 1,
+        "codigoCidade": "1302603",
+        "inscricaoMunicipal": "51754301"
+      },
+      "prestador": {
+        "cpfCnpj": "43521115000134",
+        "inscricaoMunicipal": "51754301"
+      },
+      "tomador": {
+        "cpfCnpj": "11144477735",
+        "razaoSocial": "Cliente Exemplo",
+        "inscricaoMunicipal": "8214100099",
+        "email": "cliente@example.com",
+        "endereco": {
+          "descricaoCidade": "Manaus",
+          "cep": "69010000",
+          "tipoLogradouro": "Rua",
+          "logradouro": "Rua Exemplo",
+          "tipoBairro": "Centro",
+          "codigoCidade": "1302603",
+          "estado": "AM",
+          "numero": "100",
+          "bairro": "Centro"
+        }
+      },
+      "servico": [
+        {
+          "codigo": "100101",
+          "codigoTributacao": "001",
+          "discriminacao": "Serviços de informática",
+          "iss": {
+            "tipoTributacao": 6,
+            "exigibilidade": 1,
+            "retido": false,
+            "aliquota": 2
+          },
+          "valor": {
+            "servico": 100
+          },
+          "tributacaoTotal": {
+            "federal": {
+              "valor": 0.1,
+              "valorPercentual": 1
+            },
+            "estadual": {
+              "valor": 0.1,
+              "valorPercentual": 2
+            },
+            "municipal": {
+              "valor": 0.1,
+              "valorPercentual": 3
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
