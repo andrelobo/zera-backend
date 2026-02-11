@@ -393,3 +393,34 @@ de Manaus (ambiente nacional, produção).
 ## Referências internas
 
 * Relatório completo: `REPORT_PLUGNOTAS_PROD_2026-02-09.md`
+
+---
+
+# ATUALIZAÇÃO (10/02/2026) – Vitória em Produção (PlugNotas)
+
+## Resultado confirmado
+
+* Emissão **concluída/autorizada** no **painel da PlugNotas** em produção para Manaus.
+* O payload incluiu:
+  * `codigoNacional = 171901`
+  * `codigoTributacao = 100`
+  * `regimeApuracaoTributaria = 1` (campo exigido para optante do Simples)
+  * `opSimpNac = 3`, `regApTribSN = 1`, `regEspTrib = 0`
+
+## Observação técnica
+
+* A API da PlugNotas chegou a responder **HTTP 400** com **`protocol`** e mensagem *“Nota(s) em processamento”*.
+* Isso confirma que o envio foi aceito e o processamento seguiu no provider, embora o backend tenha marcado `ERROR`.
+
+## Próximos passos práticos
+
+1. Reemitir com o backend já reiniciado (com o fix do **HTTP 400 + protocol**) para o status ficar **PENDING** em vez de **ERROR**.
+2. Aguardar o polling baixar XML/PDF.
+3. Se necessário, baixar direto pelo provider:
+   * `/nfse/{id}/remote/xml`
+   * `/nfse/{id}/remote/pdf`
+
+## Melhorias planejadas (backend)
+
+1. Ajustar o backend para, ao receber `protocol` com `HTTP 400`, salvar como **PENDING**.
+2. Adicionar um job rápido para sincronizar o status do `externalId` atual e puxar XML/PDF automaticamente.

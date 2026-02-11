@@ -3,6 +3,11 @@ export interface EmitirNfseInput {
     cnpj: string
     inscricaoMunicipal?: string
     razaoSocial: string
+    regimeTributarioSn?: {
+      opSimpNac?: number
+      regApTribSN?: number
+      regEspTrib?: number
+    }
     endereco: {
       logradouro: string
       numero: string

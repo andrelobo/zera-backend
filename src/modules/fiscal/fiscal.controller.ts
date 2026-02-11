@@ -76,6 +76,26 @@ export class FiscalController {
     }
   }
 
+  @Get('external/:externalId/provider-response')
+  @ApiOperation({ summary: 'Get provider response by externalId' })
+  async getProviderResponseByExternalId(@Param('externalId') externalId: string) {
+    const doc = (await this.repo.findByExternalId(externalId)) as NfseEmissionDocument | null
+    if (!doc) return { found: false }
+
+    return {
+      found: true,
+      id: doc._id.toString(),
+      provider: doc.provider,
+      externalId: doc.externalId ?? null,
+      status: doc.status,
+      providerRequest: doc.providerRequest ?? null,
+      providerResponse: doc.providerResponse ?? null,
+      error: doc.error ?? null,
+      createdAt: (doc as any).createdAt ?? null,
+      updatedAt: (doc as any).updatedAt ?? null,
+    }
+  }
+
   @Get(':id/provider-response')
   @ApiOperation({ summary: 'Get provider response for emission' })
   async getProviderResponse(@Param('id') id: string) {

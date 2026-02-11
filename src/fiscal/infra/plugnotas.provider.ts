@@ -50,10 +50,21 @@ export class PlugNotasProvider implements FiscalProvider {
     }
 
     const servicoCodigo = normalizeServicoCodigo(input.servico)
+    const regimeTributarioSn = input.prestador.regimeTributarioSn
+      ? compact({
+          opSimpNac: input.prestador.regimeTributarioSn.opSimpNac,
+          regApTribSN: input.prestador.regimeTributarioSn.regApTribSN,
+          regEspTrib: input.prestador.regimeTributarioSn.regEspTrib,
+        })
+      : undefined
+    const regimeApuracaoTributaria = regimeTributarioSn?.regApTribSN
+      ? regimeTributarioSn.regApTribSN
+      : undefined
 
     const payload = [
       compact({
         idIntegracao: input.referenciaExterna,
+        regimeApuracaoTributaria,
         emitente: {
           tipo: cnpjPrest.length === 14 ? 1 : 2,
           codigoCidade: cMun,
@@ -62,6 +73,11 @@ export class PlugNotasProvider implements FiscalProvider {
         prestador: {
           cpfCnpj: cnpjPrest,
           inscricaoMunicipal: input.prestador.inscricaoMunicipal,
+          opSimpNac: regimeTributarioSn?.opSimpNac,
+          regApTribSN: regimeTributarioSn?.regApTribSN,
+          regEspTrib: regimeTributarioSn?.regEspTrib,
+          regimeTributarioSn,
+          regTrib: regimeTributarioSn,
         },
         tomador: compact({
           cpfCnpj: docTom,
@@ -105,7 +121,19 @@ export class PlugNotasProvider implements FiscalProvider {
       referenciaExterna: input.referenciaExterna,
     })
 
-    const response = await this.nfseApi.emitirNfse(payload)
+    let response: any
+    try {
+      response = await this.nfseApi.emitirNfse(payload)
+    } catch (error: any) {
+      const status = error?.status
+      const body = error?.body
+      // Some PlugNotas responses return HTTP 400 but include a valid protocol.
+      if (status === 400 && body?.protocol) {
+        response = body
+      } else {
+        throw error
+      }
+    }
     const first = Array.isArray(response) ? response[0] : response
     const status = mapPlugNotasStatusToDomain(extractPlugNotasStatus(first))
     const externalId =

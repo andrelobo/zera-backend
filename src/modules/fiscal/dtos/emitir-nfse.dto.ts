@@ -6,6 +6,11 @@ export class EmitirNfseDto {
       cnpj: '43521115000134',
       inscricaoMunicipal: '51754301',
       razaoSocial: 'BURGUS LTDA',
+      regimeTributarioSn: {
+        opSimpNac: 3,
+        regApTribSN: 1,
+        regEspTrib: 0,
+      },
       endereco: {
         logradouro: 'Rua Saldanha Marinho',
         numero: '606',
@@ -20,6 +25,11 @@ export class EmitirNfseDto {
     cnpj: string
     inscricaoMunicipal?: string
     razaoSocial: string
+    regimeTributarioSn?: {
+      opSimpNac?: number
+      regApTribSN?: number
+      regEspTrib?: number
+    }
     endereco: {
       logradouro: string
       numero: string
