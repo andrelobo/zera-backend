@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { Model } from 'mongoose'
+import { Model, Types } from 'mongoose'
 import { NfseEmission, NfseEmissionDocument } from '../schemas/nfse-emission.schema'
 import { NfseEmissionStatus } from '../../../domain/types/nfse-emission-status'
 
@@ -14,6 +14,7 @@ export class NfseEmissionRepository {
   async create(input: {
     provider: string
     payload: Record<string, any>
+    idempotencyKey?: string
     status?: NfseEmissionStatus
     externalId?: string
     providerResponse?: Record<string, any>
@@ -22,6 +23,7 @@ export class NfseEmissionRepository {
     return this.model.create({
       provider: input.provider,
       payload: input.payload,
+      idempotencyKey: input.idempotencyKey,
       status: input.status ?? NfseEmissionStatus.PENDING,
       externalId: input.externalId,
       providerResponse: input.providerResponse,
@@ -170,10 +172,27 @@ export class NfseEmissionRepository {
   }
 
   async findById(id: string): Promise<NfseEmissionDocument | null> {
+    if (!Types.ObjectId.isValid(id)) return null
     return this.model.findById(id).exec()
   }
 
   async findByExternalId(externalId: string): Promise<NfseEmissionDocument | null> {
     return this.model.findOne({ externalId }).exec()
+  }
+
+  async findByIdempotencyKey(
+    provider: string,
+    idempotencyKey: string,
+  ): Promise<NfseEmissionDocument | null> {
+    return this.model.findOne({ provider, idempotencyKey }).exec()
+  }
+
+  async findByReference(provider: string, referenciaExterna: string): Promise<NfseEmissionDocument | null> {
+    return this.model
+      .findOne({
+        provider,
+        $or: [{ idempotencyKey: referenciaExterna }, { 'payload.referenciaExterna': referenciaExterna }],
+      })
+      .exec()
   }
 }

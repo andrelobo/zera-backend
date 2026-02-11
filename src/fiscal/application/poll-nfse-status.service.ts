@@ -23,6 +23,23 @@ function isTransientError(e: any) {
   return false
 }
 
+function extractArtifactId(providerResponse: any, fallbackExternalId: string): string {
+  const normalized = Array.isArray(providerResponse) ? providerResponse[0] : providerResponse
+  const firstDocument = Array.isArray(normalized?.documents)
+    ? normalized.documents[0]
+    : normalized?.documents
+
+  return (
+    normalized?.idNota ??
+    normalized?.id ??
+    normalized?.nota?.idNota ??
+    normalized?.nota?.id ??
+    firstDocument?.idNota ??
+    firstDocument?.id ??
+    fallbackExternalId
+  )
+}
+
 @Injectable()
 export class PollNfseStatusService {
   private readonly logger = new Logger(PollNfseStatusService.name)
@@ -65,9 +82,10 @@ export class PollNfseStatusService {
         }
 
         if (status === NfseEmissionStatus.AUTHORIZED && storeArtifacts) {
+          const artifactId = extractArtifactId(providerResponse, emission.externalId)
           const [xml, pdf] = await Promise.all([
-            this.provider.baixarXmlNfse(emission.externalId),
-            this.provider.baixarPdfNfse(emission.externalId),
+            this.provider.baixarXmlNfse(artifactId),
+            this.provider.baixarPdfNfse(artifactId),
           ])
 
           await this.repo.updateByExternalId({

@@ -24,6 +24,11 @@ function toDecimalString(value: number): string {
   return value.toFixed(2)
 }
 
+function hasAcceptedProtocolOnBadRequest(body: any): boolean {
+  const first = Array.isArray(body) ? body[0] : body
+  return !!(first?.protocol || first?.protocolo)
+}
+
 function normalizeServicoCodigo(input: EmitirNfseInput['servico']): string {
   const raw = input.codigoNacional ?? input.codigoMunicipal
   const digits = onlyDigits(raw)
@@ -127,8 +132,9 @@ export class PlugNotasProvider implements FiscalProvider {
     } catch (error: any) {
       const status = error?.status
       const body = error?.body
-      // Some PlugNotas responses return HTTP 400 but include a valid protocol.
-      if (status === 400 && body?.protocol) {
+      // Some PlugNotas responses return HTTP 400 but include a valid protocol/protocolo.
+      if (status === 400 && hasAcceptedProtocolOnBadRequest(body)) {
+        this.logger.warn('PlugNotas returned 400 with protocol/protocolo; treating as PENDING')
         response = body
       } else {
         throw error

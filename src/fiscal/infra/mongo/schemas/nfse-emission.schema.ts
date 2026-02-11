@@ -14,6 +14,9 @@ export class NfseEmission {
   payload: Record<string, any>
 
   @Prop({ index: true })
+  idempotencyKey?: string
+
+  @Prop({ index: true })
   externalId?: string
 
   @Prop()
@@ -49,3 +52,11 @@ export type NfseEmissionDocument = HydratedDocument<NfseEmission>
 export const NfseEmissionSchema = SchemaFactory.createForClass(NfseEmission)
 
 NfseEmissionSchema.index({ provider: 1, externalId: 1 }, { unique: false })
+NfseEmissionSchema.index(
+  { provider: 1, idempotencyKey: 1 },
+  {
+    unique: true,
+    name: 'uniq_provider_idempotency_key',
+    partialFilterExpression: { idempotencyKey: { $type: 'string' } },
+  },
+)

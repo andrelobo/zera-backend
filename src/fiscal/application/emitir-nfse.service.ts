@@ -5,6 +5,15 @@ import type { EmitirNfseResult } from '../domain/types/emitir-nfse.result'
 import { NfseEmissionStatus } from '../domain/types/nfse-emission-status'
 import { NfseEmissionRepository } from '../infra/mongo/repositories/nfse-emission.repository'
 
+function normalizeIdempotencyKey(value: string): string | undefined {
+  const normalized = value?.trim()
+  return normalized ? normalized : undefined
+}
+
+function isMongoDuplicateKeyError(error: any): boolean {
+  return error?.code === 11000
+}
+
 @Injectable()
 export class EmitirNfseService {
   constructor(
@@ -16,6 +25,7 @@ export class EmitirNfseService {
   async execute(input: EmitirNfseInput): Promise<{
     emissionId: string
     result: EmitirNfseResult
+    idempotentReplay: boolean
   }> {
     const tomadorEndereco = input?.tomador?.endereco
     if (!tomadorEndereco) {
@@ -40,11 +50,53 @@ export class EmitirNfseService {
       })
     }
 
-    const emission = await this.repository.create({
-      provider: this.provider.providerName,
-      status: NfseEmissionStatus.PENDING,
-      payload: input,
-    })
+    const idempotencyKey = normalizeIdempotencyKey(input.referenciaExterna)
+
+    if (idempotencyKey) {
+      const existing = await this.repository.findByReference(this.provider.providerName, idempotencyKey)
+
+      if (existing) {
+        return {
+          emissionId: existing._id.toString(),
+          idempotentReplay: true,
+          result: {
+            status: existing.status,
+            provider: existing.provider,
+            externalId: existing.externalId,
+            providerResponse: existing.providerResponse,
+            providerRequest: existing.providerRequest,
+          },
+        }
+      }
+    }
+
+    let emission
+    try {
+      emission = await this.repository.create({
+        provider: this.provider.providerName,
+        payload: input,
+        idempotencyKey,
+        status: NfseEmissionStatus.PENDING,
+      })
+    } catch (error: any) {
+      if (idempotencyKey && isMongoDuplicateKeyError(error)) {
+        const existing = await this.repository.findByReference(this.provider.providerName, idempotencyKey)
+        if (existing) {
+          return {
+            emissionId: existing._id.toString(),
+            idempotentReplay: true,
+            result: {
+              status: existing.status,
+              provider: existing.provider,
+              externalId: existing.externalId,
+              providerResponse: existing.providerResponse,
+              providerRequest: existing.providerRequest,
+            },
+          }
+        }
+      }
+      throw error
+    }
 
     try {
       const result = await this.provider.emitirNfse(input)
@@ -60,6 +112,7 @@ export class EmitirNfseService {
       return {
         emissionId: emission._id.toString(),
         result,
+        idempotentReplay: false,
       }
     } catch (error: any) {
       const msg = error instanceof Error ? error.message : String(error)

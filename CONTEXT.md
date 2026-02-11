@@ -505,3 +505,42 @@ de Manaus (ambiente nacional, produção).
   ]
 }
 ```
+
+---
+
+# ATUALIZAÇÃO (11/02/2026) – Produção Manaus (estabilização de fluxo)
+
+## 1) Emissão de validação (R$ 175) em produção
+
+* Emissão criada no backend com:
+  * `emissionId`: `698c972c4cf35620b8333687`
+  * `externalId` (protocol): `c8831c99-b021-4a60-8b6a-49a73435dc53`
+  * `idIntegracao`: `nfse-prod-175-20260211-02`
+* Retorno inicial: **PENDING** (com `idempotentReplay=false`).
+* No painel PlugNotas: emissão **concluída**.
+
+## 2) Correções aplicadas no backend
+
+### 2.1 Tratamento de envio aceito com HTTP 400
+
+* Quando a PlugNotas responde `HTTP 400` mas inclui `protocol/protocolo`, o backend agora trata como emissão aceita em processamento e mantém status **PENDING** (não **ERROR**).
+
+### 2.2 Idempotência persistente
+
+* Criado `idempotencyKey` com índice único parcial por provider:
+  * `provider + idempotencyKey` (unique + partial filter).
+* Fluxo de emissão reaproveita emissão existente por `referenciaExterna` e retorna `idempotentReplay=true` quando aplicável.
+
+### 2.3 Polling de artifacts (XML/PDF)
+
+* Ajustado o polling para baixar XML/PDF usando **`idNota`** retornado na consulta de status quando disponível.
+* Isso evita erro de download quando `externalId` é `protocol` e não `idNota`.
+
+### 2.4 Robustez de API
+
+* `GET /nfse/:id` e endpoints que dependem de `findById` agora validam `ObjectId`; entradas inválidas não derrubam com `CastError`.
+
+## 3) Observação operacional
+
+* Para emissões que ficaram em **ERROR** antes do fix do polling, os endpoints locais `/nfse/:id/xml` e `/nfse/:id/pdf` podem retornar `hasXml/hasPdf=false` porque os artifacts não foram persistidos na época.
+* Nesses casos, o fallback `/nfse/:id/remote/xml` e `/nfse/:id/remote/pdf` permite baixar direto do provider.

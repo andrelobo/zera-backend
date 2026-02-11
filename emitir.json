@@ -3,35 +3,37 @@
     "cnpj": "43521115000134",
     "inscricaoMunicipal": "51754301",
     "razaoSocial": "BURGUS LTDA",
+    "regimeTributarioSn": {
+      "opSimpNac": 3,
+      "regApTribSN": 1,
+      "regEspTrib": 0
+    },
     "endereco": {
-      "logradouro": "SALDANHA MARINHO",
+      "logradouro": "Saldanha Marinho",
       "numero": "606",
-      "complemento": "SALA 255 COND ALFREDO CUNHA",
-      "bairro": "CENTRO",
+      "bairro": "Centro",
       "municipio": "Manaus",
       "uf": "AM",
       "cep": "69010040"
     }
   },
   "tomador": {
-    "cpfCnpj": "47446757272",
-    "razaoSocial": "LUCIANO DE LIMA BARBOSA",
-    "email": "souburgus@gmail.com",
+    "cpfCnpj": "61020788100",
+    "razaoSocial": "ANDRE AUGUSTO DE HOLANDA LOBO",
     "endereco": {
-      "logradouro": "AV JOAQUIM NABUCO",
-      "numero": "1908",
-      "bairro": "CENTRO",
+      "logradouro": "R FREI JOSE DE LEONISSA",
+      "numero": "758",
+      "bairro": "NOVA CIDADE",
       "municipio": "Manaus",
       "uf": "AM",
-      "cep": "69020031"
+      "cep": "69017020"
     }
   },
   "servico": {
     "codigoNacional": "171901",
-    "codigoMunicipal": "100",
-    "codigoTributacao": "001",
-    "descricao": "Declaração Imposto de Renda 2026/2025.",
-    "valor": 165
+    "codigoTributacao": "100",
+    "descricao": "Consulta IR 2024...",
+    "valor": 175
   },
-  "referenciaExterna": "DPS-70000-1-20260206"
+  "referenciaExterna": "nfse-prod-175-20260211-01"
 }

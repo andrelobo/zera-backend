@@ -12,7 +12,18 @@ export class AuthController {
 
   @Post('login')
   @ApiOperation({ summary: 'Login and receive access token' })
-  @ApiBody({ type: LoginDto })
+  @ApiBody({
+    type: LoginDto,
+    examples: {
+      default: {
+        summary: 'Login user example',
+        value: {
+          email: 'loboandre@hotmail.com',
+          password: 'sua-senha-aqui',
+        },
+      },
+    },
+  })
   @ApiResponse({ status: 200, description: 'Access token' })
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto.email, dto.password)

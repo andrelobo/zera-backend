@@ -3,6 +3,7 @@ import type { Response } from 'express'
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { EmitirNfseService } from '../../fiscal/application/emitir-nfse.service'
 import { EmitirNfseDto } from './dtos/emitir-nfse.dto'
+import { EmitirNfseResponseDto } from './dtos/emitir-nfse.response.dto'
 import { NfseEmissionRepository } from '../../fiscal/infra/mongo/repositories/nfse-emission.repository'
 import type { NfseEmissionDocument } from '../../fiscal/infra/mongo/schemas/nfse-emission.schema'
 import type { FiscalProvider } from '../../fiscal/domain/fiscal-provider.interface'
@@ -35,7 +36,7 @@ export class FiscalController {
   @Post('emitir')
   @ApiOperation({ summary: 'Emitir NFSe (DPS)' })
   @ApiBody({ type: EmitirNfseDto })
-  @ApiResponse({ status: 201 })
+  @ApiResponse({ status: 201, type: EmitirNfseResponseDto })
   emitir(@Body() dto: EmitirNfseDto) {
     return this.emitirNfseService.execute(dto)
   }

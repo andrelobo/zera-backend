@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
+import { request as httpRequest } from 'node:http'
+import { request as httpsRequest } from 'node:https'
 import { getPlugNotasConfig } from './plugnotas.config'
 
 export type PlugNotasHttpError = {
@@ -21,6 +23,20 @@ function parseRetryAfterMs(value: string | null): number | undefined {
   return undefined
 }
 
+function normalizeHeaderValue(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) return value[0] ?? null
+  return value ?? null
+}
+
+function parseJson(data: Uint8Array): unknown {
+  if (data.length === 0) return undefined
+  try {
+    return JSON.parse(Buffer.from(data).toString('utf8'))
+  } catch {
+    return undefined
+  }
+}
+
 @Injectable()
 export class PlugNotasHttp {
   private readonly logger = new Logger(PlugNotasHttp.name)
@@ -37,6 +53,66 @@ export class PlugNotasHttp {
     }
 
     return url.toString()
+  }
+
+  private async executeRawRequest(input: {
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+    url: string
+    headers: Record<string, string>
+    body?: string | Buffer | Uint8Array
+    timeoutMs: number
+  }): Promise<{
+    status: number
+    headers: Record<string, string | string[] | undefined>
+    body: Uint8Array
+  }> {
+    const target = new URL(input.url)
+    const transport = target.protocol === 'https:' ? httpsRequest : httpRequest
+
+    return new Promise((resolve, reject) => {
+      const req = transport(
+        target,
+        {
+          method: input.method,
+          headers: input.headers,
+        },
+        (res) => {
+          const chunks: Buffer[] = []
+          res.on('data', (chunk) => {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+          })
+          res.on('end', () => {
+            resolve({
+              status: res.statusCode ?? 0,
+              headers: res.headers,
+              body: new Uint8Array(Buffer.concat(chunks)),
+            })
+          })
+        },
+      )
+
+      const timer = setTimeout(() => {
+        const err = Object.assign(
+          new Error(`PlugNotas HTTP timeout after ${input.timeoutMs}ms`),
+          { code: 'PLUGNOTAS_REQUEST_TIMEOUT' },
+        )
+        req.destroy(err)
+      }, input.timeoutMs)
+
+      req.on('error', (err) => {
+        clearTimeout(timer)
+        reject(err)
+      })
+
+      req.on('close', () => {
+        clearTimeout(timer)
+      })
+
+      if (input.body !== undefined) {
+        req.write(input.body)
+      }
+      req.end()
+    })
   }
 
   async request<T>(input: {
@@ -57,6 +133,7 @@ export class PlugNotasHttp {
     const maxAttempts = input.retry?.maxAttempts ?? Number(process.env.PLUGNOTAS_HTTP_MAX_ATTEMPTS ?? 3)
     const baseDelayMs = input.retry?.baseDelayMs ?? Number(process.env.PLUGNOTAS_HTTP_BASE_DELAY_MS ?? 500)
     const maxDelayMs = input.retry?.maxDelayMs ?? Number(process.env.PLUGNOTAS_HTTP_MAX_DELAY_MS ?? 5000)
+    const timeoutMs = Number(process.env.PLUGNOTAS_HTTP_TIMEOUT_MS ?? 30000)
 
     let attempt = 0
     while (true) {
@@ -80,22 +157,24 @@ export class PlugNotasHttp {
 
         this.logger.log(`[${cfg.environment}] ${input.method} ${input.path} attempt=${attempt}`)
 
-        const res = await fetch(url, {
+        const res = await this.executeRawRequest({
           method: input.method,
+          url,
           headers,
           body,
+          timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 30000,
         })
 
         const elapsed = Date.now() - startedAt
-        const contentType = res.headers.get('content-type') ?? ''
+        const contentType = normalizeHeaderValue(res.headers['content-type']) ?? ''
         const isJson = contentType.includes('application/json')
 
-        if (!res.ok) {
+        if (res.status < 200 || res.status >= 300) {
           const parsedBody = isJson
-            ? await res.json().catch(() => undefined)
-            : await res.text().catch(() => undefined)
+            ? parseJson(res.body)
+            : Buffer.from(res.body).toString('utf8')
 
-          const retryAfterMs = parseRetryAfterMs(res.headers.get('retry-after'))
+          const retryAfterMs = parseRetryAfterMs(normalizeHeaderValue(res.headers['retry-after']))
 
           const err: PlugNotasHttpError = {
             status: res.status,
@@ -106,7 +185,9 @@ export class PlugNotasHttp {
 
           const transient = res.status === 429 || (res.status >= 500 && res.status <= 599)
 
-          this.logger.warn(`[${cfg.environment}] ${input.method} ${input.path} status=${res.status} ms=${elapsed} transient=${transient}`)
+          this.logger.warn(
+            `[${cfg.environment}] ${input.method} ${input.path} status=${res.status} ms=${elapsed} transient=${transient}`,
+          )
 
           if (transient && attempt < maxAttempts) {
             const exp = Math.min(maxDelayMs, baseDelayMs * Math.pow(2, attempt - 1))
@@ -126,11 +207,10 @@ export class PlugNotasHttp {
         }
 
         if (isJson) {
-          return (await res.json()) as T
+          return parseJson(res.body) as T
         }
 
-        const arrayBuffer = await res.arrayBuffer()
-        return new Uint8Array(arrayBuffer) as unknown as T
+        return res.body as unknown as T
       } catch (e) {
         const status = (e as any)?.status
         const isHttpTransient = status === 429 || (typeof status === 'number' && status >= 500 && status <= 599)
