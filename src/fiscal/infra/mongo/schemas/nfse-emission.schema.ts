@@ -45,6 +45,12 @@ export class NfseEmission {
 
   @Prop({ index: true })
   nextPollAt?: Date
+
+  @Prop()
+  lastArtifactSyncAt?: Date
+
+  @Prop({ type: [Object], default: [] })
+  artifactSyncAudit?: Array<Record<string, any>>
 }
 
 export type NfseEmissionDocument = HydratedDocument<NfseEmission>

@@ -1,9 +1,11 @@
-import { Body, Controller, Get, Inject, Param, Post, Res } from '@nestjs/common'
-import type { Response } from 'express'
+import { Body, Controller, Get, Inject, Param, Post, Req, Res } from '@nestjs/common'
+import type { Request, Response } from 'express'
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { EmitirNfseService } from '../../fiscal/application/emitir-nfse.service'
+import { SyncNfseArtifactsService } from '../../fiscal/application/sync-nfse-artifacts.service'
 import { EmitirNfseDto } from './dtos/emitir-nfse.dto'
 import { EmitirNfseResponseDto } from './dtos/emitir-nfse.response.dto'
+import { SyncNfseArtifactsResponseDto } from './dtos/sync-nfse-artifacts.response.dto'
 import { NfseEmissionRepository } from '../../fiscal/infra/mongo/repositories/nfse-emission.repository'
 import type { NfseEmissionDocument } from '../../fiscal/infra/mongo/schemas/nfse-emission.schema'
 import type { FiscalProvider } from '../../fiscal/domain/fiscal-provider.interface'
@@ -28,6 +30,7 @@ function extractIdNota(providerResponse: any): string | null {
 export class FiscalController {
   constructor(
     private readonly emitirNfseService: EmitirNfseService,
+    private readonly syncNfseArtifactsService: SyncNfseArtifactsService,
     private readonly repo: NfseEmissionRepository,
     @Inject('FiscalProvider')
     private readonly provider: FiscalProvider,
@@ -39,6 +42,21 @@ export class FiscalController {
   @ApiResponse({ status: 201, type: EmitirNfseResponseDto })
   emitir(@Body() dto: EmitirNfseDto) {
     return this.emitirNfseService.execute(dto)
+  }
+
+  @Post(':id/sync-artifacts')
+  @ApiOperation({
+    summary: 'Sync XML/PDF artifacts on demand',
+    description:
+      'Idempotent manual recovery endpoint. Keeps polling for PENDING as default flow and does not reopen ERROR to PENDING.',
+  })
+  @ApiResponse({ status: 200, type: SyncNfseArtifactsResponseDto })
+  @ApiResponse({ status: 429, description: 'Rate limited for this emission' })
+  async syncArtifacts(@Param('id') id: string, @Req() req: Request) {
+    const user = (req as any)?.user
+    const requestedBy = user?.email ?? user?.sub ?? null
+    const ip = req.ip ?? null
+    return this.syncNfseArtifactsService.execute({ emissionId: id, requestedBy, ip })
   }
 
   @Get(':id')

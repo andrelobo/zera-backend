@@ -544,3 +544,59 @@ de Manaus (ambiente nacional, produção).
 
 * Para emissões que ficaram em **ERROR** antes do fix do polling, os endpoints locais `/nfse/:id/xml` e `/nfse/:id/pdf` podem retornar `hasXml/hasPdf=false` porque os artifacts não foram persistidos na época.
 * Nesses casos, o fallback `/nfse/:id/remote/xml` e `/nfse/:id/remote/pdf` permite baixar direto do provider.
+
+---
+
+# ATUALIZAÇÃO (11/02/2026) – Sync manual de artifacts (arquitetura operacional)
+
+## 1) Diretriz adotada
+
+* **Polling permanece o fluxo principal** para emissões em `PENDING`.
+* Foi adicionado um fluxo **manual/on-demand** para recuperação de artifacts, sem depender de alteração de status no banco.
+* Estratégia definida: **não reabrir `ERROR -> PENDING` manualmente** como padrão operacional.
+
+## 2) Novo endpoint
+
+* `POST /nfse/{id}/sync-artifacts`
+* Objetivo: sincronizar e persistir `XML/PDF` para uma emissão específica sob demanda.
+* Comportamento idempotente:
+  * Se artifacts já existem no banco, retorna `synced=false` com motivo `already_present`.
+  * Se provider ainda não está `AUTHORIZED`, retorna `synced=false` com motivo `not_authorized`.
+  * Se autorizado, baixa e persiste artifacts com `synced=true`.
+
+## 3) Rate limit e audit log
+
+* Rate limit por emissão no sync manual:
+  * variável: `NFSE_SYNC_ARTIFACTS_MIN_INTERVAL_MS` (default `60000`).
+  * chamadas dentro da janela retornam `429` com `retryAfterMs`.
+* Audit log de sincronização por emissão:
+  * `lastArtifactSyncAt`
+  * `artifactSyncAudit[]` (janela dos últimos eventos)
+  * outcomes típicos: `success`, `noop_already_present`, `blocked_rate_limited`, `skipped_not_authorized`, `failed`.
+
+## 4) Resultado esperado de produto
+
+* Fluxo normal continua simples e assíncrono (`emitir -> pending -> authorized -> artifacts` via polling).
+* Time operacional ganha ferramenta de recuperação rápida quando necessário, sem intervenção manual no status da emissão.
+
+---
+
+# ATUALIZAÇÃO (11/02/2026) – Validação final de artifacts automáticos
+
+## 1) Emissão de teste (R$ 80) concluída
+
+* Emissão confirmada em produção com:
+  * `emissionId`: `698cae8b6f39cad27baa64de`
+  * `externalId` (protocol): `6a98c170-baab-4899-aa13-790e7127152e`
+* Status final no backend:
+  * `AUTHORIZED`
+  * `error: null`
+
+## 2) Download automático de artifacts validado
+
+Logs do backend confirmaram download automático após autorização:
+* `GET /nfse/xml/698cae8ca4f3374d2a5efd63` → `200`
+* `GET /nfse/pdf/698cae8ca4f3374d2a5efd63` → `200`
+
+Conclusão:
+* O fluxo padrão (`polling` + persistência de artifacts) está funcional ponta a ponta em produção.

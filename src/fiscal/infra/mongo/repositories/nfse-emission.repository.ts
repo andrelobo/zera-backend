@@ -195,4 +195,43 @@ export class NfseEmissionRepository {
       })
       .exec()
   }
+
+  async appendArtifactSyncAudit(
+    id: string,
+    input: { at: Date; outcome: string; message?: string; requestedBy?: string | null; ip?: string | null },
+  ): Promise<void> {
+    if (!Types.ObjectId.isValid(id)) return
+    await this.model.updateOne(
+      { _id: id },
+      {
+        $set: { lastArtifactSyncAt: input.at },
+        $push: {
+          artifactSyncAudit: {
+            $each: [input],
+            $slice: -50,
+          },
+        },
+      },
+    )
+  }
+
+  async saveArtifactsById(input: {
+    id: string
+    status?: NfseEmissionStatus
+    providerResponse?: Record<string, any>
+    xmlBase64: string
+    pdfBase64: string
+    error?: string | null
+  }): Promise<void> {
+    if (!Types.ObjectId.isValid(input.id)) return
+    const update: Record<string, any> = {
+      providerResponse: input.providerResponse,
+      xmlBase64: input.xmlBase64,
+      pdfBase64: input.pdfBase64,
+      error: input.error ?? null,
+      lastPolledAt: new Date(),
+    }
+    if (input.status) update.status = input.status
+    await this.model.updateOne({ _id: input.id }, update)
+  }
 }
