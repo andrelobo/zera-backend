@@ -171,6 +171,47 @@ export class NfseEmissionRepository {
       .exec()
   }
 
+  async findPaginated(input?: {
+    page?: number
+    limit?: number
+    provider?: string
+    status?: NfseEmissionStatus
+  }): Promise<{
+    items: NfseEmissionDocument[]
+    total: number
+    page: number
+    limit: number
+    totalPages: number
+  }> {
+    const page = input?.page && input.page > 0 ? input.page : 1
+    const limit = input?.limit && input.limit > 0 ? Math.min(input.limit, 100) : 20
+    const skip = (page - 1) * limit
+
+    const filter: Record<string, any> = {}
+    if (input?.provider) filter.provider = input.provider
+    if (input?.status) filter.status = input.status
+
+    const [items, total] = await Promise.all([
+      this.model
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      this.model.countDocuments(filter).exec(),
+    ])
+
+    const totalPages = Math.max(1, Math.ceil(total / limit))
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages,
+    }
+  }
+
   async findById(id: string): Promise<NfseEmissionDocument | null> {
     if (!Types.ObjectId.isValid(id)) return null
     return this.model.findById(id).exec()

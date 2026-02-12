@@ -127,6 +127,26 @@ yarn start:dev
 
 ---
 
+## 🚀 Deploy na Render (Blueprint)
+
+Este repositório inclui `render.yaml` para provisionar o serviço web.
+
+1. No painel da Render: **New +** -> **Blueprint**.
+2. Selecione este repositório/branch.
+3. Confirme a criação do serviço `zera-backend`.
+4. Após o primeiro deploy, configure os secrets no Dashboard:
+   - `MONGO_URI`
+   - `JWT_SECRET`
+   - `JWT_EXPIRES_IN`
+   - `ADMIN_SETUP_TOKEN`
+   - `PLUGNOTAS_API_KEY`
+   - `WEBHOOK_SHARED_SECRET`
+5. Valide:
+   - `GET /health`
+   - `GET /docs`
+
+---
+
 ## 🐳 Executando com Docker
 
 ```bash

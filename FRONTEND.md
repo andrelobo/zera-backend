@@ -8,6 +8,14 @@ Default local base URL:
 Swagger (OpenAPI) UI:
 - http://127.0.0.1:3000/docs
 
+OpenAPI JSON:
+- http://127.0.0.1:3000/docs-json
+
+Generate typed client contracts (from OpenAPI):
+- `npm run openapi:export`
+- `npm run openapi:types`
+- output default: `openapi/zera-api.d.ts`
+
 ---
 
 ## 2. Auth (Admin)
@@ -67,7 +75,26 @@ Notes:
 For all protected endpoints, include:
 - Authorization: Bearer <JWT>
 
-### 2.4 Reset Admin Password (via setup token)
+### 2.4 Get Current User
+
+Request:
+- GET /auth/me
+- Header: Authorization: Bearer <JWT>
+
+Response:
+```json
+{
+  "id": "...",
+  "name": "Admin Zera",
+  "email": "admin@zera.com",
+  "role": "admin",
+  "status": "active",
+  "createdAt": "2026-02-12T10:00:00.000Z",
+  "updatedAt": "2026-02-12T10:00:00.000Z"
+}
+```
+
+### 2.5 Reset Admin Password (via setup token)
 
 Enabled when `ADMIN_RESET_ENABLED=true`.
 
@@ -305,6 +332,7 @@ Notas importantes:
 
 ### 5.2 Consultas
 
+- GET /nfse?page=1&limit=20&status=PENDING&provider=plugnotas
 - GET /nfse/:id
 - GET /nfse/external/:externalId
 - GET /nfse/:id/provider-response
@@ -339,6 +367,15 @@ Used by the fiscal provider to update status. If `WEBHOOK_SHARED_SECRET` is set,
 ---
 
 ## 8. Errors (common)
+
+Error payload is standardized:
+```json
+{
+  "code": "BAD_REQUEST",
+  "message": "human readable message",
+  "correlationId": "d2d8a98e-fd2d-4d77-a366-a4b8f23f10de"
+}
+```
 
 - 400 Bad Request
   - Invalid CNPJ

@@ -622,3 +622,58 @@ Foram preparados payloads (1 por serviço, valor de **R$ 125,00**) para Manaus, 
 * `041201` – Odontologia (serviços odontológicos): **emitido e concluído com sucesso**.
 * `041601` – Psicologia (serviços de psicologia): payload preparado (pendente de emissão).
 * `040101` – Medicina (serviços de medicina): payload preparado (pendente de emissão).
+
+---
+
+# ATUALIZAÇÃO (12/02/2026) – API front-ready + preparo de deploy
+
+## 1) Endpoints e contrato para frontend
+
+Melhorias implementadas para integração estável com frontend:
+
+* **Contrato de erro padronizado** em nível global:
+  * formato: `{ code, message, correlationId }`
+  * `correlationId` também retornado no header `x-correlation-id`
+* **Endpoint de sessão do usuário**:
+  * `GET /auth/me`
+* **Listagem paginada de emissões**:
+  * `GET /nfse?page=&limit=&status=&provider=`
+* **Artifacts por emissão**:
+  * `GET /nfse/:id/artifacts` mantido e validado
+* **Padronização de not-found no módulo fiscal**:
+  * removidos retornos ad hoc `{ found: false }`
+  * uso de exceções padronizadas com `code/message`
+
+## 2) Segurança do módulo fiscal
+
+* `FiscalController` passou a exigir autenticação/autorização:
+  * `JwtAuthGuard`
+  * `RolesGuard`
+  * roles permitidas: `admin`, `manager`, `user`
+
+## 3) OpenAPI e geração de tipos
+
+Fluxo para contratos tipados do frontend:
+
+* OpenAPI disponível em `/docs-json`
+* Scripts adicionados:
+  * `npm run openapi:export`
+  * `npm run openapi:types`
+  * `npm run openapi:sync`
+
+## 4) Testes e validação
+
+* Build validado com sucesso (`npm run build`)
+* Testes unitários passando (`npm test -- --runInBand`)
+* Teste unitário do filtro de erro adicionado para validar contrato padronizado
+  (`code/message/correlationId`)
+
+## 5) Deploy (Render)
+
+* Adicionado `render.yaml` para deploy via Blueprint na Render.
+* Configurado para **`plan: free`**, com:
+  * build: `npm ci && npm run build`
+  * start: `npm run start:prod`
+  * healthcheck: `/health`
+  * `NODE_VERSION=20`
+* `README.md` atualizado com passo a passo de deploy e lista de secrets obrigatórios.

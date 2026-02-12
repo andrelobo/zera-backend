@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core'
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
 import { AppModule } from './app.module'
+import { ApiExceptionFilter } from './common/http/api-exception.filter'
+import { correlationIdMiddleware } from './common/http/correlation-id.middleware'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
@@ -17,6 +19,8 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   })
+  app.use(correlationIdMiddleware)
+  app.useGlobalFilters(new ApiExceptionFilter())
 
   const config = new DocumentBuilder()
     .setTitle('ZERA API')

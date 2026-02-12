@@ -85,4 +85,24 @@ export class AuthService {
     return { id: updated._id.toString(), email: updated.email, role: updated.role }
   }
 
+  async me(userId: string) {
+    const user = await this.userModel.findById(userId).exec()
+    if (!user) {
+      throw new UnauthorizedException('User not found')
+    }
+
+    if (user.status === 'inactive') {
+      throw new UnauthorizedException('User is inactive')
+    }
+
+    return {
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      createdAt: (user as any).createdAt ?? null,
+      updatedAt: (user as any).updatedAt ?? null,
+    }
+  }
 }

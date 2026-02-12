@@ -1,0 +1,58 @@
+services:
+  - type: web
+    name: zera-backend
+    runtime: node
+    plan: free
+    autoDeploy: true
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NODE_ENV
+        value: production
+      - key: APP_PORT
+        value: 3000
+      - key: CORS_ORIGINS
+        value: https://zera-web.onrender.com
+      - key: NFSE_POLLING_ENABLED
+        value: "true"
+      - key: NFSE_POLLING_INTERVAL_MS
+        value: "300000"
+      - key: NFSE_POLLING_JITTER_MS
+        value: "15000"
+      - key: NFSE_POLLING_LIMIT
+        value: "50"
+      - key: NFSE_POLLING_OLDER_THAN_MS
+        value: "30000"
+      - key: NFSE_STORE_ARTIFACTS
+        value: "true"
+      - key: NFSE_CMUN_IBGE
+        value: "1302603"
+      - key: WEBHOOK_SHARED_SECRET_HEADER
+        value: x-webhook-token
+      - key: PLUGNOTAS_ENV
+        value: production
+      - key: PLUGNOTAS_BASE_URL
+        value: https://api.plugnotas.com.br
+      - key: PLUGNOTAS_CNPJ_PATH
+        value: /cnpj/{cnpj}
+      - key: PLUGNOTAS_NFSE_XML_PATH
+        value: /nfse/xml/{id}
+      - key: PLUGNOTAS_NFSE_PDF_PATH
+        value: /nfse/pdf/{id}
+
+      # Secrets: configure these values in Render Dashboard after first deploy.
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        sync: false
+      - key: ADMIN_SETUP_TOKEN
+        sync: false
+      - key: PLUGNOTAS_API_KEY
+        sync: false
+      - key: WEBHOOK_SHARED_SECRET
+        sync: false

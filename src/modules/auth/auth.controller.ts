@@ -1,14 +1,29 @@
-import { Body, Controller, Headers, NotFoundException, Post, UnauthorizedException } from '@nestjs/common'
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
+import { Body, Controller, Get, Headers, NotFoundException, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common'
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { AuthService } from './auth.service'
 import { LoginDto } from './dtos/login.dto'
 import { BootstrapAdminDto } from './dtos/bootstrap-admin.dto'
 import { ResetAdminPasswordDto } from './dtos/reset-admin-password.dto'
+import { JwtAuthGuard } from './guards/jwt-auth.guard'
+import type { Request } from 'express'
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current authenticated user' })
+  @ApiResponse({ status: 200, description: 'Current user profile' })
+  me(@Req() req: Request) {
+    const user = req.user as { id?: string } | undefined
+    if (!user?.id) {
+      throw new UnauthorizedException('Invalid auth context')
+    }
+    return this.auth.me(user.id)
+  }
 
   @Post('login')
   @ApiOperation({ summary: 'Login and receive access token' })
