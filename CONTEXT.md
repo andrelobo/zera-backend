@@ -600,3 +600,25 @@ Logs do backend confirmaram download automático após autorização:
 
 Conclusão:
 * O fluxo padrão (`polling` + persistência de artifacts) está funcional ponta a ponta em produção.
+
+---
+
+# ATUALIZAÇÃO (12/02/2026) – Emissões por categoria (Manaus)
+
+## 1) Beleza / Estética – emissões concluídas
+
+Foram emitidas e concluídas com sucesso, em produção (Manaus), 2 NFSe com valor de **R$ 125,00** cada:
+
+* `060101` – Barbearia, cabeleireiros, manicuros, pedicuros e congêneres.
+* `060201` – Esteticistas, tratamento de pele, depilação e congêneres.
+
+Observação:
+* Mantido o mesmo padrão de payload já validado no ambiente de produção (prestador/tomador e regime SN).
+
+## 2) Saúde – testes de emissão (Manaus)
+
+Foram preparados payloads (1 por serviço, valor de **R$ 125,00**) para Manaus, com o seguinte status:
+
+* `041201` – Odontologia (serviços odontológicos): **emitido e concluído com sucesso**.
+* `041601` – Psicologia (serviços de psicologia): payload preparado (pendente de emissão).
+* `040101` – Medicina (serviços de medicina): payload preparado (pendente de emissão).
