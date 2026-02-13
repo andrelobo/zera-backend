@@ -17,9 +17,23 @@ async function bootstrap() {
     .map((origin) => origin.trim())
     .filter(Boolean)
   const corsOrigins = Array.from(new Set([...defaultCorsOrigins, ...envCorsOrigins]))
+  const vercelPreviewPattern = /^https:\/\/manaus-nfse-dashboard(?:-[a-z0-9-]+)?\.vercel\.app$/i
 
   app.enableCors({
-    origin: corsOrigins,
+    origin: (origin, callback) => {
+      // Allow non-browser requests (curl/postman/server-to-server).
+      if (!origin) {
+        callback(null, true)
+        return
+      }
+
+      if (corsOrigins.includes(origin) || vercelPreviewPattern.test(origin)) {
+        callback(null, true)
+        return
+      }
+
+      callback(new Error(`Origin ${origin} not allowed by CORS`), false)
+    },
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-correlation-id'],
     credentials: true,
