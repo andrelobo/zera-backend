@@ -677,3 +677,36 @@ Fluxo para contratos tipados do frontend:
   * healthcheck: `/health`
   * `NODE_VERSION=20`
 * `README.md` atualizado com passo a passo de deploy e lista de secrets obrigatórios.
+
+---
+
+# ATUALIZAÇÃO (13/02/2026) – Incidente de runtime na Render (resolvido)
+
+## 1) Sintoma observado
+
+* Build concluía com sucesso, mas `/health` não respondia.
+* Logs de runtime mostravam:
+  * `Running 'yarn start'`
+  * `No open ports detected`
+  * `FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory`
+  * reinício em loop com status `134`.
+
+## 2) Causa raiz
+
+* O serviço em execução na Render estava iniciando com `yarn start` (`nest start`) em vez de `start:prod`.
+* Esse modo provocou consumo de memória alto no plano free antes de o app abrir porta.
+
+## 3) Correção aplicada
+
+* Start command efetivo do serviço ajustado para `yarn start:prod` (equivalente a `node dist/main`).
+* Confirmado runtime saudável com logs:
+  * bootstrap do Nest concluído
+  * conexão MongoDB estabelecida
+  * rotas mapeadas (incluindo `/health`)
+  * mensagem final: `Nest application successfully started`
+  * serviço marcado como `live` na URL pública.
+
+## 4) Observações operacionais
+
+* O `render.yaml` já estava correto (`startCommand: npm run start:prod`); o ponto crítico foi garantir que o serviço ativo aplicasse essa configuração no painel/deploy corrente.
+* Em caso de troubleshooting futuro, priorizar sempre logs de **runtime** (não apenas build logs).
