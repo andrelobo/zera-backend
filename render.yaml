@@ -15,7 +15,7 @@ services:
       - key: APP_PORT
         value: 3000
       - key: CORS_ORIGINS
-        value: https://zera-web.onrender.com
+        value: https://zera-web.onrender.com,https://manaus-nfse-dashboard.vercel.app
       - key: NFSE_POLLING_ENABLED
         value: "true"
       - key: NFSE_POLLING_INTERVAL_MS

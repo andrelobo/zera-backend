@@ -7,15 +7,16 @@ import { correlationIdMiddleware } from './common/http/correlation-id.middleware
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
 
-  const corsOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',')
-        .map((origin) => origin.trim())
-        .filter(Boolean)
-    : [
-        'http://localhost:8080',
-        'http://127.0.0.1:8080',
-        'https://manaus-nfse-dashboard.vercel.app',
-      ]
+  const defaultCorsOrigins = [
+    'http://localhost:8080',
+    'http://127.0.0.1:8080',
+    'https://manaus-nfse-dashboard.vercel.app',
+  ]
+  const envCorsOrigins = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+  const corsOrigins = Array.from(new Set([...defaultCorsOrigins, ...envCorsOrigins]))
 
   app.enableCors({
     origin: corsOrigins,
