@@ -1,9 +1,24 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import type { File as MulterFile } from 'multer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/guards/roles.decorator';
 import { CreateEmpresaDto } from './dtos/create-empresa.dto';
+import { ImportCertificadoDto } from './dtos/import-certificado.dto';
 import { UpdateEmpresaDto } from './dtos/update-empresa.dto';
 import { EmpresasService } from './empresas.service';
 
@@ -29,6 +44,35 @@ export class EmpresasController {
   @ApiResponse({ status: 200 })
   preview(@Body() dto: CreateEmpresaDto) {
     return this.empresas.previewFromCnpj(dto.cnpj);
+  }
+
+  @Post('certificado/import')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Importar certificado digital (.pfx/.p12) por CNPJ' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['cnpj', 'senhaCertificado', 'file'],
+      properties: {
+        cnpj: { type: 'string', example: '43521115000134' },
+        senhaCertificado: { type: 'string', example: 'senha-do-certificado' },
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Certificado importado com sucesso' })
+  async importCertificado(
+    @Body() dto: ImportCertificadoDto,
+    @UploadedFile() file?: MulterFile,
+  ) {
+    if (!file) {
+      throw new BadRequestException({
+        code: 'CERT_FILE_REQUIRED',
+        message: 'Arquivo .pfx/.p12 é obrigatório',
+      });
+    }
+    return this.empresas.importCertificado(dto.cnpj, dto.senhaCertificado, file);
   }
 
   @Get()

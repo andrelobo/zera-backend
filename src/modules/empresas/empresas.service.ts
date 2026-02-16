@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { createCipheriv, createHash, randomBytes } from 'crypto';
+import type { File as MulterFile } from 'multer';
 import { Model } from 'mongoose';
 import { PlugNotasCnpjApi } from '../../fiscal/infra/plugnotas/cnpj.api';
 import { Empresa, EmpresaDocument } from './schemas/empresa.schema';
@@ -17,16 +19,28 @@ export class EmpresasService {
       throw new BadRequestException('CNPJ inválido');
     }
 
-    const existing = await this.empresaModel.findOne({ cnpj: normalized });
-    if (existing) {
-      return existing;
+    const existingWithCert = await this.empresaModel
+      .findOne({ cnpj: normalized })
+      .select('+certificado.pfxBase64');
+
+    if (existingWithCert?.razaoSocial) {
+      return this.empresaModel.findById(existingWithCert._id);
+    }
+
+    if (!existingWithCert?.certificado?.pfxBase64) {
+      throw new BadRequestException({
+        code: 'CERTIFICADO_REQUIRED',
+        message: 'Importe o certificado digital (.pfx/.p12) antes de cadastrar a empresa',
+      });
     }
 
     const { data } = await this.fetchProviderData(normalized);
     const mapped = this.mapProviderData(normalized, data);
 
     try {
-      return await this.empresaModel.create(mapped);
+      return await this.empresaModel.findByIdAndUpdate(existingWithCert._id, mapped, {
+        new: true,
+      });
     } catch (e: any) {
       throw new BadRequestException({
         message: 'Não foi possível cadastrar a empresa',
@@ -45,6 +59,70 @@ export class EmpresasService {
     return this.mapProviderData(normalized, data);
   }
 
+  async importCertificado(cnpj: string, senhaCertificado: string, file: MulterFile) {
+    const normalized = this.onlyDigits(cnpj);
+    if (!normalized) {
+      throw new BadRequestException('CNPJ inválido');
+    }
+
+    const ext = this.extractFileExtension(file.originalname);
+    if (!['pfx', 'p12'].includes(ext)) {
+      throw new BadRequestException({
+        code: 'CERT_FILE_INVALID_EXTENSION',
+        message: 'Arquivo inválido. Use certificado .pfx ou .p12',
+      });
+    }
+
+    if (!file.buffer?.length) {
+      throw new BadRequestException({
+        code: 'CERT_FILE_EMPTY',
+        message: 'Arquivo de certificado vazio',
+      });
+    }
+
+    const maxSize = Number(process.env.EMPRESA_CERT_MAX_SIZE_BYTES ?? 5_000_000);
+    if (file.size > maxSize) {
+      throw new BadRequestException({
+        code: 'CERT_FILE_TOO_LARGE',
+        message: `Arquivo excede o limite de ${maxSize} bytes`,
+      });
+    }
+
+    const now = new Date();
+    const sha256 = createHash('sha256').update(file.buffer).digest('hex');
+    const encryptedPassword = this.encryptSecret(senhaCertificado);
+
+    await this.empresaModel.updateOne(
+      { cnpj: normalized },
+      {
+        $set: {
+          certificado: {
+            filename: file.originalname,
+            mimeType: file.mimetype || 'application/x-pkcs12',
+            size: file.size,
+            sha256,
+            uploadedAt: now,
+            pfxBase64: file.buffer.toString('base64'),
+            passwordEncrypted: encryptedPassword,
+          },
+        },
+        $setOnInsert: { cnpj: normalized },
+      },
+      { upsert: true },
+    );
+
+    return {
+      cnpj: normalized,
+      certificado: {
+        filename: file.originalname,
+        mimeType: file.mimetype || 'application/x-pkcs12',
+        size: file.size,
+        sha256,
+        uploadedAt: now.toISOString(),
+      },
+    };
+  }
+
   list() {
     return this.empresaModel.find().sort({ createdAt: -1 });
   }
@@ -56,6 +134,12 @@ export class EmpresasService {
   async getByCnpj(cnpj: string) {
     const normalized = this.onlyDigits(cnpj);
     return this.empresaModel.findOne({ cnpj: normalized });
+  }
+
+  async findFirstWithCertificate() {
+    return this.empresaModel
+      .findOne({ 'certificado.uploadedAt': { $exists: true } })
+      .sort({ updatedAt: -1, createdAt: -1 });
   }
 
   async update(id: string, data: Partial<Empresa>) {
@@ -216,5 +300,29 @@ export class EmpresasService {
 
   private onlyDigits(value: string) {
     return value.replace(/\D/g, '');
+  }
+
+  private extractFileExtension(name?: string) {
+    const safe = (name ?? '').toLowerCase().trim();
+    const idx = safe.lastIndexOf('.');
+    return idx >= 0 ? safe.slice(idx + 1) : '';
+  }
+
+  private encryptSecret(value: string): string {
+    const secret = process.env.EMPRESA_CERT_ENCRYPTION_KEY ?? process.env.JWT_SECRET;
+    if (!secret?.trim()) {
+      throw new BadRequestException({
+        code: 'CERT_ENCRYPTION_KEY_REQUIRED',
+        message: 'EMPRESA_CERT_ENCRYPTION_KEY ou JWT_SECRET é obrigatório para guardar certificado',
+      });
+    }
+
+    const key = createHash('sha256').update(secret).digest();
+    const iv = randomBytes(12);
+    const cipher = createCipheriv('aes-256-gcm', key, iv);
+    const encrypted = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
+    const tag = cipher.getAuthTag();
+
+    return `v1:${iv.toString('base64')}:${tag.toString('base64')}:${encrypted.toString('base64')}`;
   }
 }

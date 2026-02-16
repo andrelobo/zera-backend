@@ -36,6 +36,32 @@ export class Endereco {
 
 const EnderecoSchema = SchemaFactory.createForClass(Endereco);
 
+@Schema({ _id: false })
+export class CertificadoDigital {
+  @Prop()
+  filename?: string;
+
+  @Prop()
+  mimeType?: string;
+
+  @Prop()
+  size?: number;
+
+  @Prop()
+  sha256?: string;
+
+  @Prop()
+  uploadedAt?: Date;
+
+  @Prop({ select: false })
+  pfxBase64?: string;
+
+  @Prop({ select: false })
+  passwordEncrypted?: string;
+}
+
+const CertificadoDigitalSchema = SchemaFactory.createForClass(CertificadoDigital);
+
 @Schema({ timestamps: true })
 export class Empresa {
   @Prop({ required: true, unique: true, index: true })
@@ -61,6 +87,9 @@ export class Empresa {
 
   @Prop({ type: Object })
   providerData?: Record<string, any>;
+
+  @Prop({ type: CertificadoDigitalSchema })
+  certificado?: CertificadoDigital;
 }
 
 export type EmpresaDocument = HydratedDocument<Empresa>;

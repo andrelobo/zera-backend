@@ -23,8 +23,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { EmitirNfseService } from '../../fiscal/application/emitir-nfse.service';
+import { EmitirNfseQuickService } from '../../fiscal/application/emitir-nfse-quick.service';
 import { SyncNfseArtifactsService } from '../../fiscal/application/sync-nfse-artifacts.service';
 import { EmitirNfseDto } from './dtos/emitir-nfse.dto';
+import { EmitirNfseQuickDto } from './dtos/emitir-nfse-quick.dto';
 import { EmitirNfseResponseDto } from './dtos/emitir-nfse.response.dto';
 import { SyncNfseArtifactsResponseDto } from './dtos/sync-nfse-artifacts.response.dto';
 import { NfseEmissionRepository } from '../../fiscal/infra/mongo/repositories/nfse-emission.repository';
@@ -59,6 +61,7 @@ function extractIdNota(providerResponse: any): string | null {
 export class FiscalController {
   constructor(
     private readonly emitirNfseService: EmitirNfseService,
+    private readonly emitirNfseQuickService: EmitirNfseQuickService,
     private readonly syncNfseArtifactsService: SyncNfseArtifactsService,
     private readonly repo: NfseEmissionRepository,
     @Inject('FiscalProvider')
@@ -71,6 +74,17 @@ export class FiscalController {
   @ApiResponse({ status: 201, type: EmitirNfseResponseDto })
   emitir(@Body() dto: EmitirNfseDto) {
     return this.emitirNfseService.execute(dto);
+  }
+
+  @Post('quick')
+  @ApiOperation({
+    summary: 'Emitir NFSe de forma ultra-simplificada (quick)',
+    description: 'Recebe apenas cpfTomador e valor. Demais campos são inferidos pelo backend.',
+  })
+  @ApiBody({ type: EmitirNfseQuickDto })
+  @ApiResponse({ status: 201, type: EmitirNfseResponseDto })
+  emitirQuick(@Body() dto: EmitirNfseQuickDto) {
+    return this.emitirNfseQuickService.execute(dto);
   }
 
   @Get()
