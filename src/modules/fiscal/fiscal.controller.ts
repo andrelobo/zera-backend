@@ -83,7 +83,7 @@ export class FiscalController {
   @ApiOperation({
     summary: 'Emitir NFSe de forma ultra-simplificada (quick)',
     description:
-      'Recebe cpfTomador e valor, e opcionalmente codigoServico. Demais campos são inferidos pelo backend.',
+      'Recebe cnpj, cpfTomador e valor, e opcionalmente codigoServico. Demais campos são inferidos pelo backend.',
   })
   @ApiBody({ type: EmitirNfseQuickDto })
   @ApiResponse({ status: 201, type: EmitirNfseResponseDto })

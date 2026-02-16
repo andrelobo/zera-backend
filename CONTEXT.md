@@ -943,3 +943,49 @@ Exemplo de payload quick atualizado:
 Após as mudanças:
 * `npm run build` ✅
 * `npm test -- --runInBand` ✅ (`6 suites`, `13 testes`)
+
+---
+
+# ATUALIZAÇÃO (16/02/2026) – `/nfse/quick` com `cnpj` obrigatório no payload
+
+## 1) Mudança de contrato (frontend -> backend)
+
+O endpoint `POST /nfse/quick` foi ajustado para receber explicitamente o `cnpj` no body da requisição.
+
+Payload mínimo atualizado:
+
+```json
+{
+  "cnpj": "43521115000134",
+  "cpfTomador": "61020788100",
+  "valor": 125
+}
+```
+
+`codigoServico` continua opcional (6 dígitos), mantendo a inferência via catálogo LC116 quando informado.
+
+## 2) Regra de seleção de empresa no quick flow
+
+A seleção de prestador no quick flow passa a ser orientada pelo `cnpj` informado pelo frontend:
+
+1. validação de formato (`14` dígitos)
+2. busca da empresa por CNPJ no banco
+3. validação de certificado importado para a empresa encontrada
+
+Erros de negócio aplicáveis:
+* `QUICK_CNPJ_INVALID` (400)
+* `QUICK_PRESTADOR_NOT_FOUND` (400)
+* `QUICK_PRESTADOR_NO_CERT` (400)
+* `QUICK_CPF_INVALID` (400)
+* `QUICK_CODIGO_SERVICO_INVALIDO` (400)
+
+## 3) Impacto em configuração
+
+Com essa mudança, `QUICK_NFSE_PRESTADOR_CNPJ` deixa de ser o mecanismo principal de seleção de empresa no fluxo quick.
+Os demais parâmetros `QUICK_NFSE_*` permanecem válidos como defaults para composição de serviço/tomador.
+
+## 4) Validação técnica executada
+
+Build validado após a alteração usando Node 20:
+* `node -v` -> `v20.20.0`
+* `yarn build` ✅

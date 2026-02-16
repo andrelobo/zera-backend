@@ -2,6 +2,11 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, Matches } from 'class-validator';
 
 export class EmitirNfseQuickDto {
+  @ApiProperty({ example: '43521115000134' })
+  @IsString()
+  @IsNotEmpty()
+  cnpj!: string;
+
   @ApiProperty({ example: '61020788100' })
   @IsString()
   @IsNotEmpty()

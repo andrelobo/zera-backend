@@ -27,23 +27,26 @@ export class EmitirNfseQuickService {
     private readonly servicoCatalog: ServicoCatalogService,
   ) {}
 
-  async execute(input: { cpfTomador: string; valor: number; codigoServico?: string }) {
-    const empresa = await this.resolveEmpresa();
+  async execute(input: { cnpj: string; cpfTomador: string; valor: number; codigoServico?: string }) {
+    const empresa = await this.resolveEmpresa(input.cnpj);
     const payload = this.buildPayload(empresa, input);
     return this.emitirNfseService.execute(payload);
   }
 
-  private async resolveEmpresa() {
-    const configuredCnpj = onlyDigits(process.env.QUICK_NFSE_PRESTADOR_CNPJ);
-    const empresa = configuredCnpj
-      ? await this.empresasService.getByCnpj(configuredCnpj)
-      : await this.empresasService.findFirstWithCertificate();
+  private async resolveEmpresa(cnpjInput: string) {
+    const cnpj = onlyDigits(cnpjInput);
+    if (cnpj.length !== 14) {
+      throw new BadRequestException({
+        code: 'QUICK_CNPJ_INVALID',
+        message: 'cnpj deve conter 14 dígitos',
+      });
+    }
+    const empresa = await this.empresasService.getByCnpj(cnpj);
 
     if (!empresa) {
       throw new BadRequestException({
         code: 'QUICK_PRESTADOR_NOT_FOUND',
-        message:
-          'Nenhuma empresa apta para emissão rápida. Configure QUICK_NFSE_PRESTADOR_CNPJ ou cadastre uma empresa com certificado.',
+        message: 'Empresa não encontrada para o CNPJ informado',
       });
     }
 
@@ -72,7 +75,7 @@ export class EmitirNfseQuickService {
         cep?: string;
       };
     },
-    input: { cpfTomador: string; valor: number; codigoServico?: string },
+    input: { cnpj: string; cpfTomador: string; valor: number; codigoServico?: string },
   ): EmitirNfseInput {
     const prestadorEndereco = empresa.endereco ?? {};
     const cidade = requiredString(prestadorEndereco.cidade, 'empresa.endereco.cidade');
