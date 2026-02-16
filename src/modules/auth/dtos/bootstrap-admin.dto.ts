@@ -1,12 +1,20 @@
-import { ApiProperty } from '@nestjs/swagger'
+import { ApiProperty } from '@nestjs/swagger';
+import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 
 export class BootstrapAdminDto {
   @ApiProperty({ example: 'Admin Zera' })
-  name!: string
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
 
   @ApiProperty({ example: 'admin@zera.com' })
-  email!: string
+  @IsString()
+  @IsNotEmpty()
+  @IsEmail()
+  email!: string;
 
   @ApiProperty({ example: 'password' })
-  password!: string
+  @IsString()
+  @IsNotEmpty()
+  password!: string;
 }

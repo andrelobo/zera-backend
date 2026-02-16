@@ -1,14 +1,14 @@
-import { Module } from '@nestjs/common'
-import { JwtModule } from '@nestjs/jwt'
-import { MongooseModule } from '@nestjs/mongoose'
-import { PassportModule } from '@nestjs/passport'
-import { ConfigModule, ConfigService } from '@nestjs/config'
-import type { SignOptions } from 'jsonwebtoken'
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { MongooseModule } from '@nestjs/mongoose';
+import { PassportModule } from '@nestjs/passport';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import type { SignOptions } from 'jsonwebtoken';
 
-import { AuthController } from './auth.controller'
-import { AuthService } from './auth.service'
-import { JwtStrategy } from './jwt.strategy'
-import { User, UserSchema } from './schemas/user.schema'
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { JwtStrategy } from './jwt.strategy';
+import { User, UserSchema } from './schemas/user.schema';
 
 @Module({
   imports: [
@@ -17,13 +17,18 @@ import { User, UserSchema } from './schemas/user.schema'
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const expiresIn = config.get<string>('JWT_EXPIRES_IN') as SignOptions['expiresIn']
+        const secret = config.get<string>('JWT_SECRET');
+        if (!secret?.trim()) {
+          throw new Error('JWT_SECRET not set');
+        }
+
+        const expiresIn = config.get<string>('JWT_EXPIRES_IN') as SignOptions['expiresIn'];
         return {
-          secret: config.get<string>('JWT_SECRET') ?? 'change-me',
+          secret,
           signOptions: {
             expiresIn: expiresIn ?? '7d',
           },
-        }
+        };
       },
     }),
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),

@@ -1,19 +1,33 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import type { UserRole } from '../../auth/schemas/user.schema'
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import type { UserRole } from '../../auth/schemas/user.schema';
+import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateUserDto {
   @ApiProperty({ example: 'Nome Completo' })
-  name!: string
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
 
   @ApiProperty({ example: 'user@zera.com' })
-  email!: string
+  @IsString()
+  @IsNotEmpty()
+  @IsEmail()
+  email!: string;
 
   @ApiProperty({ example: 'strong-password' })
-  password!: string
+  @IsString()
+  @IsNotEmpty()
+  password!: string;
 
   @ApiPropertyOptional({ example: 'user', enum: ['admin', 'manager', 'user'] })
-  role?: UserRole
+  @IsOptional()
+  @IsString()
+  @IsIn(['admin', 'manager', 'user'])
+  role?: UserRole;
 
   @ApiPropertyOptional({ example: 'active', enum: ['active', 'inactive'] })
-  status?: 'active' | 'inactive'
+  @IsOptional()
+  @IsString()
+  @IsIn(['active', 'inactive'])
+  status?: 'active' | 'inactive';
 }

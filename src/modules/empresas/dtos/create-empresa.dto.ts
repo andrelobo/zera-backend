@@ -1,6 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger'
+import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class CreateEmpresaDto {
   @ApiProperty({ example: '43521115000134' })
-  cnpj!: string
+  @IsString()
+  @IsNotEmpty()
+  cnpj!: string;
 }

@@ -1,32 +1,91 @@
-import { ApiPropertyOptional } from '@nestjs/swagger'
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { IsNotEmpty, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
+
+class UpdateEmpresaEnderecoDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  logradouro?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  numero?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  complemento?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  bairro?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  codigoMunicipio?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cidade?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  uf?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  codigoPais?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  pais?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cep?: string;
+}
 
 export class UpdateEmpresaDto {
   @ApiPropertyOptional()
-  razaoSocial?: string
+  @IsOptional()
+  @IsString()
+  razaoSocial?: string;
 
   @ApiPropertyOptional()
-  nomeFantasia?: string
+  @IsOptional()
+  @IsString()
+  nomeFantasia?: string;
 
   @ApiPropertyOptional()
-  inscricaoMunicipal?: string
+  @IsOptional()
+  @IsString()
+  inscricaoMunicipal?: string;
 
   @ApiPropertyOptional()
-  email?: string
+  @IsOptional()
+  @IsString()
+  email?: string;
 
   @ApiPropertyOptional()
-  fone?: string
+  @IsOptional()
+  @IsString()
+  fone?: string;
 
   @ApiPropertyOptional()
-  endereco?: {
-    logradouro?: string
-    numero?: string
-    complemento?: string
-    bairro?: string
-    codigoMunicipio?: string
-    cidade?: string
-    uf?: string
-    codigoPais?: string
-    pais?: string
-    cep?: string
-  }
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => UpdateEmpresaEnderecoDto)
+  endereco?: UpdateEmpresaEnderecoDto;
 }
