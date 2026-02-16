@@ -710,3 +710,59 @@ Fluxo para contratos tipados do frontend:
 
 * O `render.yaml` já estava correto (`startCommand: npm run start:prod`); o ponto crítico foi garantir que o serviço ativo aplicasse essa configuração no painel/deploy corrente.
 * Em caso de troubleshooting futuro, priorizar sempre logs de **runtime** (não apenas build logs).
+
+---
+
+# ATUALIZAÇÃO (16/02/2026) – Hardening de segurança e validação global
+
+## 1) Segurança JWT (fail-fast)
+
+Mudança aplicada para evitar boot inseguro:
+
+* `JWT_SECRET` agora é **obrigatório** no bootstrap.
+* Foram removidos fallbacks inseguros de secret (ex.: `change-me`/string vazia).
+* Se `JWT_SECRET` não estiver definido, a aplicação falha ao iniciar (com erro explícito).
+
+Impacto:
+* reduz risco de ambientes subirem com assinatura de token fraca/inconsistente.
+
+## 2) ValidationPipe global (modo compatível com produção)
+
+Validação global habilitada em `main.ts` com:
+
+* `whitelist: true`
+* `forbidNonWhitelisted: false` (evita quebra por campos extras)
+* `transform: true`
+* `forbidUnknownValues: false`
+
+Objetivo:
+* aumentar robustez de entrada sem causar ruptura imediata nos clientes existentes.
+
+## 3) DTOs com `class-validator`
+
+Validações adicionadas nos DTOs principais:
+
+* `auth` (`login`, `bootstrap`, `reset-password`)
+* `users` (`create`, `update`)
+* `empresas` (`create`, `update`, incluindo objeto `endereco`)
+* `fiscal` (`emitir-nfse`, com validação aninhada de `prestador`, `tomador`, `servico`)
+
+Dependências adicionadas:
+* `class-validator`
+* `class-transformer`
+
+## 4) Validação técnica executada
+
+No ambiente local (Node 20), após as mudanças:
+
+* `yarn build` ✅
+* `yarn test --runInBand` ✅ (`6 suites`, `13 testes`)
+* `yarn start:dev` ✅ com conexão MongoDB estabelecida e rotas mapeadas
+* validação funcional confirmada pelo frontend (sem necessidade de teste de emissão NFSe nesta etapa)
+
+## 5) Estratégia de versionamento aplicada
+
+As alterações foram separadas em dois commits:
+
+1. commit de segurança/validação (JWT + ValidationPipe + DTO validation)
+2. commit de limpeza/formatação (`lint --fix`) para reduzir risco de rollback e facilitar auditoria
