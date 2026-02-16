@@ -16,6 +16,7 @@ import type { Request, Response } from 'express';
 import {
   ApiBearerAuth,
   ApiBody,
+  ApiParam,
   ApiOperation,
   ApiProduces,
   ApiQuery,
@@ -24,6 +25,7 @@ import {
 } from '@nestjs/swagger';
 import { EmitirNfseService } from '../../fiscal/application/emitir-nfse.service';
 import { EmitirNfseQuickService } from '../../fiscal/application/emitir-nfse-quick.service';
+import { ServicoCatalogService } from '../../fiscal/application/servico-catalog.service';
 import { SyncNfseArtifactsService } from '../../fiscal/application/sync-nfse-artifacts.service';
 import { EmitirNfseDto } from './dtos/emitir-nfse.dto';
 import { EmitirNfseQuickDto } from './dtos/emitir-nfse-quick.dto';
@@ -62,6 +64,7 @@ export class FiscalController {
   constructor(
     private readonly emitirNfseService: EmitirNfseService,
     private readonly emitirNfseQuickService: EmitirNfseQuickService,
+    private readonly servicoCatalog: ServicoCatalogService,
     private readonly syncNfseArtifactsService: SyncNfseArtifactsService,
     private readonly repo: NfseEmissionRepository,
     @Inject('FiscalProvider')
@@ -79,7 +82,8 @@ export class FiscalController {
   @Post('quick')
   @ApiOperation({
     summary: 'Emitir NFSe de forma ultra-simplificada (quick)',
-    description: 'Recebe apenas cpfTomador e valor. Demais campos são inferidos pelo backend.',
+    description:
+      'Recebe cpfTomador e valor, e opcionalmente codigoServico. Demais campos são inferidos pelo backend.',
   })
   @ApiBody({ type: EmitirNfseQuickDto })
   @ApiResponse({ status: 201, type: EmitirNfseResponseDto })
@@ -153,6 +157,52 @@ export class FiscalController {
         limit: result.limit,
         totalPages: result.totalPages,
       },
+    };
+  }
+
+  @Get('servicos/autocomplete')
+  @ApiOperation({ summary: 'Autocomplete de servicos (catalogo LC116/NFS-e Nacional)' })
+  @ApiQuery({ name: 'q', required: false, example: 'barbearia' })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  autocompleteServicos(@Query('q') q?: string, @Query('limit') limitRaw?: string) {
+    const limit = limitRaw ? Number(limitRaw) : 20;
+    if (!Number.isFinite(limit) || limit < 1) {
+      throw new BadRequestException({ code: 'INVALID_LIMIT', message: 'limit must be >= 1' });
+    }
+
+    const items = this.servicoCatalog.autocomplete({ q, limit }).map((item) => ({
+      codigoServico: item.codigoNacional,
+      itemLc116: item.itemLc116,
+      descricao: item.descricao,
+    }));
+
+    return { items, total: items.length };
+  }
+
+  @Get('servicos/:codigo')
+  @ApiOperation({ summary: 'Detalhe de servico por codigo nacional (6 digitos)' })
+  @ApiParam({ name: 'codigo', example: '060101' })
+  getServicoByCodigo(@Param('codigo') codigo: string) {
+    if (!/^\d{6}$/.test(codigo)) {
+      throw new BadRequestException({
+        code: 'INVALID_CODIGO_SERVICO',
+        message: 'codigo deve conter exatamente 6 digitos',
+      });
+    }
+
+    const item = this.servicoCatalog.findByCodigo(codigo);
+    if (!item) {
+      throw new NotFoundException({
+        code: 'SERVICO_NOT_FOUND',
+        message: 'Servico nao encontrado no catalogo nacional (LC116)',
+      });
+    }
+
+    return {
+      codigoServico: item.codigoNacional,
+      itemLc116: item.itemLc116,
+      sequencial: item.sequencial,
+      descricao: item.descricao,
     };
   }
 

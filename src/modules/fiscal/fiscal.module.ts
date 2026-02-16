@@ -7,6 +7,7 @@ import { EmitirNfseService } from '../../fiscal/application/emitir-nfse.service'
 import { EmitirNfseQuickService } from '../../fiscal/application/emitir-nfse-quick.service';
 import { PollNfseStatusService } from '../../fiscal/application/poll-nfse-status.service';
 import { PollNfseStatusRunner } from '../../fiscal/application/poll-nfse-status.runner';
+import { ServicoCatalogService } from '../../fiscal/application/servico-catalog.service';
 import { SyncNfseArtifactsService } from '../../fiscal/application/sync-nfse-artifacts.service';
 import { PlugNotasProvider } from '../../fiscal/infra/plugnotas.provider';
 import { NfseEmissionRepository } from '../../fiscal/infra/mongo/repositories/nfse-emission.repository';
@@ -28,6 +29,7 @@ import { EmpresasModule } from '../empresas/empresas.module';
     NfseEmissionRepository,
     EmitirNfseService,
     EmitirNfseQuickService,
+    ServicoCatalogService,
     SyncNfseArtifactsService,
     PollNfseStatusService,
     PollNfseStatusRunner,

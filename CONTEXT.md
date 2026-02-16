@@ -766,3 +766,180 @@ As alterações foram separadas em dois commits:
 
 1. commit de segurança/validação (JWT + ValidationPipe + DTO validation)
 2. commit de limpeza/formatação (`lint --fix`) para reduzir risco de rollback e facilitar auditoria
+
+---
+
+# ATUALIZAÇÃO (16/02/2026) – Certificado digital + Emissão Rápida (`/nfse/quick`)
+
+## 1) Importação de certificado digital (novo endpoint)
+
+Foi implementado endpoint dedicado para importação do certificado da empresa:
+
+* `POST /empresas/certificado/import`
+* `Content-Type: multipart/form-data`
+* Campos obrigatórios:
+  * `cnpj`
+  * `senhaCertificado`
+  * `file` (`.pfx` ou `.p12`)
+
+Validações aplicadas no backend:
+* extensão permitida (`.pfx`/`.p12`)
+* arquivo não vazio
+* limite de tamanho via `EMPRESA_CERT_MAX_SIZE_BYTES` (default `5_000_000`)
+
+Persistência:
+* o certificado fica vinculado à empresa por CNPJ
+* metadados salvos: `filename`, `mimeType`, `size`, `sha256`, `uploadedAt`
+* conteúdo do certificado (`pfxBase64`) e senha são armazenados de forma protegida:
+  * `pfxBase64` com `select: false`
+  * senha criptografada com `AES-256-GCM`
+
+## 2) Regra de negócio no cadastro de empresa
+
+O fluxo `POST /empresas` (createFromCnpj) passou a exigir certificado prévio para empresa nova/incompleta:
+
+* sem certificado importado: retorna `CERTIFICADO_REQUIRED`
+* empresas já completas previamente cadastradas continuam retornando normalmente
+
+Objetivo:
+* garantir pré-condição operacional para emissão fiscal com certificado vinculado.
+
+## 3) Emissão ultra-simplificada (novo endpoint)
+
+Foi implementado endpoint de emissão rápida:
+
+* `POST /nfse/quick`
+* body mínimo:
+  * `cpfTomador`
+  * `valor`
+
+Todo o restante é inferido pelo backend (payload interno completo):
+* prestador/emitente (empresa selecionada)
+* códigos padrão (`codigoNacional`, `codigoTributacao`)
+* descrição padrão
+* dados default de tomador/endereço quando necessário
+* `referenciaExterna` gerada automaticamente
+
+A emissão quick reutiliza o fluxo padrão (`EmitirNfseService`), preservando:
+* idempotência/persistência
+* polling e artifacts
+* modelo de status existente
+
+## 4) Seleção de empresa no quick flow
+
+Prioridade de seleção do prestador:
+
+1. `QUICK_NFSE_PRESTADOR_CNPJ` (quando configurado)
+2. fallback para empresa mais recente com certificado importado
+
+Erros de configuração/estado:
+* `QUICK_PRESTADOR_NOT_FOUND`
+* `QUICK_PRESTADOR_NO_CERT`
+* `QUICK_CONFIG_INCOMPLETE`
+* `QUICK_CPF_INVALID`
+
+## 5) Variáveis de ambiente relevantes
+
+Certificado:
+* `EMPRESA_CERT_ENCRYPTION_KEY` (recomendado; fallback em `JWT_SECRET`)
+* `EMPRESA_CERT_MAX_SIZE_BYTES`
+
+Quick flow:
+* `QUICK_NFSE_PRESTADOR_CNPJ`
+* `QUICK_NFSE_CODIGO_NACIONAL`
+* `QUICK_NFSE_CODIGO_TRIBUTACAO`
+* `QUICK_NFSE_DESCRICAO_PADRAO`
+* `QUICK_NFSE_ISS_ALIQUOTA`
+* `QUICK_NFSE_TOMADOR_RAZAO_SOCIAL` (opcional)
+* `QUICK_NFSE_TOMADOR_LOGRADOURO` (opcional)
+* `QUICK_NFSE_TOMADOR_NUMERO` (opcional)
+* `QUICK_NFSE_TOMADOR_COMPLEMENTO` (opcional)
+* `QUICK_NFSE_TOMADOR_BAIRRO` (opcional)
+* `QUICK_NFSE_TOMADOR_MUNICIPIO` (opcional)
+* `QUICK_NFSE_TOMADOR_UF` (opcional)
+* `QUICK_NFSE_TOMADOR_CEP` (opcional)
+
+## 6) Observação operacional
+
+Com essa atualização, o backend passa a suportar formalmente:
+* onboarding por certificado digital antes do cadastro fiscal efetivo
+* emissão expressa (`/nfse/quick`) para experiência de operação estilo PDV
+
+---
+
+# ATUALIZAÇÃO (16/02/2026) – Catálogo de serviços LC116 + autocomplete global + quick com `codigoServico`
+
+## 1) Catálogo central de serviços (fonte única)
+
+Foi integrado ao backend um catálogo central de serviços da LC116/NFS-e Nacional, usando o arquivo:
+
+* `servicos_lc116_v2.json` (335 itens validados)
+
+Estrutura utilizada por item:
+* `codigo_nacional`
+* `item_lc116`
+* `sequencial`
+* `descricao`
+
+Configuração:
+* `NFSE_SERVICOS_CATALOGO_PATH` (opcional; default `servicos_lc116_v2.json`)
+
+Objetivo:
+* reutilizar a mesma base para qualquer fluxo que precise de busca/autocomplete e inferência de descrição por código.
+
+## 2) Novos endpoints de consulta de serviço
+
+### 2.1 Autocomplete global
+
+* `GET /nfse/servicos/autocomplete?q=&limit=`
+* Busca por prefixo de código e por texto na descrição (normalizado, sem acento).
+* Retorna itens no formato:
+  * `codigoServico`
+  * `itemLc116`
+  * `descricao`
+
+### 2.2 Detalhe por código
+
+* `GET /nfse/servicos/{codigo}`
+* Valida `codigo` com exatamente 6 dígitos.
+* Retorna:
+  * `codigoServico`
+  * `itemLc116`
+  * `sequencial`
+  * `descricao`
+
+Erros padronizados:
+* `INVALID_CODIGO_SERVICO` (400)
+* `SERVICO_NOT_FOUND` (404)
+
+## 3) Emissão rápida com inferência por código de serviço
+
+O endpoint `POST /nfse/quick` passou a aceitar também:
+
+* `codigoServico` (opcional, 6 dígitos)
+
+Comportamento:
+* Quando `codigoServico` é informado e existe no catálogo:
+  * `servico.codigoNacional` é inferido pelo catálogo
+  * `servico.descricao` é inferida pela descrição oficial do catálogo
+* Quando `codigoServico` não é informado:
+  * mantém fallback atual via variáveis `QUICK_NFSE_*`
+
+Erro específico:
+* `QUICK_CODIGO_SERVICO_INVALIDO` (400), quando o código não é encontrado no catálogo.
+
+Exemplo de payload quick atualizado:
+
+```json
+{
+  "cpfTomador": "61020788100",
+  "valor": 125,
+  "codigoServico": "060101"
+}
+```
+
+## 4) Validação técnica
+
+Após as mudanças:
+* `npm run build` ✅
+* `npm test -- --runInBand` ✅ (`6 suites`, `13 testes`)
