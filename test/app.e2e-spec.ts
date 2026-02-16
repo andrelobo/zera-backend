@@ -50,9 +50,7 @@ describe('Error Contract (e2e)', () => {
   });
 
   it('returns standardized error payload with correlationId', async () => {
-    const response = await request(app.getHttpServer())
-      .get('/error')
-      .expect(400);
+    const response = await request(app.getHttpServer()).get('/error').expect(400);
 
     expect(response.body).toMatchObject({
       code: 'TEST_BAD_REQUEST',

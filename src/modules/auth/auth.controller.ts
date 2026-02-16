@@ -1,11 +1,21 @@
-import { Body, Controller, Get, Headers, NotFoundException, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common'
-import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
-import { AuthService } from './auth.service'
-import { LoginDto } from './dtos/login.dto'
-import { BootstrapAdminDto } from './dtos/bootstrap-admin.dto'
-import { ResetAdminPasswordDto } from './dtos/reset-admin-password.dto'
-import { JwtAuthGuard } from './guards/jwt-auth.guard'
-import type { Request } from 'express'
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  NotFoundException,
+  Post,
+  Req,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { AuthService } from './auth.service';
+import { LoginDto } from './dtos/login.dto';
+import { BootstrapAdminDto } from './dtos/bootstrap-admin.dto';
+import { ResetAdminPasswordDto } from './dtos/reset-admin-password.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import type { Request } from 'express';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -18,11 +28,11 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current authenticated user' })
   @ApiResponse({ status: 200, description: 'Current user profile' })
   me(@Req() req: Request) {
-    const user = req.user as { id?: string } | undefined
+    const user = req.user as { id?: string } | undefined;
     if (!user?.id) {
-      throw new UnauthorizedException('Invalid auth context')
+      throw new UnauthorizedException('Invalid auth context');
     }
-    return this.auth.me(user.id)
+    return this.auth.me(user.id);
   }
 
   @Post('login')
@@ -41,7 +51,7 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, description: 'Access token' })
   login(@Body() dto: LoginDto) {
-    return this.auth.login(dto.email, dto.password)
+    return this.auth.login(dto.email, dto.password);
   }
 
   @Post('bootstrap')
@@ -52,17 +62,17 @@ export class AuthController {
     @Body() dto: BootstrapAdminDto,
     @Headers('x-admin-setup-token') setupToken?: string,
   ) {
-    const bootstrapEnabled = process.env.BOOTSTRAP_ENABLED !== 'false'
+    const bootstrapEnabled = process.env.BOOTSTRAP_ENABLED !== 'false';
     if (process.env.NODE_ENV === 'production' || !bootstrapEnabled) {
-      throw new NotFoundException()
+      throw new NotFoundException();
     }
 
-    const expected = process.env.ADMIN_SETUP_TOKEN ?? ''
+    const expected = process.env.ADMIN_SETUP_TOKEN ?? '';
     if (!expected || setupToken !== expected) {
-      throw new UnauthorizedException('Invalid setup token')
+      throw new UnauthorizedException('Invalid setup token');
     }
 
-    return this.auth.bootstrapAdmin(dto.name, dto.email, dto.password)
+    return this.auth.bootstrapAdmin(dto.name, dto.email, dto.password);
   }
 
   @Post('admin/reset-password')
@@ -73,16 +83,16 @@ export class AuthController {
     @Body() dto: ResetAdminPasswordDto,
     @Headers('x-admin-setup-token') setupToken?: string,
   ) {
-    const resetEnabled = process.env.ADMIN_RESET_ENABLED !== 'false'
+    const resetEnabled = process.env.ADMIN_RESET_ENABLED !== 'false';
     if (!resetEnabled) {
-      throw new NotFoundException()
+      throw new NotFoundException();
     }
 
-    const expected = process.env.ADMIN_SETUP_TOKEN ?? ''
+    const expected = process.env.ADMIN_SETUP_TOKEN ?? '';
     if (!expected || setupToken !== expected) {
-      throw new UnauthorizedException('Invalid setup token')
+      throw new UnauthorizedException('Invalid setup token');
     }
 
-    return this.auth.resetAdminPassword(dto.email, dto.password)
+    return this.auth.resetAdminPassword(dto.email, dto.password);
   }
 }

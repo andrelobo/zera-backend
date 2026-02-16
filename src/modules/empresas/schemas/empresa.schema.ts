@@ -1,68 +1,68 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import type { HydratedDocument } from 'mongoose'
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import type { HydratedDocument } from 'mongoose';
 
 @Schema({ _id: false })
 export class Endereco {
   @Prop()
-  logradouro?: string
+  logradouro?: string;
 
   @Prop()
-  numero?: string
+  numero?: string;
 
   @Prop()
-  complemento?: string
+  complemento?: string;
 
   @Prop()
-  bairro?: string
+  bairro?: string;
 
   @Prop()
-  codigoMunicipio?: string
+  codigoMunicipio?: string;
 
   @Prop()
-  cidade?: string
+  cidade?: string;
 
   @Prop()
-  uf?: string
+  uf?: string;
 
   @Prop()
-  codigoPais?: string
+  codigoPais?: string;
 
   @Prop()
-  pais?: string
+  pais?: string;
 
   @Prop()
-  cep?: string
+  cep?: string;
 }
 
-const EnderecoSchema = SchemaFactory.createForClass(Endereco)
+const EnderecoSchema = SchemaFactory.createForClass(Endereco);
 
 @Schema({ timestamps: true })
 export class Empresa {
   @Prop({ required: true, unique: true, index: true })
-  cnpj: string
+  cnpj: string;
 
   @Prop()
-  razaoSocial?: string
+  razaoSocial?: string;
 
   @Prop()
-  nomeFantasia?: string
+  nomeFantasia?: string;
 
   @Prop()
-  inscricaoMunicipal?: string
+  inscricaoMunicipal?: string;
 
   @Prop()
-  email?: string
+  email?: string;
 
   @Prop()
-  fone?: string
+  fone?: string;
 
   @Prop({ type: EnderecoSchema })
-  endereco?: Endereco
+  endereco?: Endereco;
 
   @Prop({ type: Object })
-  providerData?: Record<string, any>
+  providerData?: Record<string, any>;
 }
 
-export type EmpresaDocument = HydratedDocument<Empresa>
+export type EmpresaDocument = HydratedDocument<Empresa>;
 
-export const EmpresaSchema = SchemaFactory.createForClass(Empresa)
+export const EmpresaSchema = SchemaFactory.createForClass(Empresa);

@@ -1,73 +1,73 @@
-import { Injectable, Logger } from '@nestjs/common'
-import { request as httpRequest } from 'node:http'
-import { request as httpsRequest } from 'node:https'
-import { getPlugNotasConfig } from './plugnotas.config'
+import { Injectable, Logger } from '@nestjs/common';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
+import { getPlugNotasConfig } from './plugnotas.config';
 
 export type PlugNotasHttpError = {
-  status: number
-  message: string
-  body?: unknown
-  retryAfterMs?: number
-}
+  status: number;
+  message: string;
+  body?: unknown;
+  retryAfterMs?: number;
+};
 
 function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms))
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 function parseRetryAfterMs(value: string | null): number | undefined {
-  if (!value) return undefined
-  const seconds = Number(value)
-  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000)
-  const dateMs = Date.parse(value)
-  if (!Number.isNaN(dateMs)) return Math.max(0, dateMs - Date.now())
-  return undefined
+  if (!value) return undefined;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+  const dateMs = Date.parse(value);
+  if (!Number.isNaN(dateMs)) return Math.max(0, dateMs - Date.now());
+  return undefined;
 }
 
 function normalizeHeaderValue(value: string | string[] | undefined): string | null {
-  if (Array.isArray(value)) return value[0] ?? null
-  return value ?? null
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
 }
 
 function parseJson(data: Uint8Array): unknown {
-  if (data.length === 0) return undefined
+  if (data.length === 0) return undefined;
   try {
-    return JSON.parse(Buffer.from(data).toString('utf8'))
+    return JSON.parse(Buffer.from(data).toString('utf8'));
   } catch {
-    return undefined
+    return undefined;
   }
 }
 
 @Injectable()
 export class PlugNotasHttp {
-  private readonly logger = new Logger(PlugNotasHttp.name)
+  private readonly logger = new Logger(PlugNotasHttp.name);
 
   private buildUrl(path: string, query?: Record<string, any>) {
-    const cfg = getPlugNotasConfig()
-    const url = new URL(`${cfg.baseUrl}${path}`)
+    const cfg = getPlugNotasConfig();
+    const url = new URL(`${cfg.baseUrl}${path}`);
 
     if (query) {
       for (const [k, v] of Object.entries(query)) {
-        if (v === undefined || v === null) continue
-        url.searchParams.set(k, String(v))
+        if (v === undefined || v === null) continue;
+        url.searchParams.set(k, String(v));
       }
     }
 
-    return url.toString()
+    return url.toString();
   }
 
   private async executeRawRequest(input: {
-    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-    url: string
-    headers: Record<string, string>
-    body?: string | Buffer | Uint8Array
-    timeoutMs: number
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+    url: string;
+    headers: Record<string, string>;
+    body?: string | Buffer | Uint8Array;
+    timeoutMs: number;
   }): Promise<{
-    status: number
-    headers: Record<string, string | string[] | undefined>
-    body: Uint8Array
+    status: number;
+    headers: Record<string, string | string[] | undefined>;
+    body: Uint8Array;
   }> {
-    const target = new URL(input.url)
-    const transport = target.protocol === 'https:' ? httpsRequest : httpRequest
+    const target = new URL(input.url);
+    const transport = target.protocol === 'https:' ? httpsRequest : httpRequest;
 
     return new Promise((resolve, reject) => {
       const req = transport(
@@ -77,85 +77,87 @@ export class PlugNotasHttp {
           headers: input.headers,
         },
         (res) => {
-          const chunks: Buffer[] = []
+          const chunks: Buffer[] = [];
           res.on('data', (chunk) => {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-          })
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          });
           res.on('end', () => {
             resolve({
               status: res.statusCode ?? 0,
               headers: res.headers,
               body: new Uint8Array(Buffer.concat(chunks)),
-            })
-          })
+            });
+          });
         },
-      )
+      );
 
       const timer = setTimeout(() => {
-        const err = Object.assign(
-          new Error(`PlugNotas HTTP timeout after ${input.timeoutMs}ms`),
-          { code: 'PLUGNOTAS_REQUEST_TIMEOUT' },
-        )
-        req.destroy(err)
-      }, input.timeoutMs)
+        const err = Object.assign(new Error(`PlugNotas HTTP timeout after ${input.timeoutMs}ms`), {
+          code: 'PLUGNOTAS_REQUEST_TIMEOUT',
+        });
+        req.destroy(err);
+      }, input.timeoutMs);
 
       req.on('error', (err) => {
-        clearTimeout(timer)
-        reject(err)
-      })
+        clearTimeout(timer);
+        reject(err);
+      });
 
       req.on('close', () => {
-        clearTimeout(timer)
-      })
+        clearTimeout(timer);
+      });
 
       if (input.body !== undefined) {
-        req.write(input.body)
+        req.write(input.body);
       }
-      req.end()
-    })
+      req.end();
+    });
   }
 
   async request<T>(input: {
-    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-    path: string
-    query?: Record<string, any>
-    body?: any
-    headers?: Record<string, string>
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+    path: string;
+    query?: Record<string, any>;
+    body?: any;
+    headers?: Record<string, string>;
     retry?: {
-      maxAttempts?: number
-      baseDelayMs?: number
-      maxDelayMs?: number
-    }
+      maxAttempts?: number;
+      baseDelayMs?: number;
+      maxDelayMs?: number;
+    };
   }): Promise<T> {
-    const cfg = getPlugNotasConfig()
-    const url = this.buildUrl(input.path, input.query)
+    const cfg = getPlugNotasConfig();
+    const url = this.buildUrl(input.path, input.query);
 
-    const maxAttempts = input.retry?.maxAttempts ?? Number(process.env.PLUGNOTAS_HTTP_MAX_ATTEMPTS ?? 3)
-    const baseDelayMs = input.retry?.baseDelayMs ?? Number(process.env.PLUGNOTAS_HTTP_BASE_DELAY_MS ?? 500)
-    const maxDelayMs = input.retry?.maxDelayMs ?? Number(process.env.PLUGNOTAS_HTTP_MAX_DELAY_MS ?? 5000)
-    const timeoutMs = Number(process.env.PLUGNOTAS_HTTP_TIMEOUT_MS ?? 30000)
+    const maxAttempts =
+      input.retry?.maxAttempts ?? Number(process.env.PLUGNOTAS_HTTP_MAX_ATTEMPTS ?? 3);
+    const baseDelayMs =
+      input.retry?.baseDelayMs ?? Number(process.env.PLUGNOTAS_HTTP_BASE_DELAY_MS ?? 500);
+    const maxDelayMs =
+      input.retry?.maxDelayMs ?? Number(process.env.PLUGNOTAS_HTTP_MAX_DELAY_MS ?? 5000);
+    const timeoutMs = Number(process.env.PLUGNOTAS_HTTP_TIMEOUT_MS ?? 30000);
 
-    let attempt = 0
+    let attempt = 0;
     while (true) {
-      attempt += 1
-      const startedAt = Date.now()
+      attempt += 1;
+      const startedAt = Date.now();
 
       try {
         const headers: Record<string, string> = {
           'x-api-key': cfg.apiKey,
           ...input.headers,
-        }
+        };
 
-        let body: any = undefined
+        let body: any = undefined;
         if (input.body !== undefined) {
-          headers['Content-Type'] = headers['Content-Type'] ?? 'application/json'
+          headers['Content-Type'] = headers['Content-Type'] ?? 'application/json';
           body =
             headers['Content-Type'] === 'application/json'
               ? JSON.stringify(input.body)
-              : input.body
+              : input.body;
         }
 
-        this.logger.log(`[${cfg.environment}] ${input.method} ${input.path} attempt=${attempt}`)
+        this.logger.log(`[${cfg.environment}] ${input.method} ${input.path} attempt=${attempt}`);
 
         const res = await this.executeRawRequest({
           method: input.method,
@@ -163,67 +165,68 @@ export class PlugNotasHttp {
           headers,
           body,
           timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 30000,
-        })
+        });
 
-        const elapsed = Date.now() - startedAt
-        const contentType = normalizeHeaderValue(res.headers['content-type']) ?? ''
-        const isJson = contentType.includes('application/json')
+        const elapsed = Date.now() - startedAt;
+        const contentType = normalizeHeaderValue(res.headers['content-type']) ?? '';
+        const isJson = contentType.includes('application/json');
 
         if (res.status < 200 || res.status >= 300) {
-          const parsedBody = isJson
-            ? parseJson(res.body)
-            : Buffer.from(res.body).toString('utf8')
+          const parsedBody = isJson ? parseJson(res.body) : Buffer.from(res.body).toString('utf8');
 
-          const retryAfterMs = parseRetryAfterMs(normalizeHeaderValue(res.headers['retry-after']))
+          const retryAfterMs = parseRetryAfterMs(normalizeHeaderValue(res.headers['retry-after']));
 
           const err: PlugNotasHttpError = {
             status: res.status,
             message: `PlugNotas API error: ${res.status}`,
             body: parsedBody,
             retryAfterMs,
-          }
+          };
 
-          const transient = res.status === 429 || (res.status >= 500 && res.status <= 599)
+          const transient = res.status === 429 || (res.status >= 500 && res.status <= 599);
 
           this.logger.warn(
             `[${cfg.environment}] ${input.method} ${input.path} status=${res.status} ms=${elapsed} transient=${transient}`,
-          )
+          );
 
           if (transient && attempt < maxAttempts) {
-            const exp = Math.min(maxDelayMs, baseDelayMs * Math.pow(2, attempt - 1))
-            const jitter = Math.floor(Math.random() * 200)
-            const delay = Math.min(maxDelayMs, (retryAfterMs ?? exp) + jitter)
-            await sleep(delay)
-            continue
+            const exp = Math.min(maxDelayMs, baseDelayMs * Math.pow(2, attempt - 1));
+            const jitter = Math.floor(Math.random() * 200);
+            const delay = Math.min(maxDelayMs, (retryAfterMs ?? exp) + jitter);
+            await sleep(delay);
+            continue;
           }
 
-          throw Object.assign(new Error(err.message), err)
+          throw Object.assign(new Error(err.message), err);
         }
 
-        this.logger.log(`[${cfg.environment}] ${input.method} ${input.path} status=${res.status} ms=${elapsed}`)
+        this.logger.log(
+          `[${cfg.environment}] ${input.method} ${input.path} status=${res.status} ms=${elapsed}`,
+        );
 
         if (res.status === 204) {
-          return undefined as unknown as T
+          return undefined as unknown as T;
         }
 
         if (isJson) {
-          return parseJson(res.body) as T
+          return parseJson(res.body) as T;
         }
 
-        return res.body as unknown as T
+        return res.body as unknown as T;
       } catch (e) {
-        const status = (e as any)?.status
-        const isHttpTransient = status === 429 || (typeof status === 'number' && status >= 500 && status <= 599)
-        const isNetwork = status === undefined
+        const status = (e as any)?.status;
+        const isHttpTransient =
+          status === 429 || (typeof status === 'number' && status >= 500 && status <= 599);
+        const isNetwork = status === undefined;
 
         if ((isHttpTransient || isNetwork) && attempt < maxAttempts) {
-          const exp = Math.min(maxDelayMs, baseDelayMs * Math.pow(2, attempt - 1))
-          const jitter = Math.floor(Math.random() * 200)
-          await sleep(Math.min(maxDelayMs, exp + jitter))
-          continue
+          const exp = Math.min(maxDelayMs, baseDelayMs * Math.pow(2, attempt - 1));
+          const jitter = Math.floor(Math.random() * 200);
+          await sleep(Math.min(maxDelayMs, exp + jitter));
+          continue;
         }
 
-        throw e
+        throw e;
       }
     }
   }

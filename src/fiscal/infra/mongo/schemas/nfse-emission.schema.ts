@@ -1,63 +1,63 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import type { HydratedDocument } from 'mongoose'
-import { NfseEmissionStatus } from '../../../domain/types/nfse-emission-status'
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import type { HydratedDocument } from 'mongoose';
+import { NfseEmissionStatus } from '../../../domain/types/nfse-emission-status';
 
 @Schema({ timestamps: true })
 export class NfseEmission {
   @Prop({ required: true })
-  provider: string
+  provider: string;
 
   @Prop({ required: true, type: String, enum: NfseEmissionStatus })
-  status: NfseEmissionStatus
+  status: NfseEmissionStatus;
 
   @Prop({ type: Object, required: true })
-  payload: Record<string, any>
+  payload: Record<string, any>;
 
   @Prop({ index: true })
-  idempotencyKey?: string
+  idempotencyKey?: string;
 
   @Prop({ index: true })
-  externalId?: string
+  externalId?: string;
 
   @Prop()
-  error?: string
+  error?: string;
 
   @Prop({ type: Object })
-  providerResponse?: Record<string, any>
+  providerResponse?: Record<string, any>;
 
   @Prop({ type: Object })
-  providerRequest?: Record<string, any>
+  providerRequest?: Record<string, any>;
 
   @Prop()
-  xmlBase64?: string
+  xmlBase64?: string;
 
   @Prop()
-  pdfBase64?: string
+  pdfBase64?: string;
 
   @Prop({ default: 0 })
-  pollAttempts: number
+  pollAttempts: number;
 
   @Prop()
-  lastPollError?: string
+  lastPollError?: string;
 
   @Prop()
-  lastPolledAt?: Date
+  lastPolledAt?: Date;
 
   @Prop({ index: true })
-  nextPollAt?: Date
+  nextPollAt?: Date;
 
   @Prop()
-  lastArtifactSyncAt?: Date
+  lastArtifactSyncAt?: Date;
 
   @Prop({ type: [Object], default: [] })
-  artifactSyncAudit?: Array<Record<string, any>>
+  artifactSyncAudit?: Array<Record<string, any>>;
 }
 
-export type NfseEmissionDocument = HydratedDocument<NfseEmission>
+export type NfseEmissionDocument = HydratedDocument<NfseEmission>;
 
-export const NfseEmissionSchema = SchemaFactory.createForClass(NfseEmission)
+export const NfseEmissionSchema = SchemaFactory.createForClass(NfseEmission);
 
-NfseEmissionSchema.index({ provider: 1, externalId: 1 }, { unique: false })
+NfseEmissionSchema.index({ provider: 1, externalId: 1 }, { unique: false });
 NfseEmissionSchema.index(
   { provider: 1, idempotencyKey: 1 },
   {
@@ -65,4 +65,4 @@ NfseEmissionSchema.index(
     name: 'uniq_provider_idempotency_key',
     partialFilterExpression: { idempotencyKey: { $type: 'string' } },
   },
-)
+);

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class UpdateStatusService {
@@ -6,7 +6,7 @@ export class UpdateStatusService {
     return {
       externalId,
       status,
-      processedAt: new Date().toISOString()
-    }
+      processedAt: new Date().toISOString(),
+    };
   }
 }

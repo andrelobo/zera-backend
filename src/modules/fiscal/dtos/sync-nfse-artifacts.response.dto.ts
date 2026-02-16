@@ -1,27 +1,27 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SyncNfseArtifactsResponseDto {
   @ApiProperty({ example: true })
-  found!: boolean
+  found!: boolean;
 
   @ApiPropertyOptional({ example: '698c972c4cf35620b8333687' })
-  id?: string
+  id?: string;
 
   @ApiPropertyOptional({ example: 'AUTHORIZED' })
-  status?: string
+  status?: string;
 
   @ApiProperty({ example: false })
-  synced!: boolean
+  synced!: boolean;
 
   @ApiProperty({ example: 'already_present' })
-  reason!: string
+  reason!: string;
 
   @ApiProperty({ example: true })
-  hasXml!: boolean
+  hasXml!: boolean;
 
   @ApiProperty({ example: true })
-  hasPdf!: boolean
+  hasPdf!: boolean;
 
   @ApiPropertyOptional({ example: '698c972d33f27fa48bc0f659' })
-  artifactId?: string
+  artifactId?: string;
 }

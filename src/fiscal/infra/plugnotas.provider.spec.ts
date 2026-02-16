@@ -1,16 +1,16 @@
-import { PlugNotasProvider } from './plugnotas.provider'
-import { NfseEmissionStatus } from '../domain/types/nfse-emission-status'
+import { PlugNotasProvider } from './plugnotas.provider';
+import { NfseEmissionStatus } from '../domain/types/nfse-emission-status';
 
 describe('PlugNotasProvider', () => {
-  const originalCmun = process.env.NFSE_CMUN_IBGE
+  const originalCmun = process.env.NFSE_CMUN_IBGE;
 
   beforeEach(() => {
-    process.env.NFSE_CMUN_IBGE = '1302603'
-  })
+    process.env.NFSE_CMUN_IBGE = '1302603';
+  });
 
   afterEach(() => {
-    process.env.NFSE_CMUN_IBGE = originalCmun
-  })
+    process.env.NFSE_CMUN_IBGE = originalCmun;
+  });
 
   it('treats HTTP 400 with protocol as accepted (PENDING)', async () => {
     const nfseApi = {
@@ -18,9 +18,9 @@ describe('PlugNotasProvider', () => {
         status: 400,
         body: { protocol: 'pn-123' },
       }),
-    }
+    };
 
-    const provider = new PlugNotasProvider(nfseApi as any)
+    const provider = new PlugNotasProvider(nfseApi as any);
 
     const result = await provider.emitirNfse({
       referenciaExterna: 'ref-1',
@@ -55,11 +55,11 @@ describe('PlugNotasProvider', () => {
         descricao: 'Consulta IR 2024',
         valor: 150,
       },
-    })
+    });
 
-    expect(result.status).toBe(NfseEmissionStatus.PENDING)
-    expect(result.externalId).toBe('pn-123')
-  })
+    expect(result.status).toBe(NfseEmissionStatus.PENDING);
+    expect(result.externalId).toBe('pn-123');
+  });
 
   it('treats HTTP 400 with protocolo in array as accepted (PENDING)', async () => {
     const nfseApi = {
@@ -67,9 +67,9 @@ describe('PlugNotasProvider', () => {
         status: 400,
         body: [{ protocolo: 'pn-456' }],
       }),
-    }
+    };
 
-    const provider = new PlugNotasProvider(nfseApi as any)
+    const provider = new PlugNotasProvider(nfseApi as any);
 
     const result = await provider.emitirNfse({
       referenciaExterna: 'ref-2',
@@ -104,9 +104,9 @@ describe('PlugNotasProvider', () => {
         descricao: 'Consulta IR 2024',
         valor: 150,
       },
-    })
+    });
 
-    expect(result.status).toBe(NfseEmissionStatus.PENDING)
-    expect(result.externalId).toBe('pn-456')
-  })
-})
+    expect(result.status).toBe(NfseEmissionStatus.PENDING);
+    expect(result.externalId).toBe('pn-456');
+  });
+});

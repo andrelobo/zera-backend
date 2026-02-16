@@ -1,5 +1,5 @@
-import { Controller, Get } from '@nestjs/common'
-import { ApiTags, ApiOperation } from '@nestjs/swagger'
+import { Controller, Get } from '@nestjs/common';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 
 @ApiTags('health')
 @Controller('health')
@@ -11,6 +11,6 @@ export class HealthController {
       status: 'ok',
       timestamp: new Date().toISOString(),
       env: process.env.NODE_ENV,
-    }
+    };
   }
 }
