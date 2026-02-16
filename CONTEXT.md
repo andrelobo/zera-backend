@@ -989,3 +989,38 @@ Os demais parâmetros `QUICK_NFSE_*` permanecem válidos como defaults para comp
 Build validado após a alteração usando Node 20:
 * `node -v` -> `v20.20.0`
 * `yarn build` ✅
+
+---
+
+# ATUALIZAÇÃO (16/02/2026) – Quick com inferência de regime tributário SN (correção E0166)
+
+## 1) Problema observado
+
+Na emissão rápida (`POST /nfse/quick`), a API do provider retornava rejeição:
+
+* `E0166`: obrigatório informar regime de apuração dos tributos do SN para optante do Simples.
+
+## 2) Ajuste aplicado no quick flow
+
+A inferência de `regimeTributarioSn` foi centralizada no backend (somente no fluxo quick), sem aumentar o payload mínimo do frontend.
+
+Regras implementadas:
+* se `empresa.providerData.simples` indicar **não optante**, o quick **não envia** `regimeTributarioSn`;
+* se indicar optante ou estiver ausente/ambíguo, o quick envia defaults SN:
+  * `opSimpNac = 3`
+  * `regApTribSN = 1`
+  * `regEspTrib = 0`
+
+## 3) Configuração opcional (override)
+
+Mantidos overrides por variável de ambiente para o quick:
+* `QUICK_NFSE_OP_SIMP_NAC`
+* `QUICK_NFSE_REG_AP_TRIB_SN`
+* `QUICK_NFSE_REG_ESP_TRIB`
+
+## 4) Validação técnica
+
+* Teste unitário do `EmitirNfseQuickService` cobrindo:
+  * envio de defaults SN;
+  * não envio quando marcado como não optante.
+* Build da aplicação validado com sucesso.

@@ -19,6 +19,26 @@ function requiredString(value: string | undefined, field: string): string {
   return normalized;
 }
 
+function optionalNumberFromEnv(value: string | undefined): number | undefined {
+  if (!value?.trim()) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function booleanLike(value: unknown): boolean | undefined {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') {
+    if (value === 1) return true;
+    if (value === 0) return false;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', '1', 'sim', 's', 'yes', 'y', 'optante', 'ativo'].includes(normalized)) return true;
+    if (['false', '0', 'nao', 'não', 'n', 'no', 'inativo'].includes(normalized)) return false;
+  }
+  return undefined;
+}
+
 @Injectable()
 export class EmitirNfseQuickService {
   constructor(
@@ -65,6 +85,7 @@ export class EmitirNfseQuickService {
       cnpj: string;
       razaoSocial?: string;
       inscricaoMunicipal?: string;
+      providerData?: Record<string, any>;
       endereco?: {
         logradouro?: string;
         numero?: string;
@@ -99,6 +120,7 @@ export class EmitirNfseQuickService {
 
     const codigoNacional = servicoCatalogo?.codigoNacional ?? codigoNacionalPadrao;
     const descricaoServico = servicoCatalogo?.descricao ?? descricaoPadrao;
+    const regimeTributarioSn = this.resolveRegimeTributarioSn(empresa.providerData);
 
     const referencia = this.generateReference(empresa.cnpj);
     const cpfTomador = onlyDigits(input.cpfTomador);
@@ -114,6 +136,7 @@ export class EmitirNfseQuickService {
         cnpj: onlyDigits(empresa.cnpj),
         inscricaoMunicipal: empresa.inscricaoMunicipal,
         razaoSocial: empresa.razaoSocial ?? 'PRESTADOR',
+        regimeTributarioSn,
         endereco: {
           logradouro: requiredString(prestadorEndereco.logradouro, 'empresa.endereco.logradouro'),
           numero: requiredString(prestadorEndereco.numero, 'empresa.endereco.numero'),
@@ -147,6 +170,25 @@ export class EmitirNfseQuickService {
         },
       },
       referenciaExterna: referencia,
+    };
+  }
+
+  private resolveRegimeTributarioSn(providerData?: Record<string, any>) {
+    const simplesData = providerData?.simples;
+    const optante =
+      booleanLike(simplesData?.optante) ??
+      booleanLike(simplesData?.optanteSimples) ??
+      booleanLike(simplesData?.isOptante) ??
+      booleanLike(simplesData);
+
+    if (optante === false) {
+      return undefined;
+    }
+
+    return {
+      opSimpNac: optionalNumberFromEnv(process.env.QUICK_NFSE_OP_SIMP_NAC) ?? 3,
+      regApTribSN: optionalNumberFromEnv(process.env.QUICK_NFSE_REG_AP_TRIB_SN) ?? 1,
+      regEspTrib: optionalNumberFromEnv(process.env.QUICK_NFSE_REG_ESP_TRIB) ?? 0,
     };
   }
 
