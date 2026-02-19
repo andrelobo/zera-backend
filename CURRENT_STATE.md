@@ -1,6 +1,6 @@
 # ZERA Backend – Current State
 
-Snapshot operacional do backend em **16/02/2026** (última atualização consolidada).
+Snapshot operacional do backend em **19/02/2026** (última atualização consolidada).
 
 ## 1. Objetivo do documento
 
@@ -92,6 +92,7 @@ Importantes para quick flow:
 ## 9. Gaps conhecidos
 
 * Pré-requisitos NFSe Nacional foram implementados em modo seguro por flag (`off|warn|enforce`), com default `off`; rollout produtivo ainda depende de ativação gradual.
+* Estratégia recomendada de rollout: `off` (baseline) -> `warn` (observabilidade sem bloqueio) -> `enforce` (bloqueio por pré-requisito validado).
 * Webhook com validação por token compartilhado; assinatura criptográfica ainda não implementada.
 
 ## 10. Referências
