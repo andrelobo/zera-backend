@@ -1052,3 +1052,51 @@ Com `enforce`, falha de pré-requisito bloqueia emissão.
 ## 3) Observação operacional
 
 Foi adicionado cache em memória por TTL para reduzir chamadas repetidas aos endpoints de pré-requisito.
+
+---
+
+# ATUALIZAÇÃO (19/02/2026) – Cadastro de tomadores + autocomplete para emissão
+
+## 1) Implementação
+
+Foi implementado novo módulo de tomadores no backend com CRUD completo:
+
+* `POST /tomadores`
+* `GET /tomadores`
+* `GET /tomadores/{id}`
+* `PATCH /tomadores/{id}`
+* `DELETE /tomadores/{id}`
+
+## 2) Regra de vínculo por prestador (empresa)
+
+Para evitar mistura entre prestadores, o tomador passou a ser vinculado por `empresaCnpj`.
+
+Regra de unicidade:
+* índice único em `empresaCnpj + cpfCnpj`
+
+Resultado:
+* o mesmo tomador (mesmo CPF/CNPJ) pode existir para empresas diferentes;
+* dentro da mesma empresa, não permite duplicidade do tomador por documento.
+
+## 3) Autocomplete para frontend (emissão)
+
+Novo endpoint:
+* `GET /tomadores/autocomplete?empresaCnpj=&q=&limit=`
+
+Comportamento:
+* `empresaCnpj` obrigatório;
+* busca por `q` em **CPF/CNPJ** (normalizado para dígitos) e **nome/razão social**;
+* `limit` com default `10` e teto `50`.
+
+## 4) Segurança e compatibilidade
+
+* Rotas protegidas com `JwtAuthGuard` + `RolesGuard` (`admin`, `manager`, `user`).
+* Mudança **aditiva**, sem alterar contrato dos endpoints existentes de emissão (`/nfse/emitir` e `/nfse/quick`).
+* Fluxo atual de produção permanece inalterado.
+
+## 5) Validação técnica
+
+Executado em Node 20:
+* `yarn build` ✅
+* `yarn test --runInBand src/modules/tomadores/tomadores.service.spec.ts` ✅ (`6 testes`)
+* `yarn test --runInBand` ✅ (`9 suites`, `23 testes`)

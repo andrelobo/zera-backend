@@ -12,6 +12,7 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EmpresasModule } from './modules/empresas/empresas.module';
 import { UsersModule } from './modules/users/users.module';
+import { TomadoresModule } from './modules/tomadores/tomadores.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { UsersModule } from './modules/users/users.module';
     AuthModule,
     UsersModule,
     EmpresasModule,
+    TomadoresModule,
     FiscalModule,
     WebhooksModule,
   ],

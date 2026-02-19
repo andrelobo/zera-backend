@@ -39,6 +39,24 @@ Payload mínimo:
 Opcional:
 * `codigoServico` (6 dígitos), com inferência por catálogo LC116.
 
+### 3.3 Cadastro de tomadores (novo)
+
+Endpoints:
+* `POST /tomadores`
+* `GET /tomadores`
+* `GET /tomadores/{id}`
+* `PATCH /tomadores/{id}`
+* `DELETE /tomadores/{id}`
+
+Regra de vínculo:
+* tomador vinculado por `empresaCnpj` (isolamento por prestador)
+* unicidade por `empresaCnpj + cpfCnpj`
+
+Autocomplete para emissão no frontend:
+* `GET /tomadores/autocomplete?empresaCnpj=&q=&limit=`
+* busca por CPF/CNPJ ou nome
+* `limit` default `10` e máximo `50`
+
 ## 4. Segurança e robustez já aplicadas
 
 * `JWT_SECRET` obrigatório no boot (fail-fast).
