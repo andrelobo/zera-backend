@@ -95,6 +95,12 @@ PLUGNOTAS_API_KEY=
 PLUGNOTAS_CNPJ_PATH=/cnpj/{cnpj}
 PLUGNOTAS_NFSE_XML_PATH=/nfse/xml/{id}
 PLUGNOTAS_NFSE_PDF_PATH=/nfse/pdf/{id}
+PLUGNOTAS_PREREQ_MODE=off
+PLUGNOTAS_PREREQ_CHECK_CITY=true
+PLUGNOTAS_PREREQ_ENABLE_COMPANY=false
+PLUGNOTAS_PREREQ_CITY_PATH=/Auxiliares/getCidadeById?id={ibge}
+PLUGNOTAS_PREREQ_COMPANY_PATH=/Empresa/updateCompany
+PLUGNOTAS_PREREQ_CACHE_TTL_MS=3600000
 
 JWT_SECRET=
 JWT_EXPIRES_IN=7d
@@ -114,6 +120,12 @@ NFSE_CMUN_IBGE=1302603
 WEBHOOK_SHARED_SECRET=
 WEBHOOK_SHARED_SECRET_HEADER=x-webhook-token
 ```
+
+Pré-requisitos NFSe Nacional (modo seguro):
+- `PLUGNOTAS_PREREQ_MODE=off` mantém o comportamento atual de produção (sem bloqueio).
+- `warn` executa os pré-checks e registra falhas sem bloquear emissão.
+- `enforce` bloqueia emissão se o check de cidade falhar, e também se a habilitação da empresa estiver ativa e falhar.
+- A habilitação da empresa é controlada por `PLUGNOTAS_PREREQ_ENABLE_COMPANY` e vem `false` por padrão para evitar efeito colateral inesperado.
 
 
 ---

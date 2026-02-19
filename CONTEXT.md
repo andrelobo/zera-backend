@@ -1,5 +1,8 @@
 # ZERA Backend – Project Context
 
+> Leitura rápida operacional: veja `CURRENT_STATE.md` (snapshot atual).
+> Este documento (`CONTEXT.md`) permanece como histórico completo e linha do tempo.
+
 ## 1. Overview
 
 ZERA is a NestJS backend that powers a PWA to issue ultra-simplified NFSe (Brazilian national NFSe standard 2026), aimed at micro-entrepreneurs and small businesses.
@@ -1024,3 +1027,28 @@ Mantidos overrides por variável de ambiente para o quick:
   * envio de defaults SN;
   * não envio quando marcado como não optante.
 * Build da aplicação validado com sucesso.
+
+---
+
+# ATUALIZAÇÃO (19/02/2026) – Pré-requisitos NFSe Nacional no backend (modo seguro)
+
+## 1) Implementação
+
+Foi implementada a camada de pré-requisitos PlugNotas antes da emissão, cobrindo:
+* checagem de cidade homologada no Ambiente Nacional (rota configurável)
+* habilitação da empresa para `nfseNacional` (rota configurável)
+
+## 2) Estratégia para não quebrar produção
+
+A funcionalidade entrou com feature flags:
+* `PLUGNOTAS_PREREQ_MODE=off|warn|enforce` (default: `off`)
+* `PLUGNOTAS_PREREQ_CHECK_CITY` (default: `true`)
+* `PLUGNOTAS_PREREQ_ENABLE_COMPANY` (default: `false`)
+
+Com `off`, o comportamento atual de produção permanece inalterado.
+Com `warn`, os checks rodam sem bloquear emissão.
+Com `enforce`, falha de pré-requisito bloqueia emissão.
+
+## 3) Observação operacional
+
+Foi adicionado cache em memória por TTL para reduzir chamadas repetidas aos endpoints de pré-requisito.

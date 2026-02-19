@@ -5,6 +5,7 @@ import type { EmitirNfseResult } from '../domain/types/emitir-nfse.result';
 import { NfseEmissionStatus } from '../domain/types/nfse-emission-status';
 import { PlugNotasNfseApi } from './plugnotas/nfse.api';
 import { extractPlugNotasStatus, mapPlugNotasStatusToDomain } from './plugnotas/nfse.mapper';
+import { PlugNotasPrerequisitesService } from './plugnotas/prerequisites.service';
 
 function onlyDigits(v?: string) {
   return (v ?? '').replace(/\D+/g, '');
@@ -43,7 +44,10 @@ export class PlugNotasProvider implements FiscalProvider {
   readonly providerName = 'PLUGNOTAS';
   private readonly logger = new Logger(PlugNotasProvider.name);
 
-  constructor(private readonly nfseApi: PlugNotasNfseApi) {}
+  constructor(
+    private readonly nfseApi: PlugNotasNfseApi,
+    private readonly prerequisites?: PlugNotasPrerequisitesService,
+  ) {}
 
   async emitirNfse(input: EmitirNfseInput): Promise<EmitirNfseResult> {
     const cnpjPrest = onlyDigits(input.prestador.cnpj);
@@ -53,6 +57,11 @@ export class PlugNotasProvider implements FiscalProvider {
     if (!cMun) {
       throw new Error('NFSE_CMUN_IBGE not set (IBGE code required for PlugNotas)');
     }
+
+    await this.prerequisites?.ensureBeforeIssuance({
+      prestadorCnpj: cnpjPrest,
+      codigoCidadeIbge: cMun,
+    });
 
     const servicoCodigo = normalizeServicoCodigo(input.servico);
     const regimeTributarioSn = input.prestador.regimeTributarioSn

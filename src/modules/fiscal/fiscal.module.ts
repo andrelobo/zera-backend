@@ -17,6 +17,7 @@ import {
 } from '../../fiscal/infra/mongo/schemas/nfse-emission.schema';
 import { PlugNotasHttp } from '../../fiscal/infra/plugnotas/plugnotas.http';
 import { PlugNotasNfseApi } from '../../fiscal/infra/plugnotas/nfse.api';
+import { PlugNotasPrerequisitesService } from '../../fiscal/infra/plugnotas/prerequisites.service';
 import { EmpresasModule } from '../empresas/empresas.module';
 
 @Module({
@@ -35,6 +36,7 @@ import { EmpresasModule } from '../empresas/empresas.module';
     PollNfseStatusRunner,
     PlugNotasHttp,
     PlugNotasNfseApi,
+    PlugNotasPrerequisitesService,
     {
       provide: 'FiscalProvider',
       useClass: PlugNotasProvider,
