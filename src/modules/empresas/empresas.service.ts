@@ -140,10 +140,13 @@ export class EmpresasService {
 
     if (qDigits.length > 0) {
       searchConditions.push({ cnpj: { $regex: this.escapeRegex(qDigits), $options: 'i' } });
+      searchConditions.push({ cpf_cnpj: { $regex: this.escapeRegex(qDigits), $options: 'i' } });
     }
     if (q.length > 0) {
       searchConditions.push({ razaoSocial: { $regex: this.escapeRegex(q), $options: 'i' } });
+      searchConditions.push({ nome_razao_social: { $regex: this.escapeRegex(q), $options: 'i' } });
       searchConditions.push({ nomeFantasia: { $regex: this.escapeRegex(q), $options: 'i' } });
+      searchConditions.push({ nome_fantasia: { $regex: this.escapeRegex(q), $options: 'i' } });
     }
 
     const query = searchConditions.length > 0 ? { $or: searchConditions } : {};
