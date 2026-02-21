@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { createCipheriv, createHash, randomBytes } from 'crypto';
 import type { File as MulterFile } from 'multer';
 import { Model } from 'mongoose';
+import { PlugNotasCnpjApi } from '../../fiscal/infra/plugnotas/cnpj.api';
 import { BrasilApiCnpjApi } from './brasilapi-cnpj.api';
 import { CreateEmpresaDto } from './dtos/create-empresa.dto';
 import { UpdateEmpresaDto } from './dtos/update-empresa.dto';
@@ -12,7 +13,8 @@ import { Empresa, EmpresaDocument } from './schemas/empresa.schema';
 export class EmpresasService {
   constructor(
     @InjectModel(Empresa.name) private readonly empresaModel: Model<EmpresaDocument>,
-    private readonly cnpjApi: BrasilApiCnpjApi,
+    private readonly brasilApiCnpjApi: BrasilApiCnpjApi,
+    private readonly plugNotasCnpjApi: PlugNotasCnpjApi,
   ) {}
 
   async createFromCnpj(cnpj: string, payload?: Partial<CreateEmpresaDto>) {
@@ -215,18 +217,38 @@ export class EmpresasService {
   }
 
   private async fetchProviderData(cnpj: string) {
+    let brasilApiError: { status: number | null; body: unknown } | null = null;
+    let plugNotasError: { status: number | null; body: unknown } | null = null;
+
     try {
-      const data = await this.cnpjApi.consultarCnpj(cnpj);
-      return { data };
+      const data = await this.brasilApiCnpjApi.consultarCnpj(cnpj);
+      return { data, source: 'brasilapi' as const };
     } catch (e: any) {
-      const providerStatus = e?.status;
-      const providerBody = e?.body;
-      throw new BadRequestException({
-        message: 'Falha ao consultar CNPJ na BrasilAPI',
-        providerStatus: providerStatus ?? null,
-        providerError: providerBody ?? null,
-      });
+      brasilApiError = {
+        status: typeof e?.status === 'number' ? e.status : null,
+        body: e?.body ?? e?.message ?? null,
+      };
     }
+
+    try {
+      const data = await this.plugNotasCnpjApi.consultarCnpj(cnpj);
+      return { data, source: 'plugnotas' as const };
+    } catch (e: any) {
+      plugNotasError = {
+        status: typeof e?.status === 'number' ? e.status : null,
+        body: e?.body ?? e?.message ?? null,
+      };
+    }
+
+    throw new BadRequestException({
+      code: 'CNPJ_LOOKUP_FAILED',
+      message: 'Falha ao consultar CNPJ nos provedores disponíveis',
+      details: {
+        cnpj,
+        brasilapi: brasilApiError,
+        plugnotas: plugNotasError,
+      },
+    });
   }
 
   private mapProviderData(cnpj: string, data: Record<string, any>): Partial<Empresa> {
