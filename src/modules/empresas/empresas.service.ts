@@ -288,6 +288,9 @@ export class EmpresasService {
 
     const cidadeRaw = pick(enderecoSrc, ['cidade', 'municipio', 'nome_municipio']);
     const paisRaw = pick(enderecoSrc, ['pais', 'nome_pais']);
+    const atividadePrincipal = Array.isArray(safeProviderData?.atividade_principal)
+      ? safeProviderData.atividade_principal[0]
+      : undefined;
 
     return {
       cnpj,
@@ -297,7 +300,7 @@ export class EmpresasService {
         'razaoSocial',
         'nomeRazaoSocial',
       ]),
-      nomeFantasia: pick(safeProviderData, ['nome_fantasia', 'nomeFantasia']),
+      nomeFantasia: pick(safeProviderData, ['nome_fantasia', 'nomeFantasia', 'fantasia']),
       inscricaoMunicipal: pick(safeProviderData, [
         'inscricao_municipal',
         'inscricaoMunicipal',
@@ -315,8 +318,10 @@ export class EmpresasService {
         pick(safeProviderData, ['data_inicio_atividade', 'dataInicioAtividade']),
       ),
       cnaeFiscal: this.toStringOrUndefined(pick(safeProviderData, ['cnae_fiscal', 'cnaeFiscal'])),
-      cnaeFiscalDescricao: pick(safeProviderData, ['cnae_fiscal_descricao', 'cnaeFiscalDescricao']),
-      porte: pick(safeProviderData, ['porte']),
+      cnaeFiscalDescricao:
+        pick(safeProviderData, ['cnae_fiscal_descricao', 'cnaeFiscalDescricao']) ??
+        (atividadePrincipal?.descricao as string | undefined),
+      porte: pick(safeProviderData, ['porte', 'descricao_porte', 'porte_empresa']),
       naturezaJuridica: pick(safeProviderData, ['natureza_juridica', 'naturezaJuridica']),
       capitalSocial: this.toNumberOrUndefined(
         pick(safeProviderData, ['capital_social', 'capitalSocial']),
@@ -365,6 +370,9 @@ export class EmpresasService {
   private trimProviderData(data: Record<string, any>): Record<string, any> {
     const endereco = data?.endereco ?? data?.estabelecimento?.endereco ?? undefined;
     const municipio = endereco?.municipio;
+    const atividadePrincipal = Array.isArray(data?.atividade_principal)
+      ? data.atividade_principal[0]
+      : undefined;
 
     return {
       cnpj: data?.cnpj,
@@ -375,8 +383,11 @@ export class EmpresasService {
       natureza_juridica: data?.natureza_juridica,
       capital_social: data?.capital_social,
       porte: data?.porte,
+      descricao_porte: data?.descricao_porte,
       situacao_cadastral: data?.situacao_cadastral,
+      data_situacao_cadastral: data?.data_situacao_cadastral,
       atividade_principal: data?.atividade_principal,
+      cnae_fiscal_descricao: data?.cnae_fiscal_descricao ?? atividadePrincipal?.descricao,
       atividades_secundarias: data?.atividades_secundarias,
       endereco: endereco
         ? {
@@ -472,8 +483,18 @@ export class EmpresasService {
 
   private toDateOrUndefined(value: unknown): Date | undefined {
     if (!value) return undefined;
-    const date = new Date(String(value));
+    const normalized = this.normalizeDateString(String(value));
+    const date = new Date(normalized);
     return Number.isNaN(date.getTime()) ? undefined : date;
+  }
+
+  private normalizeDateString(value: string): string {
+    const trimmed = value.trim();
+    const brDate = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmed);
+    if (brDate) {
+      return `${brDate[3]}-${brDate[2]}-${brDate[1]}`;
+    }
+    return trimmed;
   }
 
   private toStringOrUndefined(value: unknown): string | undefined {
