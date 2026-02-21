@@ -218,6 +218,53 @@ Regras do ZERA:
 
 * Emissão na PlugNotas Sandbox concluiu com **AUTORIZADA**
 * `retorno.situacao`: **AUTORIZADA**
+
+---
+
+## ATUALIZAÇÃO OPERACIONAL (PROD) – 2026-02-21
+
+### Problema atual (cadastro de empresas)
+- O frontend consegue chamar `POST /empresas/preview`, mas alguns campos ainda chegam vazios para autopreenchimento em produção.
+- Campos reportados como pendentes no preenchimento:
+  - `dataSituacaoCadastral`
+  - `dataInicioAtividade`
+  - `cnaeFiscal`
+  - `cnaeFiscalDescricao`
+  - `porte`
+  - `regimeTributario` (marcação da opção/“bolinha” no front)
+  - `aliquotaSimplesNacional`
+  - `apuracaoSimplesNacional`
+
+### Contrato esperado para `POST /empresas/preview`
+- Resposta deve priorizar contrato normalizado para o frontend:
+  - `cnpj`, `razaoSocial`, `nomeFantasia`, `inscricaoMunicipal`
+  - `situacaoCadastral`, `dataSituacaoCadastral`, `dataInicioAtividade`
+  - `cnaeFiscal`, `cnaeFiscalDescricao`, `porte`
+  - `opcaoPeloSimples`, `opcaoPeloMei`
+  - `regimeTributario`, `aliquotaSimplesNacional`, `apuracaoSimplesNacional`
+  - `endereco` normalizado
+- `providerData` pode ser mantido para auditoria/fallback, mas o front não deve depender dele para campos essenciais.
+
+### Regra de derivação mínima recomendada (backend)
+- Quando `opcaoPeloSimples=true` e `regimeTributario` vier ausente do provedor, retornar `regimeTributario="simples_nacional"`.
+- Para CNAE descrição, usar fallback de `atividade_principal[0].descricao` quando `cnaeFiscalDescricao` não vier explícito.
+- Datas devem sair em formato consistente (`YYYY-MM-DD` ou ISO) para evitar perda no input `type="date"` do front.
+
+### Checklist backend (produção)
+1. Validar payload real de `POST /empresas/preview` para um CNPJ conhecido.
+2. Confirmar quais campos vêm do provedor e quais precisam ser derivados/mapeados.
+3. Garantir resposta normalizada com os campos acima.
+4. Revalidar fluxo no frontend (`/empresas/nova`) sem fallback manual.
+
+### Resumo dos commits recentes (backend)
+- `a79c9f1` `fix(empresas): amplia mapeamento de preview e parse de datas cadastrais`
+- `b06a096` `fix(empresas): fallback de consulta CNPJ (BrasilAPI -> PlugNotas) no preview`
+- `4a63c91` `fix(auth): evita 500 no login para hash inválido`
+- `20b544d` `feat(empresas): usar BrasilAPI no preview/cadastro por CNPJ`
+- `f1f4e88` `fix(empresas): normaliza busca/autocomplete com suporte a campos legados no backend`
+
+Observação:
+- O problema atual não é mais indisponibilidade do endpoint; é completude/normalização de campos específicos no preview para autopreenchimento total do cadastro.
 * `numeroNfse`: `2600`
 * `codigoVerificacao`: `5278FE6A7`
 * `dataAutorizacao`: `2026-01-28T17:08:08.675Z`
