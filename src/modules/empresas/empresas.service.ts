@@ -132,11 +132,12 @@ export class EmpresasService {
     };
   }
 
-  list(filters?: { q?: string; limit?: number }) {
+  async list(filters?: { q?: string; limit?: number }) {
     const q = String(filters?.q ?? '').trim();
     const limit = this.normalizeLimit(filters?.limit, q.length > 0);
     const searchConditions: Record<string, unknown>[] = [];
     const qDigits = this.onlyDigits(q);
+    const hasSearch = q.length > 0;
 
     if (qDigits.length > 0) {
       searchConditions.push({ cnpj: { $regex: this.escapeRegex(qDigits), $options: 'i' } });
@@ -151,10 +152,31 @@ export class EmpresasService {
 
     const query = searchConditions.length > 0 ? { $or: searchConditions } : {};
     const listQuery = this.empresaModel.find(query).sort({ createdAt: -1 });
+    if (hasSearch) {
+      listQuery.select({
+        _id: 1,
+        cnpj: 1,
+        cpf_cnpj: 1,
+        razaoSocial: 1,
+        nome_razao_social: 1,
+        nomeFantasia: 1,
+        nome_fantasia: 1,
+        inscricaoMunicipal: 1,
+        inscricao_municipal: 1,
+        email: 1,
+        fone: 1,
+        endereco: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    }
     if (limit) {
       listQuery.limit(limit);
     }
-    return listQuery;
+    const docs = await listQuery.lean();
+    return docs.map((doc) =>
+      this.normalizeEmpresaOutput(doc as unknown as Record<string, unknown>),
+    );
   }
 
   getById(id: string) {
@@ -163,7 +185,17 @@ export class EmpresasService {
 
   async getByCnpj(cnpj: string) {
     const normalized = this.onlyDigits(cnpj);
-    return this.empresaModel.findOne({ cnpj: normalized });
+    return this.empresaModel.findOne({
+      $or: [{ cnpj: normalized }, { cpf_cnpj: normalized }],
+    } as any);
+  }
+
+  async getByCnpjNormalized(cnpj: string) {
+    const doc = await this.getByCnpj(cnpj);
+    if (!doc) return null;
+    return this.normalizeEmpresaOutput(
+      doc.toObject() as unknown as Record<string, unknown>,
+    );
   }
 
   async findFirstWithCertificate() {
@@ -438,6 +470,42 @@ export class EmpresasService {
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed <= 0) return hasSearch ? 50 : undefined;
     return Math.min(parsed, 100);
+  }
+
+  private normalizeEmpresaOutput(raw: Record<string, unknown>): Record<string, unknown> {
+    const pick = (...keys: string[]) => {
+      for (const key of keys) {
+        const value = raw[key];
+        if (value !== undefined && value !== null && value !== '') return value;
+      }
+      return undefined;
+    };
+
+    const enderecoRaw = (raw.endereco as Record<string, unknown> | undefined) ?? {};
+    const endereco = this.compactObject({
+      logradouro: enderecoRaw.logradouro,
+      numero: enderecoRaw.numero,
+      complemento: enderecoRaw.complemento,
+      bairro: enderecoRaw.bairro,
+      codigoMunicipio: enderecoRaw.codigoMunicipio ?? enderecoRaw.codigo_municipio,
+      cidade: enderecoRaw.cidade ?? enderecoRaw.municipio,
+      uf: enderecoRaw.uf ?? enderecoRaw.estado,
+      codigoPais: enderecoRaw.codigoPais ?? enderecoRaw.codigo_pais,
+      pais: enderecoRaw.pais,
+      cep: enderecoRaw.cep,
+    });
+
+    const id = String(raw._id ?? raw.id ?? '');
+    return this.compactObject({
+      ...raw,
+      id,
+      _id: id || undefined,
+      cnpj: pick('cnpj', 'cpf_cnpj'),
+      razaoSocial: pick('razaoSocial', 'nome_razao_social'),
+      nomeFantasia: pick('nomeFantasia', 'nome_fantasia'),
+      inscricaoMunicipal: pick('inscricaoMunicipal', 'inscricao_municipal'),
+      endereco: Object.keys(endereco).length > 0 ? endereco : undefined,
+    });
   }
 
   private escapeRegex(value: string): string {

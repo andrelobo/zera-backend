@@ -93,7 +93,7 @@ export class EmpresasController {
   @Roles('admin', 'manager', 'user')
   @ApiOperation({ summary: 'Get empresa by CNPJ' })
   async getByCnpj(@Param('cnpj') cnpj: string) {
-    const doc = await this.empresas.getByCnpj(cnpj);
+    const doc = await this.empresas.getByCnpjNormalized(cnpj);
     if (!doc) return { found: false };
     return doc;
   }
