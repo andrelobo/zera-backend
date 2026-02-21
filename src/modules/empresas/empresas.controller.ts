@@ -34,11 +34,11 @@ import { EmpresasService } from './empresas.service';
 @ApiBearerAuth()
 @Controller('empresas')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin')
 export class EmpresasController {
   constructor(private readonly empresas: EmpresasService) {}
 
   @Post()
+  @Roles('admin')
   @ApiOperation({ summary: 'Create empresa from CNPJ' })
   @ApiBody({ type: CreateEmpresaDto })
   @ApiResponse({ status: 201 })
@@ -47,6 +47,7 @@ export class EmpresasController {
   }
 
   @Post('preview')
+  @Roles('admin')
   @ApiOperation({ summary: 'Preview empresa data from CNPJ (no persistence)' })
   @ApiBody({ type: CreateEmpresaDto })
   @ApiResponse({ status: 200 })
@@ -55,6 +56,7 @@ export class EmpresasController {
   }
 
   @Post('certificado/import')
+  @Roles('admin')
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Importar certificado digital (.pfx/.p12) por CNPJ' })
   @ApiConsumes('multipart/form-data')
@@ -81,12 +83,14 @@ export class EmpresasController {
   }
 
   @Get()
+  @Roles('admin', 'manager', 'user')
   @ApiOperation({ summary: 'List empresas' })
   list(@Query('q') q?: string, @Query('limit') limit?: number) {
     return this.empresas.list({ q, limit });
   }
 
   @Get('cnpj/:cnpj')
+  @Roles('admin', 'manager', 'user')
   @ApiOperation({ summary: 'Get empresa by CNPJ' })
   async getByCnpj(@Param('cnpj') cnpj: string) {
     const doc = await this.empresas.getByCnpj(cnpj);
@@ -95,6 +99,7 @@ export class EmpresasController {
   }
 
   @Get(':id')
+  @Roles('admin', 'manager', 'user')
   @ApiOperation({ summary: 'Get empresa by id' })
   async getById(@Param('id') id: string) {
     const doc = await this.empresas.getById(id);
@@ -103,6 +108,7 @@ export class EmpresasController {
   }
 
   @Patch(':id')
+  @Roles('admin')
   @ApiOperation({ summary: 'Update empresa' })
   @ApiBody({ type: UpdateEmpresaDto })
   update(@Param('id') id: string, @Body() dto: UpdateEmpresaDto) {
@@ -110,6 +116,7 @@ export class EmpresasController {
   }
 
   @Delete(':id')
+  @Roles('admin')
   @ApiOperation({ summary: 'Delete empresa' })
   remove(@Param('id') id: string) {
     return this.empresas.remove(id);
