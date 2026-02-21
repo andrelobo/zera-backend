@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { createCipheriv, createHash, randomBytes } from 'crypto';
 import type { File as MulterFile } from 'multer';
 import { Model } from 'mongoose';
-import { PlugNotasCnpjApi } from '../../fiscal/infra/plugnotas/cnpj.api';
+import { BrasilApiCnpjApi } from './brasilapi-cnpj.api';
 import { CreateEmpresaDto } from './dtos/create-empresa.dto';
 import { UpdateEmpresaDto } from './dtos/update-empresa.dto';
 import { Empresa, EmpresaDocument } from './schemas/empresa.schema';
@@ -12,7 +12,7 @@ import { Empresa, EmpresaDocument } from './schemas/empresa.schema';
 export class EmpresasService {
   constructor(
     @InjectModel(Empresa.name) private readonly empresaModel: Model<EmpresaDocument>,
-    private readonly cnpjApi: PlugNotasCnpjApi,
+    private readonly cnpjApi: BrasilApiCnpjApi,
   ) {}
 
   async createFromCnpj(cnpj: string, payload?: Partial<CreateEmpresaDto>) {
@@ -222,7 +222,7 @@ export class EmpresasService {
       const providerStatus = e?.status;
       const providerBody = e?.body;
       throw new BadRequestException({
-        message: 'Falha ao consultar CNPJ na PlugNotas',
+        message: 'Falha ao consultar CNPJ na BrasilAPI',
         providerStatus: providerStatus ?? null,
         providerError: providerBody ?? null,
       });
@@ -281,7 +281,11 @@ export class EmpresasService {
         'inscricaoMunicipal',
         'im',
       ]),
-      situacaoCadastral: pick(safeProviderData, ['situacao_cadastral', 'situacaoCadastral']),
+      situacaoCadastral: pick(safeProviderData, [
+        'situacao_cadastral',
+        'situacaoCadastral',
+        'descricao_situacao_cadastral',
+      ]),
       dataSituacaoCadastral: this.toDateOrUndefined(
         pick(safeProviderData, ['data_situacao_cadastral', 'dataSituacaoCadastral']),
       ),
@@ -308,7 +312,13 @@ export class EmpresasService {
         pick(safeProviderData, ['opcao_pelo_mei', 'opcaoPeloMei']),
       ),
       email: pick(safeProviderData, ['email', 'email_contato', 'emailContato']),
-      fone: pick(safeProviderData, ['fone', 'telefone', 'telefone1', 'telefone_principal']),
+      fone: pick(safeProviderData, [
+        'fone',
+        'telefone',
+        'telefone1',
+        'telefone_principal',
+        'ddd_telefone_1',
+      ]),
       endereco: {
         logradouro: pick(enderecoSrc, ['logradouro', 'logradouro_endereco', 'logradouroEndereco']),
         numero: pick(enderecoSrc, ['numero', 'numero_endereco', 'numeroEndereco']),
