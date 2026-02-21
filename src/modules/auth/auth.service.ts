@@ -24,7 +24,13 @@ export class AuthService {
       throw new UnauthorizedException('User is inactive');
     }
 
-    const ok = await verifyPassword(password, user.passwordHash);
+    const storedHash = typeof user.passwordHash === 'string' ? user.passwordHash : '';
+    let ok = false;
+    try {
+      ok = await verifyPassword(password, storedHash);
+    } catch {
+      ok = false;
+    }
     if (!ok) {
       throw new UnauthorizedException('Invalid credentials');
     }

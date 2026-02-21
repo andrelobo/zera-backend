@@ -9,7 +9,8 @@ export async function hashPassword(password: string) {
   return `scrypt$${salt}$${derived.toString('hex')}`;
 }
 
-export async function verifyPassword(password: string, stored: string) {
+export async function verifyPassword(password: string, stored?: string | null) {
+  if (typeof stored !== 'string' || !stored.trim()) return false;
   const [algo, salt, hash] = stored.split('$');
   if (algo !== 'scrypt' || !salt || !hash) return false;
   const derived = (await scrypt(password, salt, 64)) as Buffer;
