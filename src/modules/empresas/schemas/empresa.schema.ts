@@ -77,6 +77,42 @@ export class Empresa {
   inscricaoMunicipal?: string;
 
   @Prop()
+  situacaoCadastral?: string;
+
+  @Prop()
+  dataSituacaoCadastral?: Date;
+
+  @Prop()
+  dataInicioAtividade?: Date;
+
+  @Prop()
+  cnaeFiscal?: string;
+
+  @Prop()
+  cnaeFiscalDescricao?: string;
+
+  @Prop()
+  porte?: string;
+
+  @Prop()
+  naturezaJuridica?: string;
+
+  @Prop()
+  capitalSocial?: number;
+
+  @Prop()
+  opcaoPeloSimples?: boolean;
+
+  @Prop()
+  dataOpcaoPeloSimples?: Date;
+
+  @Prop()
+  dataExclusaoDoSimples?: Date;
+
+  @Prop()
+  opcaoPeloMei?: boolean;
+
+  @Prop()
   email?: string;
 
   @Prop()

@@ -1,6 +1,15 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsNotEmpty, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsNotEmpty,
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 
 class UpdateEmpresaEnderecoDto {
   @ApiPropertyOptional()
@@ -71,6 +80,67 @@ export class UpdateEmpresaDto {
   @IsOptional()
   @IsString()
   inscricaoMunicipal?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  situacaoCadastral?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  dataSituacaoCadastral?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  dataInicioAtividade?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cnaeFiscal?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cnaeFiscalDescricao?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  porte?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  naturezaJuridica?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  capitalSocial?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  opcaoPeloSimples?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  dataOpcaoPeloSimples?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  dataExclusaoDoSimples?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  opcaoPeloMei?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()

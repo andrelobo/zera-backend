@@ -4,6 +4,8 @@ import { createCipheriv, createHash, randomBytes } from 'crypto';
 import type { File as MulterFile } from 'multer';
 import { Model } from 'mongoose';
 import { PlugNotasCnpjApi } from '../../fiscal/infra/plugnotas/cnpj.api';
+import { CreateEmpresaDto } from './dtos/create-empresa.dto';
+import { UpdateEmpresaDto } from './dtos/update-empresa.dto';
 import { Empresa, EmpresaDocument } from './schemas/empresa.schema';
 
 @Injectable()
@@ -13,18 +15,24 @@ export class EmpresasService {
     private readonly cnpjApi: PlugNotasCnpjApi,
   ) {}
 
-  async createFromCnpj(cnpj: string) {
+  async createFromCnpj(cnpj: string, payload?: Partial<CreateEmpresaDto>) {
     const normalized = this.onlyDigits(cnpj);
     if (!normalized) {
       throw new BadRequestException('CNPJ inválido');
     }
+    const overrides = this.pickEmpresaOverrides(payload);
 
     const existingWithCert = await this.empresaModel
       .findOne({ cnpj: normalized })
       .select('+certificado.pfxBase64');
 
     if (existingWithCert?.razaoSocial) {
-      return this.empresaModel.findById(existingWithCert._id);
+      if (Object.keys(overrides).length === 0) {
+        return this.empresaModel.findById(existingWithCert._id);
+      }
+      return this.empresaModel.findByIdAndUpdate(existingWithCert._id, overrides, {
+        new: true,
+      });
     }
 
     if (!existingWithCert?.certificado?.pfxBase64) {
@@ -36,9 +44,10 @@ export class EmpresasService {
 
     const { data } = await this.fetchProviderData(normalized);
     const mapped = this.mapProviderData(normalized, data);
+    const updateData = { ...mapped, ...overrides };
 
     try {
-      return await this.empresaModel.findByIdAndUpdate(existingWithCert._id, mapped, {
+      return await this.empresaModel.findByIdAndUpdate(existingWithCert._id, updateData, {
         new: true,
       });
     } catch (e: any) {
@@ -123,8 +132,26 @@ export class EmpresasService {
     };
   }
 
-  list() {
-    return this.empresaModel.find().sort({ createdAt: -1 });
+  list(filters?: { q?: string; limit?: number }) {
+    const q = String(filters?.q ?? '').trim();
+    const limit = this.normalizeLimit(filters?.limit, q.length > 0);
+    const searchConditions: Record<string, unknown>[] = [];
+    const qDigits = this.onlyDigits(q);
+
+    if (qDigits.length > 0) {
+      searchConditions.push({ cnpj: { $regex: this.escapeRegex(qDigits), $options: 'i' } });
+    }
+    if (q.length > 0) {
+      searchConditions.push({ razaoSocial: { $regex: this.escapeRegex(q), $options: 'i' } });
+      searchConditions.push({ nomeFantasia: { $regex: this.escapeRegex(q), $options: 'i' } });
+    }
+
+    const query = searchConditions.length > 0 ? { $or: searchConditions } : {};
+    const listQuery = this.empresaModel.find(query).sort({ createdAt: -1 });
+    if (limit) {
+      listQuery.limit(limit);
+    }
+    return listQuery;
   }
 
   getById(id: string) {
@@ -142,8 +169,9 @@ export class EmpresasService {
       .sort({ updatedAt: -1, createdAt: -1 });
   }
 
-  async update(id: string, data: Partial<Empresa>) {
-    return this.empresaModel.findByIdAndUpdate(id, data, { new: true });
+  async update(id: string, data: Partial<UpdateEmpresaDto>) {
+    const patch = this.pickEmpresaOverrides(data);
+    return this.empresaModel.findByIdAndUpdate(id, patch, { new: true });
   }
 
   async remove(id: string) {
@@ -218,6 +246,32 @@ export class EmpresasService {
         'inscricaoMunicipal',
         'im',
       ]),
+      situacaoCadastral: pick(safeProviderData, ['situacao_cadastral', 'situacaoCadastral']),
+      dataSituacaoCadastral: this.toDateOrUndefined(
+        pick(safeProviderData, ['data_situacao_cadastral', 'dataSituacaoCadastral']),
+      ),
+      dataInicioAtividade: this.toDateOrUndefined(
+        pick(safeProviderData, ['data_inicio_atividade', 'dataInicioAtividade']),
+      ),
+      cnaeFiscal: this.toStringOrUndefined(pick(safeProviderData, ['cnae_fiscal', 'cnaeFiscal'])),
+      cnaeFiscalDescricao: pick(safeProviderData, ['cnae_fiscal_descricao', 'cnaeFiscalDescricao']),
+      porte: pick(safeProviderData, ['porte']),
+      naturezaJuridica: pick(safeProviderData, ['natureza_juridica', 'naturezaJuridica']),
+      capitalSocial: this.toNumberOrUndefined(
+        pick(safeProviderData, ['capital_social', 'capitalSocial']),
+      ),
+      opcaoPeloSimples: this.toBooleanOrUndefined(
+        pick(safeProviderData, ['opcao_pelo_simples', 'opcaoPeloSimples']),
+      ),
+      dataOpcaoPeloSimples: this.toDateOrUndefined(
+        pick(safeProviderData, ['data_opcao_pelo_simples', 'dataOpcaoPeloSimples']),
+      ),
+      dataExclusaoDoSimples: this.toDateOrUndefined(
+        pick(safeProviderData, ['data_exclusao_do_simples', 'dataExclusaoDoSimples']),
+      ),
+      opcaoPeloMei: this.toBooleanOrUndefined(
+        pick(safeProviderData, ['opcao_pelo_mei', 'opcaoPeloMei']),
+      ),
       email: pick(safeProviderData, ['email', 'email_contato', 'emailContato']),
       fone: pick(safeProviderData, ['fone', 'telefone', 'telefone1', 'telefone_principal']),
       endereco: {
@@ -306,6 +360,94 @@ export class EmpresasService {
     const safe = (name ?? '').toLowerCase().trim();
     const idx = safe.lastIndexOf('.');
     return idx >= 0 ? safe.slice(idx + 1) : '';
+  }
+
+  private pickEmpresaOverrides(
+    payload?: Partial<CreateEmpresaDto & UpdateEmpresaDto>,
+  ): Partial<Empresa> {
+    if (!payload) return {};
+    const endereco = payload.endereco
+      ? this.compactObject({
+          logradouro: payload.endereco.logradouro,
+          numero: payload.endereco.numero,
+          complemento: payload.endereco.complemento,
+          bairro: payload.endereco.bairro,
+          codigoMunicipio: payload.endereco.codigoMunicipio,
+          cidade: payload.endereco.cidade,
+          uf: payload.endereco.uf,
+          codigoPais: payload.endereco.codigoPais,
+          pais: payload.endereco.pais,
+          cep: payload.endereco.cep,
+        })
+      : undefined;
+
+    return this.compactObject({
+      razaoSocial: payload.razaoSocial,
+      nomeFantasia: payload.nomeFantasia,
+      inscricaoMunicipal: payload.inscricaoMunicipal,
+      situacaoCadastral: payload.situacaoCadastral,
+      dataSituacaoCadastral: this.toDateOrUndefined(payload.dataSituacaoCadastral),
+      dataInicioAtividade: this.toDateOrUndefined(payload.dataInicioAtividade),
+      cnaeFiscal: this.toStringOrUndefined(payload.cnaeFiscal),
+      cnaeFiscalDescricao: payload.cnaeFiscalDescricao,
+      porte: payload.porte,
+      naturezaJuridica: payload.naturezaJuridica,
+      capitalSocial: this.toNumberOrUndefined(payload.capitalSocial),
+      opcaoPeloSimples: this.toBooleanOrUndefined(payload.opcaoPeloSimples),
+      dataOpcaoPeloSimples: this.toDateOrUndefined(payload.dataOpcaoPeloSimples),
+      dataExclusaoDoSimples: this.toDateOrUndefined(payload.dataExclusaoDoSimples),
+      opcaoPeloMei: this.toBooleanOrUndefined(payload.opcaoPeloMei),
+      email: payload.email,
+      fone: payload.fone,
+      endereco: Object.keys(endereco ?? {}).length > 0 ? endereco : undefined,
+    });
+  }
+
+  private toDateOrUndefined(value: unknown): Date | undefined {
+    if (!value) return undefined;
+    const date = new Date(String(value));
+    return Number.isNaN(date.getTime()) ? undefined : date;
+  }
+
+  private toStringOrUndefined(value: unknown): string | undefined {
+    if (value === null || value === undefined || value === '') return undefined;
+    return String(value);
+  }
+
+  private toNumberOrUndefined(value: unknown): number | undefined {
+    if (value === null || value === undefined || value === '') return undefined;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  private toBooleanOrUndefined(value: unknown): boolean | undefined {
+    if (value === null || value === undefined || value === '') return undefined;
+    if (typeof value === 'boolean') return value;
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return undefined;
+  }
+
+  private normalizeLimit(value?: number, hasSearch = false): number | undefined {
+    if (value === undefined || value === null) {
+      return hasSearch ? 50 : undefined;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) return hasSearch ? 50 : undefined;
+    return Math.min(parsed, 100);
+  }
+
+  private escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  private compactObject<T extends Record<string, unknown>>(input: T): Partial<T> {
+    const out: Partial<T> = {};
+    for (const [key, value] of Object.entries(input)) {
+      if (value === undefined || value === null || value === '') continue;
+      out[key as keyof T] = value as T[keyof T];
+    }
+    return out;
   }
 
   private encryptSecret(value: string): string {

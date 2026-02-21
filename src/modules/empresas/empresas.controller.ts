@@ -7,12 +7,20 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { File as MulterFile } from 'multer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -35,7 +43,7 @@ export class EmpresasController {
   @ApiBody({ type: CreateEmpresaDto })
   @ApiResponse({ status: 201 })
   create(@Body() dto: CreateEmpresaDto) {
-    return this.empresas.createFromCnpj(dto.cnpj);
+    return this.empresas.createFromCnpj(dto.cnpj, dto);
   }
 
   @Post('preview')
@@ -62,10 +70,7 @@ export class EmpresasController {
     },
   })
   @ApiResponse({ status: 201, description: 'Certificado importado com sucesso' })
-  async importCertificado(
-    @Body() dto: ImportCertificadoDto,
-    @UploadedFile() file?: MulterFile,
-  ) {
+  async importCertificado(@Body() dto: ImportCertificadoDto, @UploadedFile() file?: MulterFile) {
     if (!file) {
       throw new BadRequestException({
         code: 'CERT_FILE_REQUIRED',
@@ -77,8 +82,8 @@ export class EmpresasController {
 
   @Get()
   @ApiOperation({ summary: 'List empresas' })
-  list() {
-    return this.empresas.list();
+  list(@Query('q') q?: string, @Query('limit') limit?: number) {
+    return this.empresas.list({ q, limit });
   }
 
   @Get('cnpj/:cnpj')
