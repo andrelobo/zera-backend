@@ -321,6 +321,10 @@ export class EmpresasService {
     const atividadePrincipal = Array.isArray(safeProviderData?.atividade_principal)
       ? safeProviderData.atividade_principal[0]
       : undefined;
+    const atividadePrincipalCodigo =
+      atividadePrincipal && typeof atividadePrincipal === 'object'
+        ? (atividadePrincipal.code ?? atividadePrincipal.codigo)
+        : undefined;
 
     return {
       cnpj,
@@ -346,15 +350,18 @@ export class EmpresasService {
       situacaoCadastral: pick(safeProviderData, [
         'situacao_cadastral',
         'situacaoCadastral',
+        'situacao',
         'descricao_situacao_cadastral',
       ]),
       dataSituacaoCadastral: this.toDateOrUndefined(
-        pick(safeProviderData, ['data_situacao_cadastral', 'dataSituacaoCadastral']),
+        pick(safeProviderData, ['data_situacao_cadastral', 'dataSituacaoCadastral', 'data_situacao']),
       ),
       dataInicioAtividade: this.toDateOrUndefined(
-        pick(safeProviderData, ['data_inicio_atividade', 'dataInicioAtividade']),
+        pick(safeProviderData, ['data_inicio_atividade', 'dataInicioAtividade', 'abertura']),
       ),
-      cnaeFiscal: this.toStringOrUndefined(pick(safeProviderData, ['cnae_fiscal', 'cnaeFiscal'])),
+      cnaeFiscal: this.toStringOrUndefined(
+        pick(safeProviderData, ['cnae_fiscal', 'cnaeFiscal']) ?? atividadePrincipalCodigo,
+      ),
       cnaeFiscalDescricao:
         pick(safeProviderData, ['cnae_fiscal_descricao', 'cnaeFiscalDescricao']) ??
         (atividadePrincipal?.descricao as string | undefined),
@@ -421,6 +428,9 @@ export class EmpresasService {
       cnpj: data?.cnpj,
       razao_social: data?.razao_social ?? data?.nome_razao_social,
       nome_fantasia: data?.nome_fantasia,
+      situacao: data?.situacao,
+      data_situacao: data?.data_situacao,
+      abertura: data?.abertura,
       inscricao_estadual: data?.inscricao_estadual ?? data?.ie,
       suframa: data?.suframa,
       data_inicio_atividade: data?.data_inicio_atividade,
