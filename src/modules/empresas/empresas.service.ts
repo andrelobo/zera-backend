@@ -371,16 +371,34 @@ export class EmpresasService {
         pick(safeProviderData, ['capital_social', 'capitalSocial']),
       ),
       opcaoPeloSimples: this.toBooleanOrUndefined(
-        pick(safeProviderData, ['opcao_pelo_simples', 'opcaoPeloSimples', 'simples.optante']),
+        pick(safeProviderData, [
+          'opcao_pelo_simples',
+          'opcaoPeloSimples',
+          'simples.optante',
+          'simples.simples',
+        ]),
       ),
       dataOpcaoPeloSimples: this.toDateOrUndefined(
-        pick(safeProviderData, ['data_opcao_pelo_simples', 'dataOpcaoPeloSimples']),
+        pick(safeProviderData, [
+          'data_opcao_pelo_simples',
+          'dataOpcaoPeloSimples',
+          'simples.data_opcao',
+        ]),
       ),
       dataExclusaoDoSimples: this.toDateOrUndefined(
-        pick(safeProviderData, ['data_exclusao_do_simples', 'dataExclusaoDoSimples']),
+        pick(safeProviderData, [
+          'data_exclusao_do_simples',
+          'dataExclusaoDoSimples',
+          'simples.data_exclusao',
+        ]),
       ),
       opcaoPeloMei: this.toBooleanOrUndefined(
-        pick(safeProviderData, ['opcao_pelo_mei', 'opcaoPeloMei', 'simei.optante']),
+        pick(safeProviderData, [
+          'opcao_pelo_mei',
+          'opcaoPeloMei',
+          'simei.optante',
+          'simples.mei',
+        ]),
       ),
       email: pick(safeProviderData, ['email', 'email_contato', 'emailContato']),
       fone: pick(safeProviderData, [
@@ -466,6 +484,11 @@ export class EmpresasService {
       whatsapp: data?.whatsapp,
       simples: data?.simples,
       simei: data?.simei,
+      opcao_pelo_simples: data?.opcao_pelo_simples ?? data?.simples?.optante,
+      opcao_pelo_mei: data?.opcao_pelo_mei ?? data?.simei?.optante ?? data?.simples?.mei,
+      data_opcao_pelo_simples: data?.data_opcao_pelo_simples ?? data?.simples?.data_opcao,
+      data_exclusao_do_simples:
+        data?.data_exclusao_do_simples ?? data?.simples?.data_exclusao,
     };
   }
 
