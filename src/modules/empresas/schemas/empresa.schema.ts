@@ -77,6 +77,12 @@ export class Empresa {
   inscricaoMunicipal?: string;
 
   @Prop()
+  inscricaoEstadual?: string;
+
+  @Prop()
+  suframa?: string;
+
+  @Prop()
   situacaoCadastral?: string;
 
   @Prop()
@@ -117,6 +123,9 @@ export class Empresa {
 
   @Prop()
   fone?: string;
+
+  @Prop()
+  whatsapp?: string;
 
   @Prop({ type: EnderecoSchema })
   endereco?: Endereco;

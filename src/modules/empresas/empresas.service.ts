@@ -5,6 +5,7 @@ import type { File as MulterFile } from 'multer';
 import { Model } from 'mongoose';
 import { PlugNotasCnpjApi } from '../../fiscal/infra/plugnotas/cnpj.api';
 import { BrasilApiCnpjApi } from './brasilapi-cnpj.api';
+import { ReceitaWsCnpjApi } from './receitaws-cnpj.api';
 import { CreateEmpresaDto } from './dtos/create-empresa.dto';
 import { UpdateEmpresaDto } from './dtos/update-empresa.dto';
 import { Empresa, EmpresaDocument } from './schemas/empresa.schema';
@@ -14,6 +15,7 @@ export class EmpresasService {
   constructor(
     @InjectModel(Empresa.name) private readonly empresaModel: Model<EmpresaDocument>,
     private readonly brasilApiCnpjApi: BrasilApiCnpjApi,
+    private readonly receitaWsCnpjApi: ReceitaWsCnpjApi,
     private readonly plugNotasCnpjApi: PlugNotasCnpjApi,
   ) {}
 
@@ -218,16 +220,40 @@ export class EmpresasService {
 
   private async fetchProviderData(cnpj: string) {
     let brasilApiError: { status: number | null; body: unknown } | null = null;
+    let receitaWsError: { status: number | null; body: unknown } | null = null;
     let plugNotasError: { status: number | null; body: unknown } | null = null;
+    let brasilApiData: Record<string, unknown> | null = null;
+    let receitaWsData: Record<string, unknown> | null = null;
 
     try {
-      const data = await this.brasilApiCnpjApi.consultarCnpj(cnpj);
-      return { data, source: 'brasilapi' as const };
+      brasilApiData = await this.brasilApiCnpjApi.consultarCnpj(cnpj);
     } catch (e: any) {
       brasilApiError = {
         status: typeof e?.status === 'number' ? e.status : null,
         body: e?.body ?? e?.message ?? null,
       };
+    }
+
+    try {
+      receitaWsData = await this.receitaWsCnpjApi.consultarCnpj(cnpj);
+    } catch (e: any) {
+      receitaWsError = {
+        status: typeof e?.status === 'number' ? e.status : null,
+        body: e?.body ?? e?.message ?? null,
+      };
+    }
+
+    if (brasilApiData && receitaWsData) {
+      return {
+        data: this.mergeProviderData(brasilApiData, receitaWsData),
+        source: 'brasilapi+receitaws' as const,
+      };
+    }
+    if (brasilApiData) {
+      return { data: brasilApiData, source: 'brasilapi' as const };
+    }
+    if (receitaWsData) {
+      return { data: receitaWsData, source: 'receitaws' as const };
     }
 
     try {
@@ -246,6 +272,7 @@ export class EmpresasService {
       details: {
         cnpj,
         brasilapi: brasilApiError,
+        receitaws: receitaWsError,
         plugnotas: plugNotasError,
       },
     });
@@ -255,9 +282,12 @@ export class EmpresasService {
     const safeProviderData = this.sanitizeProviderData(data);
     const trimmedProviderData = this.trimProviderData(safeProviderData);
 
+    const getByPath = (obj: any, path: string) =>
+      path.split('.').reduce((acc: any, key) => (acc == null ? undefined : acc[key]), obj);
+
     const pick = (obj: any, keys: string[]) => {
       for (const key of keys) {
-        const value = obj?.[key];
+        const value = getByPath(obj, key);
         if (value !== undefined && value !== null && value !== '') return value;
       }
       return undefined;
@@ -295,6 +325,7 @@ export class EmpresasService {
     return {
       cnpj,
       razaoSocial: pick(safeProviderData, [
+        'nome',
         'nome_razao_social',
         'razao_social',
         'razaoSocial',
@@ -306,6 +337,12 @@ export class EmpresasService {
         'inscricaoMunicipal',
         'im',
       ]),
+      inscricaoEstadual: pick(safeProviderData, [
+        'inscricao_estadual',
+        'inscricaoEstadual',
+        'ie',
+      ]),
+      suframa: pick(safeProviderData, ['suframa']),
       situacaoCadastral: pick(safeProviderData, [
         'situacao_cadastral',
         'situacaoCadastral',
@@ -327,7 +364,7 @@ export class EmpresasService {
         pick(safeProviderData, ['capital_social', 'capitalSocial']),
       ),
       opcaoPeloSimples: this.toBooleanOrUndefined(
-        pick(safeProviderData, ['opcao_pelo_simples', 'opcaoPeloSimples']),
+        pick(safeProviderData, ['opcao_pelo_simples', 'opcaoPeloSimples', 'simples.optante']),
       ),
       dataOpcaoPeloSimples: this.toDateOrUndefined(
         pick(safeProviderData, ['data_opcao_pelo_simples', 'dataOpcaoPeloSimples']),
@@ -336,7 +373,7 @@ export class EmpresasService {
         pick(safeProviderData, ['data_exclusao_do_simples', 'dataExclusaoDoSimples']),
       ),
       opcaoPeloMei: this.toBooleanOrUndefined(
-        pick(safeProviderData, ['opcao_pelo_mei', 'opcaoPeloMei']),
+        pick(safeProviderData, ['opcao_pelo_mei', 'opcaoPeloMei', 'simei.optante']),
       ),
       email: pick(safeProviderData, ['email', 'email_contato', 'emailContato']),
       fone: pick(safeProviderData, [
@@ -344,6 +381,12 @@ export class EmpresasService {
         'telefone',
         'telefone1',
         'telefone_principal',
+        'ddd_telefone_1',
+      ]),
+      whatsapp: pick(safeProviderData, [
+        'whatsapp',
+        'telefone',
+        'fone',
         'ddd_telefone_1',
       ]),
       endereco: {
@@ -378,6 +421,8 @@ export class EmpresasService {
       cnpj: data?.cnpj,
       razao_social: data?.razao_social ?? data?.nome_razao_social,
       nome_fantasia: data?.nome_fantasia,
+      inscricao_estadual: data?.inscricao_estadual ?? data?.ie,
+      suframa: data?.suframa,
       data_inicio_atividade: data?.data_inicio_atividade,
       matriz: data?.matriz,
       natureza_juridica: data?.natureza_juridica,
@@ -408,6 +453,7 @@ export class EmpresasService {
         : undefined,
       telefones: data?.telefones,
       email: data?.email,
+      whatsapp: data?.whatsapp,
       simples: data?.simples,
       simei: data?.simei,
     };
@@ -463,6 +509,8 @@ export class EmpresasService {
       razaoSocial: payload.razaoSocial,
       nomeFantasia: payload.nomeFantasia,
       inscricaoMunicipal: payload.inscricaoMunicipal,
+      inscricaoEstadual: payload.inscricaoEstadual,
+      suframa: payload.suframa,
       situacaoCadastral: payload.situacaoCadastral,
       dataSituacaoCadastral: this.toDateOrUndefined(payload.dataSituacaoCadastral),
       dataInicioAtividade: this.toDateOrUndefined(payload.dataInicioAtividade),
@@ -477,6 +525,7 @@ export class EmpresasService {
       opcaoPeloMei: this.toBooleanOrUndefined(payload.opcaoPeloMei),
       email: payload.email,
       fone: payload.fone,
+      whatsapp: payload.whatsapp,
       endereco: Object.keys(endereco ?? {}).length > 0 ? endereco : undefined,
     });
   }
@@ -557,8 +606,32 @@ export class EmpresasService {
       razaoSocial: pick('razaoSocial', 'nome_razao_social'),
       nomeFantasia: pick('nomeFantasia', 'nome_fantasia'),
       inscricaoMunicipal: pick('inscricaoMunicipal', 'inscricao_municipal'),
+      inscricaoEstadual: pick('inscricaoEstadual', 'inscricao_estadual', 'ie'),
+      suframa: pick('suframa'),
+      whatsapp: pick('whatsapp', 'fone', 'telefone'),
       endereco: Object.keys(endereco).length > 0 ? endereco : undefined,
     });
+  }
+
+  private mergeProviderData(
+    primary: Record<string, unknown>,
+    secondary: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const out: Record<string, unknown> = { ...secondary, ...primary };
+    for (const [key, primaryValue] of Object.entries(primary)) {
+      const secondaryValue = secondary[key];
+      if (this.isPlainObject(primaryValue) && this.isPlainObject(secondaryValue)) {
+        out[key] = this.mergeProviderData(
+          primaryValue as Record<string, unknown>,
+          secondaryValue as Record<string, unknown>,
+        );
+      }
+    }
+    return out;
+  }
+
+  private isPlainObject(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
   }
 
   private escapeRegex(value: string): string {

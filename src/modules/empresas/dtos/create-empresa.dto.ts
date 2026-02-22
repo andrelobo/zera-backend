@@ -89,6 +89,16 @@ export class CreateEmpresaDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  inscricaoEstadual?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  suframa?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   situacaoCadastral?: string;
 
   @ApiPropertyOptional()
@@ -156,6 +166,11 @@ export class CreateEmpresaDto {
   @IsOptional()
   @IsString()
   fone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  whatsapp?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
