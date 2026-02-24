@@ -1,4 +1,4 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
 type CorrelatedRequest = Request & { correlationId?: string };
@@ -24,6 +24,8 @@ function toErrorCode(status: number): string {
 
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(ApiExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const req = ctx.getRequest<CorrelatedRequest>();
@@ -70,6 +72,22 @@ export class ApiExceptionFilter implements ExceptionFilter {
     };
     if (details !== undefined) {
       payload.details = details;
+    }
+
+    const logPayload = {
+      event: 'request_exception',
+      correlationId,
+      method: req.method,
+      path: req.originalUrl || req.url,
+      status,
+      code,
+      message,
+      details,
+    };
+    if (status >= 500) {
+      this.logger.error(JSON.stringify(logPayload));
+    } else {
+      this.logger.warn(JSON.stringify(logPayload));
     }
 
     res.status(status).json(payload);

@@ -109,19 +109,22 @@ describe('TomadoresService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('autocomplete rejects empty q', async () => {
-    const model = { find: jest.fn() };
+  it('autocomplete accepts empty q and returns most recent by empresa', async () => {
+    const limit = jest.fn().mockResolvedValue([]);
+    const sort = jest.fn().mockReturnValue({ limit });
+    const find = jest.fn().mockReturnValue({ sort });
+    const model = { find };
     const service = new TomadoresService(model as any);
 
-    await expect(
-      service.autocomplete({
-        empresaCnpj: '43521115000134',
-        q: '   ',
-      }),
-    ).rejects.toMatchObject({
-      response: {
-        code: 'TOMADOR_Q_REQUIRED',
-      },
+    await service.autocomplete({
+      empresaCnpj: '43521115000134',
+      q: '   ',
     });
+
+    expect(find).toHaveBeenCalledWith(
+      { empresaCnpj: '43521115000134' },
+      expect.any(Object),
+    );
+    expect(limit).toHaveBeenCalledWith(10);
   });
 });

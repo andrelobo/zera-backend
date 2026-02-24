@@ -34,11 +34,11 @@ export class TomadoresController {
   @Get('autocomplete')
   @ApiOperation({ summary: 'Autocomplete de tomadores por empresa' })
   @ApiQuery({ name: 'empresaCnpj', required: true, example: '43521115000134' })
-  @ApiQuery({ name: 'q', required: true, example: '61020788100' })
+  @ApiQuery({ name: 'q', required: false, example: '61020788100' })
   @ApiQuery({ name: 'limit', required: false, example: 10 })
   autocomplete(
     @Query('empresaCnpj') empresaCnpj: string,
-    @Query('q') q: string,
+    @Query('q') q?: string,
     @Query('limit') limit?: string,
   ) {
     return this.tomadores.autocomplete({ empresaCnpj, q, limit: Number(limit) });

@@ -222,8 +222,21 @@ export class PlugNotasHttp {
         if ((isHttpTransient || isNetwork) && attempt < maxAttempts) {
           const exp = Math.min(maxDelayMs, baseDelayMs * Math.pow(2, attempt - 1));
           const jitter = Math.floor(Math.random() * 200);
-          await sleep(Math.min(maxDelayMs, exp + jitter));
+          const delay = Math.min(maxDelayMs, exp + jitter);
+          this.logger.warn(
+            `[${cfg.environment}] ${input.method} ${input.path} retrying attempt=${attempt + 1} dueTo=${
+              isNetwork ? 'network' : `http-${status}`
+            } waitMs=${delay}`,
+          );
+          await sleep(delay);
           continue;
+        }
+
+        if (isNetwork) {
+          const msg = e instanceof Error ? e.message : String(e);
+          this.logger.error(
+            `[${cfg.environment}] ${input.method} ${input.path} failed attempt=${attempt} networkError=${msg}`,
+          );
         }
 
         throw e;

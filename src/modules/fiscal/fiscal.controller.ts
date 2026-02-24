@@ -173,10 +173,46 @@ export class FiscalController {
     const items = this.servicoCatalog.autocomplete({ q, limit }).map((item) => ({
       codigoServico: item.codigoNacional,
       itemLc116: item.itemLc116,
+      sequencial: item.sequencial,
       descricao: item.descricao,
     }));
 
     return { items, total: items.length };
+  }
+
+  @Get('servicos')
+  @ApiOperation({ summary: 'Listagem paginada de servicos do catalogo LC116/NFS-e Nacional' })
+  @ApiQuery({ name: 'q', required: false, example: 'manutencao' })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  listServicos(
+    @Query('q') q?: string,
+    @Query('limit') limitRaw?: string,
+    @Query('page') pageRaw?: string,
+  ) {
+    const limit = limitRaw ? Number(limitRaw) : 20;
+    const page = pageRaw ? Number(pageRaw) : 1;
+
+    if (!Number.isFinite(limit) || limit < 1) {
+      throw new BadRequestException({ code: 'INVALID_LIMIT', message: 'limit must be >= 1' });
+    }
+    if (!Number.isFinite(page) || page < 1) {
+      throw new BadRequestException({ code: 'INVALID_PAGE', message: 'page must be >= 1' });
+    }
+
+    const result = this.servicoCatalog.list({ q, limit, page });
+    return {
+      items: result.items.map((item) => ({
+        codigoServico: item.codigoNacional,
+        itemLc116: item.itemLc116,
+        sequencial: item.sequencial,
+        descricao: item.descricao,
+      })),
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.totalPages,
+    };
   }
 
   @Get('servicos/:codigo')

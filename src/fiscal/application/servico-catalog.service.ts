@@ -71,17 +71,14 @@ export class ServicoCatalogService {
     return this.items.find((item) => item.codigoNacional === normalized) ?? null;
   }
 
-  autocomplete(input?: { q?: string; limit?: number }): ServicoCatalogItem[] {
-    const query = (input?.q ?? '').trim();
-    const limitRaw = Number(input?.limit ?? 20);
-    const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(limitRaw, 50)) : 20;
-
-    if (!query) {
-      return this.items.slice(0, limit);
+  private searchItems(query?: string): ServicoCatalogItem[] {
+    const q = (query ?? '').trim();
+    if (!q) {
+      return this.items;
     }
 
-    const digitsQuery = onlyDigits(query);
-    const normalizedQuery = normalizeText(query);
+    const digitsQuery = onlyDigits(q);
+    const normalizedQuery = normalizeText(q);
 
     const startsWithCode = this.items.filter((item) =>
       digitsQuery ? item.codigoNacional.startsWith(digitsQuery) : false,
@@ -97,6 +94,37 @@ export class ServicoCatalogService {
       );
     });
 
-    return [...startsWithCode, ...containsText].slice(0, limit);
+    return [...startsWithCode, ...containsText];
+  }
+
+  autocomplete(input?: { q?: string; limit?: number }): ServicoCatalogItem[] {
+    const query = (input?.q ?? '').trim();
+    const limitRaw = Number(input?.limit ?? 20);
+    const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(limitRaw, 50)) : 20;
+
+    return this.searchItems(query).slice(0, limit);
+  }
+
+  list(input?: { q?: string; limit?: number; page?: number }): {
+    items: ServicoCatalogItem[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  } {
+    const query = (input?.q ?? '').trim();
+    const limitRaw = Number(input?.limit ?? 20);
+    const pageRaw = Number(input?.page ?? 1);
+    const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(limitRaw, 50)) : 20;
+    const page = Number.isFinite(pageRaw) ? Math.max(1, Math.floor(pageRaw)) : 1;
+
+    const filtered = this.searchItems(query);
+    const total = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const normalizedPage = Math.min(page, totalPages);
+    const start = (normalizedPage - 1) * limit;
+    const items = filtered.slice(start, start + limit);
+
+    return { items, total, page: normalizedPage, limit, totalPages };
   }
 }

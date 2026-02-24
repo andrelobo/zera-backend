@@ -1,11 +1,13 @@
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { ApiExceptionFilter } from './common/http/api-exception.filter';
 import { correlationIdMiddleware } from './common/http/correlation-id.middleware';
+import { requestLoggingMiddleware } from './common/http/request-logging.middleware';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
   const defaultCorsOrigins = [
@@ -41,6 +43,7 @@ async function bootstrap() {
   });
 
   app.use(correlationIdMiddleware);
+  app.use(requestLoggingMiddleware);
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -52,15 +55,52 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new ApiExceptionFilter());
 
-  const config = new DocumentBuilder()
+  const swaggerServerUrl =
+    process.env.SWAGGER_SERVER_URL?.trim() || process.env.RENDER_EXTERNAL_URL?.trim();
+
+  const docBuilder = new DocumentBuilder()
     .setTitle('ZERA API')
     .setDescription('ZERA Backend API')
     .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+    .addBearerAuth();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
+  if (swaggerServerUrl) {
+    docBuilder.addServer(swaggerServerUrl);
+    logger.log(`Swagger server url configured: ${swaggerServerUrl}`);
+  }
+
+  const config = docBuilder.build();
+
+  let serializedOpenApi = '';
+  let document = SwaggerModule.createDocument(app, config);
+
+  try {
+    serializedOpenApi = JSON.stringify(document);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Swagger serialization failed. Falling back to minimal OpenAPI doc. error=${message}`);
+    document = {
+      openapi: '3.0.0',
+      info: {
+        title: 'ZERA API',
+        version: '1.0',
+        description: 'Fallback document due to serialization error',
+      },
+      paths: {},
+    } as any;
+    serializedOpenApi = JSON.stringify(document);
+  }
+
+  const httpAdapter = app.getHttpAdapter();
+  httpAdapter.get('/docs-json', (_req: any, res: any) => {
+    res.setHeader('content-type', 'application/json; charset=utf-8');
+    res.send(serializedOpenApi);
+  });
+
+  SwaggerModule.setup('docs', app, JSON.parse(serializedOpenApi), {
+    jsonDocumentUrl: 'docs-json',
+  });
+  logger.log('Swagger available at /docs and /docs-json');
 
   const port = process.env.PORT ?? process.env.APP_PORT ?? 3000;
   await app.listen(port, '0.0.0.0');

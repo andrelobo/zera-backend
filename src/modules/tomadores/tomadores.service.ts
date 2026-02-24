@@ -80,7 +80,7 @@ export class TomadoresService {
     return this.tomadorModel.find(filter).sort({ createdAt: -1 });
   }
 
-  async autocomplete(input: { empresaCnpj: string; q: string; limit?: number }) {
+  async autocomplete(input: { empresaCnpj: string; q?: string; limit?: number }) {
     const empresaCnpj = onlyDigits(input.empresaCnpj);
     if (empresaCnpj.length !== 14) {
       throw new BadRequestException({
@@ -89,38 +89,30 @@ export class TomadoresService {
       });
     }
 
-    const raw = input.q.trim();
-    if (!raw) {
-      throw new BadRequestException({
-        code: 'TOMADOR_Q_REQUIRED',
-        message: 'q é obrigatório',
-      });
-    }
-
+    const raw = (input.q ?? '').trim();
     const digits = onlyDigits(raw);
     const limit = Math.max(1, Math.min(Number(input.limit) || 10, 50));
-    const regexValue = digits || raw;
+
+    const filter: Record<string, any> = { empresaCnpj };
+    if (raw) {
+      const regexValue = digits || raw;
+      filter.$or = [
+        { razaoSocial: { $regex: raw, $options: 'i' } },
+        { cpfCnpj: { $regex: regexValue, $options: 'i' } },
+      ];
+    }
 
     return this.tomadorModel
-      .find(
-        {
-          empresaCnpj,
-          $or: [
-            { razaoSocial: { $regex: raw, $options: 'i' } },
-            { cpfCnpj: { $regex: regexValue, $options: 'i' } },
-          ],
-        },
-        {
-          empresaCnpj: 1,
-          cpfCnpj: 1,
-          razaoSocial: 1,
-          inscricaoMunicipal: 1,
-          email: 1,
-          endereco: 1,
-          createdAt: 1,
-          updatedAt: 1,
-        },
-      )
+      .find(filter, {
+        empresaCnpj: 1,
+        cpfCnpj: 1,
+        razaoSocial: 1,
+        inscricaoMunicipal: 1,
+        email: 1,
+        endereco: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      })
       .sort({ updatedAt: -1 })
       .limit(limit);
   }
