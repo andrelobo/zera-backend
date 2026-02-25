@@ -25,6 +25,15 @@ function toDecimalString(value: number): string {
   return value.toFixed(2);
 }
 
+function resolveCodigoTributacao(value?: string): string | undefined {
+  const raw =
+    value?.trim() ||
+    process.env.NFSE_CODIGO_TRIBUTACAO_PADRAO?.trim() ||
+    process.env.QUICK_NFSE_CODIGO_TRIBUTACAO?.trim() ||
+    '100';
+  return raw || undefined;
+}
+
 function hasAcceptedProtocolOnBadRequest(body: any): boolean {
   const first = Array.isArray(body) ? body[0] : body;
   return !!(first?.protocol || first?.protocolo);
@@ -53,6 +62,7 @@ export class PlugNotasProvider implements FiscalProvider {
     const cnpjPrest = onlyDigits(input.prestador.cnpj);
     const docTom = onlyDigits(input.tomador.cpfCnpj);
     const cMun = process.env.NFSE_CMUN_IBGE;
+    const codigoTributacao = resolveCodigoTributacao(input.servico.codigoTributacao);
 
     if (!cMun) {
       throw new Error('NFSE_CMUN_IBGE not set (IBGE code required for PlugNotas)');
@@ -114,7 +124,7 @@ export class PlugNotasProvider implements FiscalProvider {
         servico: [
           compact({
             codigo: servicoCodigo,
-            codigoTributacao: input.servico.codigoTributacao,
+            codigoTributacao,
             discriminacao: input.servico.descricao,
             iss: input.servico.iss,
             valor: {
