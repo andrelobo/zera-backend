@@ -211,6 +211,7 @@ Behavior:
 - Calls PlugNotas CNPJ endpoint (`/cnpj/:cnpj`) to fetch Receita data
 - Maps data to Empresa fields
 - Saves in MongoDB
+- Observacao operacional: para empresa nova/incompleta, o backend pode exigir certificado previo e retornar `CERTIFICADO_REQUIRED`.
 
 ### 4.2 Preview from CNPJ (no persistence)
 
@@ -393,10 +394,17 @@ Error payload is standardized:
 ## 9. Notes for Frontend
 
 - Use the Swagger UI as the source of truth for payloads.
-- Empresa creation only needs CNPJ; rest is auto-filled (via PlugNotas).
+- Empresa creation starts from `cnpj` (autofill via provider), mas pode exigir certificado previo para empresa nova/incompleta (`CERTIFICADO_REQUIRED`).
 - Preview endpoint allows showing data before saving.
 - JWT token should be stored securely (memory or secure storage).
 - Se o status ficar `ERROR` com mensagem `PlugNotas API error: 404`, normalmente é falha no download de XML/PDF (endpoints incorretos ou nota ainda não disponível).
+
+Contrato vivo (pre-merge) - checklist rapido:
+1. Revalidar no `/docs` os DTOs reais de `POST /nfse/emitir`, `POST /nfse/quick`, `POST /empresas`, `POST /empresas/preview` e `PATCH /empresas/:id`.
+2. Confirmar status e payload de erro padrao (`code`, `message`, `correlationId`) para 400/401/403.
+3. Confirmar regras de certificado vigentes (`CERTIFICADO_REQUIRED`, `QUICK_PRESTADOR_NO_CERT`) nos fluxos de cadastro e emissao.
+4. Confirmar endpoints de artifacts locais/remotos (`/xml`, `/pdf`, `/remote/xml`, `/remote/pdf`) no ambiente alvo.
+5. Se houver mudanca de contrato, atualizar imediatamente este guia e o `CONTEXT.md` do frontend no mesmo ciclo.
 
 ---
 
