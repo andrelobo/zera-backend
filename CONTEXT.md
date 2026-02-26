@@ -1147,3 +1147,49 @@ Executado em Node 20:
 * `yarn build` ✅
 * `yarn test --runInBand src/modules/tomadores/tomadores.service.spec.ts` ✅ (`6 testes`)
 * `yarn test --runInBand` ✅ (`9 suites`, `23 testes`)
+
+---
+
+# ATUALIZAÇÃO (25/02/2026) – Regressão DANFSE com `E0312` e correção de payload
+
+## 1) Incidente observado
+
+Durante emissão via formulário DANFSE (frontend), houve rejeições com:
+* `Codigo: E0312`
+* `Descricao: cTribNac não administrado pelo município na competência`
+
+Mesmo com código já validado anteriormente (`060101`).
+
+## 2) Causa raiz encontrada
+
+Comparando payload rejeitado atual com payloads históricos aceitos, foi identificado:
+* o fluxo DANFSE estava enviando `servico.codigo` sem `servico.codigoTributacao`.
+
+Referências locais usadas na análise:
+* `PAYLOADS_PLUGNOTAS_ACEITO_2026-02-10.md`
+* `evidencias-suporte/plugnotas-provider-request-2026-02-10.json`
+
+## 3) Correção aplicada (backend)
+
+No provider PlugNotas (`src/fiscal/infra/plugnotas.provider.ts`):
+* adicionado fallback defensivo para `codigoTributacao`:
+  1. `input.servico.codigoTributacao`
+  2. `NFSE_CODIGO_TRIBUTACAO_PADRAO`
+  3. `QUICK_NFSE_CODIGO_TRIBUTACAO`
+  4. default final: `"100"`
+
+Com isso, emissões não dependem exclusivamente do frontend para preencher o campo.
+
+## 4) Teste de regressão adicionado
+
+Arquivo:
+* `src/fiscal/infra/plugnotas.provider.spec.ts`
+
+Cobertura nova:
+* valida que, sem `input.servico.codigoTributacao`, o payload enviado ao provider recebe `codigoTributacao = "100"` (ou valor configurado).
+
+## 5) Validação técnica executada
+
+Executado em Node 20:
+* `yarn build` ✅
+* `yarn test --runInBand src/fiscal/infra/plugnotas.provider.spec.ts` ✅
