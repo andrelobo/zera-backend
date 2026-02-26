@@ -19,11 +19,13 @@ import { PlugNotasHttp } from '../../fiscal/infra/plugnotas/plugnotas.http';
 import { PlugNotasNfseApi } from '../../fiscal/infra/plugnotas/nfse.api';
 import { PlugNotasPrerequisitesService } from '../../fiscal/infra/plugnotas/prerequisites.service';
 import { EmpresasModule } from '../empresas/empresas.module';
+import { TomadoresModule } from '../tomadores/tomadores.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: NfseEmission.name, schema: NfseEmissionSchema }]),
     EmpresasModule,
+    TomadoresModule,
   ],
   controllers: [FiscalController],
   providers: [

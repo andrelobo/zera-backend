@@ -9,6 +9,11 @@ function onlyDigits(value?: string): string {
   return (value ?? '').replace(/\D+/g, '');
 }
 
+function nonEmpty(value?: string): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+}
+
 @Injectable()
 export class TomadoresService {
   constructor(@InjectModel(Tomador.name) private readonly tomadorModel: Model<TomadorDocument>) {}
@@ -184,5 +189,50 @@ export class TomadoresService {
       });
     }
     return { deleted: true };
+  }
+
+  async upsertFromEmission(input: {
+    empresaCnpj: string;
+    cpfCnpj: string;
+    razaoSocial: string;
+    inscricaoMunicipal?: string;
+    email?: string;
+    endereco?: {
+      logradouro?: string;
+      numero?: string;
+      complemento?: string;
+      bairro?: string;
+      municipio?: string;
+      uf?: string;
+      cep?: string;
+    };
+  }) {
+    const empresaCnpj = onlyDigits(input.empresaCnpj);
+    const cpfCnpj = onlyDigits(input.cpfCnpj);
+
+    if (empresaCnpj.length !== 14) return null;
+    if (cpfCnpj.length !== 11 && cpfCnpj.length !== 14) return null;
+
+    const razaoSocial = nonEmpty(input.razaoSocial);
+    if (!razaoSocial) return null;
+
+    const updatePayload = {
+      razaoSocial,
+      inscricaoMunicipal: nonEmpty(input.inscricaoMunicipal),
+      email: nonEmpty(input.email)?.toLowerCase(),
+      endereco: input.endereco,
+    };
+
+    return this.tomadorModel.findOneAndUpdate(
+      { empresaCnpj, cpfCnpj },
+      {
+        $set: updatePayload,
+        $setOnInsert: {
+          empresaCnpj,
+          cpfCnpj,
+        },
+      },
+      { upsert: true, new: true },
+    );
   }
 }

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEmail,
@@ -163,18 +163,21 @@ class TributacaoParcialDto {
 }
 
 class TributacaoTotalDto {
+  @Transform(({ value }) => (typeof value === 'number' ? { valor: value } : value))
   @IsOptional()
   @IsObject()
   @ValidateNested()
   @Type(() => TributacaoParcialDto)
   federal?: TributacaoParcialDto;
 
+  @Transform(({ value }) => (typeof value === 'number' ? { valor: value } : value))
   @IsOptional()
   @IsObject()
   @ValidateNested()
   @Type(() => TributacaoParcialDto)
   estadual?: TributacaoParcialDto;
 
+  @Transform(({ value }) => (typeof value === 'number' ? { valor: value } : value))
   @IsOptional()
   @IsObject()
   @ValidateNested()

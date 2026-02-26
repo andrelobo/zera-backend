@@ -2,6 +2,21 @@ import { EmitirNfseService } from './emitir-nfse.service';
 import { NfseEmissionStatus } from '../domain/types/nfse-emission-status';
 
 describe('EmitirNfseService idempotency', () => {
+  function makeEmpresasServiceMock() {
+    return {
+      getByCnpj: jest.fn().mockResolvedValue({
+        cnpj: '43521115000134',
+        certificado: { uploadedAt: new Date() },
+      }),
+    };
+  }
+
+  function makeTomadoresServiceMock() {
+    return {
+      upsertFromEmission: jest.fn().mockResolvedValue(null),
+    };
+  }
+
   function makeInput() {
     return {
       referenciaExterna: 'nfse-idem-001',
@@ -59,7 +74,14 @@ describe('EmitirNfseService idempotency', () => {
       emitirNfse: jest.fn(),
     };
 
-    const service = new EmitirNfseService(provider as any, repository as any);
+    const empresasService = makeEmpresasServiceMock();
+    const tomadoresService = makeTomadoresServiceMock();
+    const service = new EmitirNfseService(
+      provider as any,
+      repository as any,
+      empresasService as any,
+      tomadoresService as any,
+    );
     const output = await service.execute(makeInput() as any);
 
     expect(repository.findByReference).toHaveBeenCalledWith('PLUGNOTAS', 'nfse-idem-001');
@@ -91,7 +113,14 @@ describe('EmitirNfseService idempotency', () => {
       emitirNfse: jest.fn(),
     };
 
-    const service = new EmitirNfseService(provider as any, repository as any);
+    const empresasService = makeEmpresasServiceMock();
+    const tomadoresService = makeTomadoresServiceMock();
+    const service = new EmitirNfseService(
+      provider as any,
+      repository as any,
+      empresasService as any,
+      tomadoresService as any,
+    );
     const output = await service.execute(makeInput() as any);
 
     expect(repository.create).toHaveBeenCalledTimes(1);
@@ -119,7 +148,14 @@ describe('EmitirNfseService idempotency', () => {
       }),
     };
 
-    const service = new EmitirNfseService(provider as any, repository as any);
+    const empresasService = makeEmpresasServiceMock();
+    const tomadoresService = makeTomadoresServiceMock();
+    const service = new EmitirNfseService(
+      provider as any,
+      repository as any,
+      empresasService as any,
+      tomadoresService as any,
+    );
     const output = await service.execute(makeInput() as any);
 
     expect(provider.emitirNfse).toHaveBeenCalledTimes(1);

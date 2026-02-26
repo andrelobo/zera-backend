@@ -14,6 +14,15 @@ export class NfseEmissionRepository {
   async create(input: {
     provider: string;
     payload: Record<string, any>;
+    biSnapshot?: Record<string, any>;
+    empresaCnpj?: string;
+    tomadorCpfCnpj?: string;
+    tomadorRazaoSocial?: string;
+    descricaoServico?: string;
+    codigoServico?: string;
+    valorServico?: number;
+    aliquotaIss?: number;
+    valorIss?: number;
     idempotencyKey?: string;
     status?: NfseEmissionStatus;
     externalId?: string;
@@ -23,6 +32,15 @@ export class NfseEmissionRepository {
     return this.model.create({
       provider: input.provider,
       payload: input.payload,
+      biSnapshot: input.biSnapshot,
+      empresaCnpj: input.empresaCnpj,
+      tomadorCpfCnpj: input.tomadorCpfCnpj,
+      tomadorRazaoSocial: input.tomadorRazaoSocial,
+      descricaoServico: input.descricaoServico,
+      codigoServico: input.codigoServico,
+      valorServico: input.valorServico,
+      aliquotaIss: input.aliquotaIss,
+      valorIss: input.valorIss,
       idempotencyKey: input.idempotencyKey,
       status: input.status ?? NfseEmissionStatus.PENDING,
       externalId: input.externalId,
