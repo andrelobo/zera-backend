@@ -1223,3 +1223,29 @@ Executado em Node 20:
 
 Observação operacional:
 * `npm run lint` foi executado com `--fix`; o backend ficou sem erros bloqueantes de lint (restaram warnings de tipagem estrita/variáveis não usadas).
+
+---
+
+# CHECKLIST (MVP -> BI) – Verificação operacional
+
+## Objetivo
+Garantir estabilidade do MVP de emissão enquanto o produto passa a capturar dados reais e úteis para BI.
+
+## Itens
+
+* [ ] Contrato canônico de dados definido para `empresa`, `tomador`, `servico`, `tributacao`, `localizacao` e `datas`.
+* [ ] Origem de campos críticos registrada (`source` + `updatedAt`).
+* [ ] Persistência dupla ativa: dados normalizados + `providerData` bruto.
+* [ ] Autocomplete backend-first (CNPJ/CEP/municípios sem dependência direta no frontend).
+* [ ] Campos fiscais mínimos preenchidos (`cnaeFiscal`, `ctnCodigo`, `nbsCodigo`, `regimeTributario`, `opcaoPeloSimples`).
+* [ ] Estratégia de histórico/snapshot cadastral definida.
+* [ ] Indicador de completude cadastral por empresa implementado.
+* [ ] Eventos-chave instrumentados (`empresa_preview`, `empresa_updated`, `nfse_emitida`, `nfse_rejeitada`, `tomador_criado`).
+* [ ] Monitoramento de qualidade de dados ativo (campos vazios, divergências entre fontes, taxa de sucesso do autocomplete).
+* [ ] Compatibilidade com emissão preservada em testes e validação operacional.
+
+## Critério de saída
+
+* [ ] Zero regressões no fluxo de emissão em produção.
+* [ ] Dados essenciais para BI coletados em >80% das empresas ativas.
+* [ ] Rastreabilidade rápida de origem/confiabilidade dos campos principais.

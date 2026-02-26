@@ -140,3 +140,16 @@ Importantes para quick flow:
   * `npm run test:e2e` ✅ (`1 suite`, `2 testes`)
   * `npm run build` ✅
 * Lint executado com autofix: sem erros bloqueantes; warnings remanescentes de `@typescript-eslint` seguem como dívida técnica de tipagem.
+
+## 13. Checklist MVP -> BI (operacional)
+
+* [ ] Contrato canônico de dados definido (empresa/tomador/serviço/tributação/localização/datas).
+* [ ] Origem dos dados registrada (`source` e `updatedAt` por campo crítico).
+* [ ] Persistência dupla ativa (normalizado + `providerData` bruto).
+* [ ] Autocomplete backend-first para CNPJ/CEP/municípios.
+* [ ] Campos fiscais mínimos garantidos (`cnaeFiscal`, `ctnCodigo`, `nbsCodigo`, `regimeTributario`, `opcaoPeloSimples`).
+* [ ] Histórico/snapshot cadastral habilitado para auditoria.
+* [ ] Indicador de completude por empresa calculado.
+* [ ] Eventos-chave instrumentados (`empresa_preview`, `empresa_updated`, `nfse_emitida`, `nfse_rejeitada`, `tomador_criado`).
+* [ ] Monitoramento de qualidade de dados ativo (vazios, divergências, taxa de autocomplete).
+* [ ] Compatibilidade com emissão preservada e validada continuamente.
