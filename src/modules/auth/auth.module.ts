@@ -26,7 +26,7 @@ import { User, UserSchema } from './schemas/user.schema';
         return {
           secret,
           signOptions: {
-            expiresIn: expiresIn ?? '7d',
+            expiresIn: expiresIn ?? '1d',
           },
         };
       },

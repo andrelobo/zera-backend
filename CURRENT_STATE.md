@@ -1,6 +1,6 @@
 # ZERA Backend – Current State
 
-Snapshot operacional do backend em **19/02/2026** (última atualização consolidada).
+Snapshot operacional do backend em **26/02/2026** (última atualização consolidada).
 
 ## 1. Objetivo do documento
 
@@ -113,8 +113,19 @@ Importantes para quick flow:
 * Estratégia recomendada de rollout: `off` (baseline) -> `warn` (observabilidade sem bloqueio) -> `enforce` (bloqueio por pré-requisito validado).
 * Webhook com validação por token compartilhado; assinatura criptográfica ainda não implementada.
 
-## 10. Referências
+## 10. Atualizações recentes relevantes (fev/2026)
+
+* Regressão DANFSE com rejeição `E0312` foi mitigada no backend com fallback defensivo para `servico.codigoTributacao` no provider PlugNotas.
+* Ordem de fallback aplicada:
+  * `input.servico.codigoTributacao`
+  * `NFSE_CODIGO_TRIBUTACAO_PADRAO`
+  * `QUICK_NFSE_CODIGO_TRIBUTACAO`
+  * default final `"100"`
+* Teste de regressão adicionado em `src/fiscal/infra/plugnotas.provider.spec.ts` para garantir que o payload siga com `codigoTributacao` mesmo quando o frontend não envia o campo.
+
+## 11. Referências
 
 * Histórico completo: `CONTEXT.md`
 * Detalhes de produção: `REPORT_PLUGNOTAS_PROD_2026-02-06.md`, `REPORT_PLUGNOTAS_PROD_2026-02-09.md`
 * Endpoints PlugNotas: `endpoints-plug-notas.md`
+* Evidência da regressão/correção: seção `ATUALIZAÇÃO (25/02/2026)` em `CONTEXT.md`
