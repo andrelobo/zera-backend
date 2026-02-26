@@ -121,10 +121,7 @@ describe('TomadoresService', () => {
       q: '   ',
     });
 
-    expect(find).toHaveBeenCalledWith(
-      { empresaCnpj: '43521115000134' },
-      expect.any(Object),
-    );
+    expect(find).toHaveBeenCalledWith({ empresaCnpj: '43521115000134' }, expect.any(Object));
     expect(limit).toHaveBeenCalledWith(10);
   });
 });

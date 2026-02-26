@@ -1193,3 +1193,33 @@ Cobertura nova:
 Executado em Node 20:
 * `yarn build` ✅
 * `yarn test --runInBand src/fiscal/infra/plugnotas.provider.spec.ts` ✅
+
+---
+
+# ATUALIZAÇÃO (26/02/2026) – Sincronização com remoto e validação completa
+
+## 1) Estado de sincronização
+
+Após sincronização local/remoto, o backend ficou alinhado em:
+* branch: `main`
+* commit: `b0d68cb` (`feat/fix: ajustes NFSe e tomadores`)
+* status: `main...origin/main` (sem divergência)
+
+## 2) Confirmação do conteúdo funcional
+
+As mudanças locais relevantes de emissão (ajustes em NFSe e tomadores) foram preservadas e publicadas no mesmo commit `b0d68cb`, incluindo:
+* `src/fiscal/application/emitir-nfse.service.ts`
+* `src/fiscal/infra/mongo/repositories/nfse-emission.repository.ts`
+* `src/modules/fiscal/dtos/emitir-nfse.dto.ts`
+* `src/modules/tomadores/tomadores.service.ts`
+
+## 3) Validação técnica executada (backend)
+
+Executado em Node 20:
+* `npm test` ✅ (`10 suites`, `31 testes`)
+* `npm run test:cov` ✅
+* `npm run test:e2e` ✅ (`1 suite`, `2 testes`)
+* `npm run build` ✅
+
+Observação operacional:
+* `npm run lint` foi executado com `--fix`; o backend ficou sem erros bloqueantes de lint (restaram warnings de tipagem estrita/variáveis não usadas).

@@ -78,7 +78,9 @@ async function bootstrap() {
     serializedOpenApi = JSON.stringify(document);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    logger.error(`Swagger serialization failed. Falling back to minimal OpenAPI doc. error=${message}`);
+    logger.error(
+      `Swagger serialization failed. Falling back to minimal OpenAPI doc. error=${message}`,
+    );
     document = {
       openapi: '3.0.0',
       info: {

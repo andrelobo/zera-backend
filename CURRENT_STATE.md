@@ -129,3 +129,14 @@ Importantes para quick flow:
 * Detalhes de produção: `REPORT_PLUGNOTAS_PROD_2026-02-06.md`, `REPORT_PLUGNOTAS_PROD_2026-02-09.md`
 * Endpoints PlugNotas: `endpoints-plug-notas.md`
 * Evidência da regressão/correção: seção `ATUALIZAÇÃO (25/02/2026)` em `CONTEXT.md`
+
+## 12. Atualização operacional (26/02/2026)
+
+* Sincronização de branch concluída: `main` local e `origin/main` alinhados no commit `b0d68cb`.
+* Ajustes de emissão/NFSe e tomadores preservados no remoto (sem perda de alterações locais).
+* Bateria de validação executada:
+  * `npm test` ✅ (`10 suites`, `31 testes`)
+  * `npm run test:cov` ✅
+  * `npm run test:e2e` ✅ (`1 suite`, `2 testes`)
+  * `npm run build` ✅
+* Lint executado com autofix: sem erros bloqueantes; warnings remanescentes de `@typescript-eslint` seguem como dívida técnica de tipagem.

@@ -47,7 +47,12 @@ export class EmitirNfseQuickService {
     private readonly servicoCatalog: ServicoCatalogService,
   ) {}
 
-  async execute(input: { cnpj: string; cpfTomador: string; valor: number; codigoServico?: string }) {
+  async execute(input: {
+    cnpj: string;
+    cpfTomador: string;
+    valor: number;
+    codigoServico?: string;
+  }) {
     const empresa = await this.resolveEmpresa(input.cnpj);
     const payload = this.buildPayload(empresa, input);
     return this.emitirNfseService.execute(payload);

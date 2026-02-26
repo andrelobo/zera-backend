@@ -197,9 +197,7 @@ export class EmpresasService {
   async getByCnpjNormalized(cnpj: string) {
     const doc = await this.getByCnpj(cnpj);
     if (!doc) return null;
-    return this.normalizeEmpresaOutput(
-      doc.toObject() as unknown as Record<string, unknown>,
-    );
+    return this.normalizeEmpresaOutput(doc.toObject() as unknown as Record<string, unknown>);
   }
 
   async findFirstWithCertificate() {
@@ -341,11 +339,7 @@ export class EmpresasService {
         'inscricaoMunicipal',
         'im',
       ]),
-      inscricaoEstadual: pick(safeProviderData, [
-        'inscricao_estadual',
-        'inscricaoEstadual',
-        'ie',
-      ]),
+      inscricaoEstadual: pick(safeProviderData, ['inscricao_estadual', 'inscricaoEstadual', 'ie']),
       suframa: pick(safeProviderData, ['suframa']),
       situacaoCadastral: pick(safeProviderData, [
         'situacao_cadastral',
@@ -354,7 +348,11 @@ export class EmpresasService {
         'descricao_situacao_cadastral',
       ]),
       dataSituacaoCadastral: this.toDateOrUndefined(
-        pick(safeProviderData, ['data_situacao_cadastral', 'dataSituacaoCadastral', 'data_situacao']),
+        pick(safeProviderData, [
+          'data_situacao_cadastral',
+          'dataSituacaoCadastral',
+          'data_situacao',
+        ]),
       ),
       dataInicioAtividade: this.toDateOrUndefined(
         pick(safeProviderData, ['data_inicio_atividade', 'dataInicioAtividade', 'abertura']),
@@ -393,12 +391,7 @@ export class EmpresasService {
         ]),
       ),
       opcaoPeloMei: this.toBooleanOrUndefined(
-        pick(safeProviderData, [
-          'opcao_pelo_mei',
-          'opcaoPeloMei',
-          'simei.optante',
-          'simples.mei',
-        ]),
+        pick(safeProviderData, ['opcao_pelo_mei', 'opcaoPeloMei', 'simei.optante', 'simples.mei']),
       ),
       email: pick(safeProviderData, ['email', 'email_contato', 'emailContato']),
       fone: pick(safeProviderData, [
@@ -408,12 +401,7 @@ export class EmpresasService {
         'telefone_principal',
         'ddd_telefone_1',
       ]),
-      whatsapp: pick(safeProviderData, [
-        'whatsapp',
-        'telefone',
-        'fone',
-        'ddd_telefone_1',
-      ]),
+      whatsapp: pick(safeProviderData, ['whatsapp', 'telefone', 'fone', 'ddd_telefone_1']),
       endereco: {
         logradouro: pick(enderecoSrc, ['logradouro', 'logradouro_endereco', 'logradouroEndereco']),
         numero: pick(enderecoSrc, ['numero', 'numero_endereco', 'numeroEndereco']),
@@ -487,8 +475,7 @@ export class EmpresasService {
       opcao_pelo_simples: data?.opcao_pelo_simples ?? data?.simples?.optante,
       opcao_pelo_mei: data?.opcao_pelo_mei ?? data?.simei?.optante ?? data?.simples?.mei,
       data_opcao_pelo_simples: data?.data_opcao_pelo_simples ?? data?.simples?.data_opcao,
-      data_exclusao_do_simples:
-        data?.data_exclusao_do_simples ?? data?.simples?.data_exclusao,
+      data_exclusao_do_simples: data?.data_exclusao_do_simples ?? data?.simples?.data_exclusao,
     };
   }
 

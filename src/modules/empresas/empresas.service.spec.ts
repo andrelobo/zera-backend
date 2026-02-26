@@ -47,9 +47,7 @@ describe('EmpresasService', () => {
 
     expect(empresaModel.find).toHaveBeenCalledWith(
       expect.objectContaining({
-        $or: expect.arrayContaining([
-          expect.objectContaining({ cpf_cnpj: expect.any(Object) }),
-        ]),
+        $or: expect.arrayContaining([expect.objectContaining({ cpf_cnpj: expect.any(Object) })]),
       }),
     );
     expect(result).toEqual([
