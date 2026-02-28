@@ -183,6 +183,68 @@ export class EmpresasService {
     );
   }
 
+  async listMunicipiosByUf(ufRaw: string) {
+    const uf = String(ufRaw ?? '')
+      .trim()
+      .toUpperCase();
+    if (!/^[A-Z]{2}$/.test(uf)) {
+      throw new BadRequestException({
+        code: 'UF_INVALID',
+        message: 'UF deve conter 2 letras',
+      });
+    }
+
+    const data = await this.fetchJson<unknown[]>(
+      `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`,
+      'MUNICIPIOS_LOOKUP_FAILED',
+      'Falha ao consultar municípios por UF',
+    );
+
+    if (!Array.isArray(data)) return [];
+    return data
+      .map((item) => {
+        const row = item as Record<string, unknown>;
+        const id = Number(row.id);
+        const nome = typeof row.nome === 'string' ? row.nome : '';
+        if (!Number.isFinite(id) || !nome.trim()) return null;
+        return { id, nome, uf };
+      })
+      .filter((row): row is { id: number; nome: string; uf: string } => Boolean(row))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }
+
+  async lookupCep(cepRaw: string) {
+    const cep = this.onlyDigits(String(cepRaw ?? ''));
+    if (cep.length !== 8) {
+      throw new BadRequestException({
+        code: 'CEP_INVALID',
+        message: 'CEP deve conter 8 dígitos',
+      });
+    }
+
+    const data = await this.fetchJson<Record<string, unknown>>(
+      `https://viacep.com.br/ws/${cep}/json/`,
+      'CEP_LOOKUP_FAILED',
+      'Falha ao consultar CEP',
+    );
+
+    if (data?.erro === true) {
+      throw new BadRequestException({
+        code: 'CEP_NOT_FOUND',
+        message: 'CEP não encontrado',
+      });
+    }
+
+    return {
+      cep: this.onlyDigits(String(data?.cep ?? cep)),
+      logradouro: String(data?.logradouro ?? ''),
+      bairro: String(data?.bairro ?? ''),
+      cidade: String(data?.localidade ?? ''),
+      uf: String(data?.uf ?? '').toUpperCase(),
+      complemento: String(data?.complemento ?? ''),
+    };
+  }
+
   getById(id: string) {
     return this.empresaModel.findById(id);
   }
@@ -683,5 +745,46 @@ export class EmpresasService {
     const tag = cipher.getAuthTag();
 
     return `v1:${iv.toString('base64')}:${tag.toString('base64')}:${encrypted.toString('base64')}`;
+  }
+
+  private async fetchJson<T>(url: string, errorCode: string, message: string): Promise<T> {
+    const timeoutMs = Number(process.env.EXTERNAL_LOOKUP_TIMEOUT_MS ?? 8000);
+    const timeout = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 8000;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new BadRequestException({
+          code: errorCode,
+          message,
+          details: {
+            status: response.status,
+            statusText: response.statusText,
+          },
+        });
+      }
+
+      return (await response.json()) as T;
+    } catch (error: unknown) {
+      if (error instanceof BadRequestException) throw error;
+      const e = error as { name?: string; message?: string };
+      throw new BadRequestException({
+        code: errorCode,
+        message,
+        details: {
+          cause: e?.name ?? 'UnknownError',
+          error: e?.message ?? null,
+        },
+      });
+    } finally {
+      clearTimeout(timer);
+    }
   }
 }

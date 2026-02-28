@@ -89,6 +89,20 @@ export class EmpresasController {
     return this.empresas.list({ q, limit });
   }
 
+  @Get('lookup/municipios')
+  @Roles('admin', 'manager', 'user')
+  @ApiOperation({ summary: 'List municípios por UF (autocomplete)' })
+  lookupMunicipios(@Query('uf') uf?: string) {
+    return this.empresas.listMunicipiosByUf(uf ?? '');
+  }
+
+  @Get('lookup/cep/:cep')
+  @Roles('admin', 'manager', 'user')
+  @ApiOperation({ summary: 'Consultar endereço por CEP (autocomplete)' })
+  lookupCep(@Param('cep') cep: string) {
+    return this.empresas.lookupCep(cep);
+  }
+
   @Get('cnpj/:cnpj')
   @Roles('admin', 'manager', 'user')
   @ApiOperation({ summary: 'Get empresa by CNPJ' })

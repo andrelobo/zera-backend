@@ -84,6 +84,18 @@ export class PlugNotasProvider implements FiscalProvider {
     const regimeApuracaoTributaria = regimeTributarioSn?.regApTribSN
       ? regimeTributarioSn.regApTribSN
       : undefined;
+    const shouldOmitAliquotaForSimplesSemRetencao =
+      regimeTributarioSn?.opSimpNac === 3 &&
+      regimeTributarioSn?.regApTribSN === 1 &&
+      input.servico.iss?.retido === false;
+    const issPayload = input.servico.iss
+      ? compact({
+          ...input.servico.iss,
+          aliquota: shouldOmitAliquotaForSimplesSemRetencao
+            ? undefined
+            : input.servico.iss.aliquota,
+        })
+      : undefined;
 
     const payload = [
       compact({
@@ -126,7 +138,7 @@ export class PlugNotasProvider implements FiscalProvider {
             codigo: servicoCodigo,
             codigoTributacao,
             discriminacao: input.servico.descricao,
-            iss: input.servico.iss,
+            iss: issPayload,
             valor: {
               servico: Number(toDecimalString(input.servico.valor)),
             },

@@ -156,4 +156,60 @@ describe('PlugNotasProvider', () => {
     const payload = nfseApi.emitirNfse.mock.calls[0][0];
     expect(payload?.[0]?.servico?.[0]?.codigoTributacao).toBe('100');
   });
+
+  it('omits ISS aliquota for Simples Nacional without retention to prevent E0625', async () => {
+    const nfseApi = {
+      emitirNfse: jest.fn().mockResolvedValue({ protocol: 'pn-999', situacao: 'PROCESSANDO' }),
+    };
+
+    const provider = new PlugNotasProvider(nfseApi as any);
+
+    await provider.emitirNfse({
+      referenciaExterna: 'ref-4',
+      prestador: {
+        cnpj: '43.521.115/0001-34',
+        inscricaoMunicipal: '51754301',
+        razaoSocial: 'BURGUS LTDA',
+        regimeTributarioSn: {
+          opSimpNac: 3,
+          regApTribSN: 1,
+          regEspTrib: 0,
+        },
+        endereco: {
+          logradouro: 'Saldanha Marinho',
+          numero: '606',
+          bairro: 'Centro',
+          municipio: 'Manaus',
+          uf: 'AM',
+          cep: '69010040',
+        },
+      },
+      tomador: {
+        cpfCnpj: '61020788100',
+        razaoSocial: 'ANDRE AUGUSTO DE HOLANDA LOBO',
+        endereco: {
+          logradouro: 'R FREI JOSE DE LEONISSA',
+          numero: '758',
+          bairro: 'NOVA CIDADE',
+          municipio: 'Manaus',
+          uf: 'AM',
+          cep: '69017020',
+        },
+      },
+      servico: {
+        codigoNacional: '171901',
+        codigoTributacao: '100',
+        descricao: 'Consulta IR 2024',
+        valor: 100,
+        iss: {
+          retido: false,
+          aliquota: 2,
+        },
+      },
+    });
+
+    const payload = nfseApi.emitirNfse.mock.calls[0][0];
+    expect(payload?.[0]?.servico?.[0]?.iss?.retido).toBe(false);
+    expect(payload?.[0]?.servico?.[0]?.iss?.aliquota).toBeUndefined();
+  });
 });
