@@ -8,6 +8,13 @@ describe('EmitirNfseService idempotency', () => {
         cnpj: '43521115000134',
         certificado: { uploadedAt: new Date() },
       }),
+      getCadastroResumoByCnpj: jest.fn().mockResolvedValue({
+        statusCadastro: 'COMPLETO',
+        prontoParaEmitir: true,
+        percentualCompletude: 100,
+        camposFaltantes: [],
+        camposFaltantesEmissao: [],
+      }),
     };
   }
 

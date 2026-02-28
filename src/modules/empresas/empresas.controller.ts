@@ -116,7 +116,7 @@ export class EmpresasController {
   @Roles('admin', 'manager', 'user')
   @ApiOperation({ summary: 'Get empresa by id' })
   async getById(@Param('id') id: string) {
-    const doc = await this.empresas.getById(id);
+    const doc = await this.empresas.getByIdNormalized(id);
     if (!doc) return { found: false };
     return doc;
   }

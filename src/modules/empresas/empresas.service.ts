@@ -10,6 +10,16 @@ import { CreateEmpresaDto } from './dtos/create-empresa.dto';
 import { UpdateEmpresaDto } from './dtos/update-empresa.dto';
 import { Empresa, EmpresaDocument } from './schemas/empresa.schema';
 
+type CadastroStatus = 'PENDENTE' | 'COMPLETO';
+
+export interface EmpresaCadastroResumo {
+  statusCadastro: CadastroStatus;
+  prontoParaEmitir: boolean;
+  percentualCompletude: number;
+  camposFaltantes: string[];
+  camposFaltantesEmissao: string[];
+}
+
 @Injectable()
 export class EmpresasService {
   constructor(
@@ -32,11 +42,13 @@ export class EmpresasService {
 
     if (existingWithCert?.razaoSocial) {
       if (Object.keys(overrides).length === 0) {
-        return this.empresaModel.findById(existingWithCert._id);
+        const doc = await this.empresaModel.findById(existingWithCert._id);
+        return this.toNormalizedFromDoc(doc);
       }
-      return this.empresaModel.findByIdAndUpdate(existingWithCert._id, overrides, {
+      const doc = await this.empresaModel.findByIdAndUpdate(existingWithCert._id, overrides, {
         new: true,
       });
+      return this.toNormalizedFromDoc(doc);
     }
 
     if (!existingWithCert?.certificado?.pfxBase64) {
@@ -51,9 +63,10 @@ export class EmpresasService {
     const updateData = { ...mapped, ...overrides };
 
     try {
-      return await this.empresaModel.findByIdAndUpdate(existingWithCert._id, updateData, {
+      const doc = await this.empresaModel.findByIdAndUpdate(existingWithCert._id, updateData, {
         new: true,
       });
+      return this.toNormalizedFromDoc(doc);
     } catch (e: any) {
       throw new BadRequestException({
         message: 'Não foi possível cadastrar a empresa',
@@ -249,6 +262,11 @@ export class EmpresasService {
     return this.empresaModel.findById(id);
   }
 
+  async getByIdNormalized(id: string) {
+    const doc = await this.getById(id);
+    return this.toNormalizedFromDoc(doc);
+  }
+
   async getByCnpj(cnpj: string) {
     const normalized = this.onlyDigits(cnpj);
     return this.empresaModel.findOne({
@@ -258,8 +276,7 @@ export class EmpresasService {
 
   async getByCnpjNormalized(cnpj: string) {
     const doc = await this.getByCnpj(cnpj);
-    if (!doc) return null;
-    return this.normalizeEmpresaOutput(doc.toObject() as unknown as Record<string, unknown>);
+    return this.toNormalizedFromDoc(doc);
   }
 
   async findFirstWithCertificate() {
@@ -270,7 +287,8 @@ export class EmpresasService {
 
   async update(id: string, data: Partial<UpdateEmpresaDto>) {
     const patch = this.pickEmpresaOverrides(data);
-    return this.empresaModel.findByIdAndUpdate(id, patch, { new: true });
+    const doc = await this.empresaModel.findByIdAndUpdate(id, patch, { new: true });
+    return this.toNormalizedFromDoc(doc);
   }
 
   async remove(id: string) {
@@ -680,6 +698,7 @@ export class EmpresasService {
     });
 
     const id = String(raw._id ?? raw.id ?? '');
+    const cadastroResumo = this.buildCadastroResumo(raw);
     return this.compactObject({
       ...raw,
       id,
@@ -692,7 +711,18 @@ export class EmpresasService {
       suframa: pick('suframa'),
       whatsapp: pick('whatsapp', 'fone', 'telefone'),
       endereco: Object.keys(endereco).length > 0 ? endereco : undefined,
+      statusCadastro: cadastroResumo.statusCadastro,
+      prontoParaEmitir: cadastroResumo.prontoParaEmitir,
+      percentualCompletude: cadastroResumo.percentualCompletude,
+      camposFaltantes: cadastroResumo.camposFaltantes,
+      camposFaltantesEmissao: cadastroResumo.camposFaltantesEmissao,
     });
+  }
+
+  async getCadastroResumoByCnpj(cnpj: string): Promise<EmpresaCadastroResumo | null> {
+    const doc = await this.getByCnpj(cnpj);
+    if (!doc) return null;
+    return this.buildCadastroResumo(doc.toObject() as unknown as Record<string, unknown>);
   }
 
   private mergeProviderData(
@@ -745,6 +775,78 @@ export class EmpresasService {
     const tag = cipher.getAuthTag();
 
     return `v1:${iv.toString('base64')}:${tag.toString('base64')}:${encrypted.toString('base64')}`;
+  }
+
+  private toNormalizedFromDoc(doc: EmpresaDocument | null): Record<string, unknown> | null {
+    if (!doc) return null;
+    return this.normalizeEmpresaOutput(doc.toObject() as unknown as Record<string, unknown>);
+  }
+
+  private buildCadastroResumo(raw: Record<string, unknown>): EmpresaCadastroResumo {
+    const enderecoRaw = (raw.endereco as Record<string, unknown> | undefined) ?? {};
+    const regimeTributario = raw.regimeTributario ?? raw.regime_tributario;
+    const opcaoPeloSimples = raw.opcaoPeloSimples ?? raw.opcao_pelo_simples;
+    const aliquotaSN = raw.aliquotaSimplesNacional ?? raw.aliquota_simples_nacional;
+    const apuracaoSN = raw.apuracaoSimplesNacional ?? raw.apuracao_simples_nacional;
+    const certificadoRaw = (raw.certificado as Record<string, unknown> | undefined) ?? {};
+
+    const requiredForCadastro: Array<{ field: string; ok: boolean }> = [
+      { field: 'razaoSocial', ok: this.hasValue(raw.razaoSocial ?? raw.nome_razao_social) },
+      { field: 'inscricaoMunicipal', ok: this.hasValue(raw.inscricaoMunicipal ?? raw.inscricao_municipal) },
+      { field: 'cnaeFiscal', ok: this.hasValue(raw.cnaeFiscal ?? raw.cnae_fiscal) },
+      {
+        field: 'cnaeFiscalDescricao',
+        ok: this.hasValue(raw.cnaeFiscalDescricao ?? raw.cnae_fiscal_descricao),
+      },
+      { field: 'regimeTributario', ok: this.hasValue(regimeTributario) || this.hasValue(opcaoPeloSimples) },
+      { field: 'apuracaoSimplesNacional', ok: this.hasValue(apuracaoSN) },
+      { field: 'aliquotaSimplesNacional', ok: this.hasValue(aliquotaSN) },
+      { field: 'endereco.logradouro', ok: this.hasValue(enderecoRaw.logradouro) },
+      { field: 'endereco.numero', ok: this.hasValue(enderecoRaw.numero) },
+      { field: 'endereco.bairro', ok: this.hasValue(enderecoRaw.bairro) },
+      { field: 'endereco.cidade', ok: this.hasValue(enderecoRaw.cidade ?? enderecoRaw.municipio) },
+      { field: 'endereco.uf', ok: this.hasValue(enderecoRaw.uf ?? enderecoRaw.estado) },
+      { field: 'endereco.cep', ok: this.hasValue(enderecoRaw.cep) },
+      { field: 'certificado.uploadedAt', ok: this.hasValue(certificadoRaw.uploadedAt) },
+    ];
+
+    const requiredForEmissao: Array<{ field: string; ok: boolean }> = [
+      { field: 'razaoSocial', ok: this.hasValue(raw.razaoSocial ?? raw.nome_razao_social) },
+      { field: 'inscricaoMunicipal', ok: this.hasValue(raw.inscricaoMunicipal ?? raw.inscricao_municipal) },
+      { field: 'endereco.logradouro', ok: this.hasValue(enderecoRaw.logradouro) },
+      { field: 'endereco.numero', ok: this.hasValue(enderecoRaw.numero) },
+      { field: 'endereco.bairro', ok: this.hasValue(enderecoRaw.bairro) },
+      { field: 'endereco.cidade', ok: this.hasValue(enderecoRaw.cidade ?? enderecoRaw.municipio) },
+      { field: 'endereco.uf', ok: this.hasValue(enderecoRaw.uf ?? enderecoRaw.estado) },
+      { field: 'endereco.cep', ok: this.hasValue(enderecoRaw.cep) },
+      { field: 'certificado.uploadedAt', ok: this.hasValue(certificadoRaw.uploadedAt) },
+    ];
+
+    const camposFaltantes = requiredForCadastro.filter((item) => !item.ok).map((item) => item.field);
+    const camposFaltantesEmissao = requiredForEmissao
+      .filter((item) => !item.ok)
+      .map((item) => item.field);
+    const preenchidos = requiredForCadastro.length - camposFaltantes.length;
+    const percentualCompletude = Math.round((preenchidos / requiredForCadastro.length) * 100);
+    const statusCadastro: CadastroStatus = camposFaltantes.length === 0 ? 'COMPLETO' : 'PENDENTE';
+    const prontoParaEmitir = camposFaltantesEmissao.length === 0;
+
+    return {
+      statusCadastro,
+      prontoParaEmitir,
+      percentualCompletude,
+      camposFaltantes,
+      camposFaltantesEmissao,
+    };
+  }
+
+  private hasValue(value: unknown): boolean {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'string') return value.trim().length > 0;
+    if (typeof value === 'number') return Number.isFinite(value);
+    if (typeof value === 'boolean') return true;
+    if (value instanceof Date) return !Number.isNaN(value.getTime());
+    return true;
   }
 
   private async fetchJson<T>(url: string, errorCode: string, message: string): Promise<T> {

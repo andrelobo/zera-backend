@@ -67,18 +67,25 @@ export class EmitirNfseQuickService {
       });
     }
     const empresa = await this.empresasService.getByCnpj(cnpj);
+    const cadastroResumo = await this.empresasService.getCadastroResumoByCnpj(cnpj);
 
-    if (!empresa) {
+    if (!empresa || !cadastroResumo) {
       throw new BadRequestException({
         code: 'QUICK_PRESTADOR_NOT_FOUND',
         message: 'Empresa não encontrada para o CNPJ informado',
       });
     }
 
-    if (!empresa.certificado?.uploadedAt) {
+    if (!cadastroResumo.prontoParaEmitir) {
       throw new BadRequestException({
-        code: 'QUICK_PRESTADOR_NO_CERT',
-        message: 'A empresa selecionada não possui certificado digital importado.',
+        code: 'QUICK_PRESTADOR_INCOMPLETO',
+        message: 'Cadastro do prestador está incompleto para emissão rápida.',
+        details: {
+          statusCadastro: cadastroResumo.statusCadastro,
+          percentualCompletude: cadastroResumo.percentualCompletude,
+          camposFaltantes: cadastroResumo.camposFaltantes,
+          camposFaltantesEmissao: cadastroResumo.camposFaltantesEmissao,
+        },
       });
     }
 

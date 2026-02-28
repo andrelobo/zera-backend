@@ -22,6 +22,13 @@ describe('EmitirNfseQuickService', () => {
 
   const empresasService = {
     getByCnpj: jest.fn().mockResolvedValue(empresa),
+    getCadastroResumoByCnpj: jest.fn().mockResolvedValue({
+      statusCadastro: 'COMPLETO',
+      prontoParaEmitir: true,
+      percentualCompletude: 100,
+      camposFaltantes: [],
+      camposFaltantesEmissao: [],
+    }),
   };
 
   const emitirNfseService = {
