@@ -783,23 +783,21 @@ export class EmpresasService {
   }
 
   private buildCadastroResumo(raw: Record<string, unknown>): EmpresaCadastroResumo {
-    const enderecoRaw =
-      ((raw.endereco as Record<string, unknown> | undefined) ??
-        (raw.endereco_empresa as Record<string, unknown> | undefined) ??
-        ((raw.estabelecimento as Record<string, unknown> | undefined)?.endereco as
-          | Record<string, unknown>
-          | undefined) ??
-        (raw.localizacao as Record<string, unknown> | undefined) ??
-        {}) as Record<string, unknown>;
+    const enderecoRaw = ((raw.endereco as Record<string, unknown> | undefined) ??
+      (raw.endereco_empresa as Record<string, unknown> | undefined) ??
+      ((raw.estabelecimento as Record<string, unknown> | undefined)?.endereco as
+        | Record<string, unknown>
+        | undefined) ??
+      (raw.localizacao as Record<string, unknown> | undefined) ??
+      {}) as Record<string, unknown>;
     const regimeTributario = raw.regimeTributario ?? raw.regime_tributario;
     const opcaoPeloSimples = raw.opcaoPeloSimples ?? raw.opcao_pelo_simples;
     const aliquotaSN = raw.aliquotaSimplesNacional ?? raw.aliquota_simples_nacional;
     const apuracaoSN = raw.apuracaoSimplesNacional ?? raw.apuracao_simples_nacional;
-    const certificadoRaw =
-      ((raw.certificado as Record<string, unknown> | undefined) ??
-        (raw.certificado_digital as Record<string, unknown> | undefined) ??
-        (raw.certificadoDigital as Record<string, unknown> | undefined) ??
-        {}) as Record<string, unknown>;
+    const certificadoRaw = ((raw.certificado as Record<string, unknown> | undefined) ??
+      (raw.certificado_digital as Record<string, unknown> | undefined) ??
+      (raw.certificadoDigital as Record<string, unknown> | undefined) ??
+      {}) as Record<string, unknown>;
     const logradouro = enderecoRaw.logradouro ?? raw.endereco ?? raw.logradouro;
     const numero = enderecoRaw.numero ?? raw.numero;
     const bairro = enderecoRaw.bairro ?? raw.bairro;
@@ -819,13 +817,19 @@ export class EmpresasService {
 
     const requiredForCadastro: Array<{ field: string; ok: boolean }> = [
       { field: 'razaoSocial', ok: this.hasValue(raw.razaoSocial ?? raw.nome_razao_social) },
-      { field: 'inscricaoMunicipal', ok: this.hasValue(raw.inscricaoMunicipal ?? raw.inscricao_municipal) },
+      {
+        field: 'inscricaoMunicipal',
+        ok: this.hasValue(raw.inscricaoMunicipal ?? raw.inscricao_municipal),
+      },
       { field: 'cnaeFiscal', ok: this.hasValue(raw.cnaeFiscal ?? raw.cnae_fiscal) },
       {
         field: 'cnaeFiscalDescricao',
         ok: this.hasValue(raw.cnaeFiscalDescricao ?? raw.cnae_fiscal_descricao),
       },
-      { field: 'regimeTributario', ok: this.hasValue(regimeTributario) || this.hasValue(opcaoPeloSimples) },
+      {
+        field: 'regimeTributario',
+        ok: this.hasValue(regimeTributario) || this.hasValue(opcaoPeloSimples),
+      },
       { field: 'apuracaoSimplesNacional', ok: this.hasValue(apuracaoSN) },
       { field: 'aliquotaSimplesNacional', ok: this.hasValue(aliquotaSN) },
       { field: 'endereco.logradouro', ok: this.hasValue(logradouro) },
@@ -839,7 +843,10 @@ export class EmpresasService {
 
     const requiredForEmissao: Array<{ field: string; ok: boolean }> = [
       { field: 'razaoSocial', ok: this.hasValue(raw.razaoSocial ?? raw.nome_razao_social) },
-      { field: 'inscricaoMunicipal', ok: this.hasValue(raw.inscricaoMunicipal ?? raw.inscricao_municipal) },
+      {
+        field: 'inscricaoMunicipal',
+        ok: this.hasValue(raw.inscricaoMunicipal ?? raw.inscricao_municipal),
+      },
       { field: 'endereco.logradouro', ok: this.hasValue(logradouro) },
       { field: 'endereco.numero', ok: this.hasValue(numero) },
       { field: 'endereco.bairro', ok: this.hasValue(bairro) },
@@ -849,7 +856,9 @@ export class EmpresasService {
       { field: 'certificado.uploadedAt', ok: hasCertificado },
     ];
 
-    const camposFaltantes = requiredForCadastro.filter((item) => !item.ok).map((item) => item.field);
+    const camposFaltantes = requiredForCadastro
+      .filter((item) => !item.ok)
+      .map((item) => item.field);
     const camposFaltantesEmissao = requiredForEmissao
       .filter((item) => !item.ok)
       .map((item) => item.field);

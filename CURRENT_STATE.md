@@ -174,3 +174,17 @@ Importantes para quick flow:
 * [ ] Eventos-chave instrumentados (`empresa_preview`, `empresa_updated`, `nfse_emitida`, `nfse_rejeitada`, `tomador_criado`).
 * [ ] Monitoramento de qualidade de dados ativo (vazios, divergências, taxa de autocomplete).
 * [ ] Compatibilidade com emissão preservada e validada continuamente.
+
+## 15. Atualização operacional (28/02/2026) – Reforço de testes
+
+* Cobertura de controller fiscal ampliada com spec dedicada:
+  * `src/modules/fiscal/fiscal.controller.spec.ts`
+  * validação de `INVALID_PAGE`, `INVALID_LIMIT`, `INVALID_STATUS` e forwarding de filtros.
+* Cobertura e2e de empresas validada nesta rodada:
+  * `test/empresas-cadastro-validation.e2e-spec.ts`
+  * `test/empresas-authorization.e2e-spec.ts`
+* Bateria de validação executada:
+  * `npm test` ✅ (`11 suites`, `39 testes`)
+  * `npm run test:e2e` ✅ (`3 suites`, `14 testes`)
+
+Estado: backend estável com reforço de segurança de contrato em cadastro/autorização/listagem NFSe.

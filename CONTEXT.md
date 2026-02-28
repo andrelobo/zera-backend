@@ -1342,3 +1342,44 @@ Mesmo com interrupções durante cadastro:
 * `npm run test` ✅
 * `npm run build` ✅
 * `npm run test:e2e` ✅
+
+# ATUALIZAÇÃO (28/02/2026) – Cobertura de testes (perfil tester)
+
+## 1) Escopo desta rodada
+
+Objetivo operacional desta rodada:
+* ampliar cobertura de testes para validações de cadastro e autorização;
+* validar regras de query/paginação/status em `GET /nfse`;
+* executar bateria completa local (unit + e2e + build já validado na rodada anterior).
+
+## 2) Novas coberturas adicionadas
+
+Arquivos de teste adicionados/validados:
+* `src/modules/fiscal/fiscal.controller.spec.ts`
+* `test/empresas-cadastro-validation.e2e-spec.ts`
+* `test/empresas-authorization.e2e-spec.ts`
+
+Cobertura técnica destacada:
+* `FiscalController.list` com validação explícita de:
+  * `INVALID_PAGE`
+  * `INVALID_LIMIT`
+  * `INVALID_STATUS`
+* repasse correto de filtros para repositório (`page`, `limit`, `provider`, `status`)
+* shape de retorno de listagem (`items` + `meta`)
+* validação de autorização por perfil em rotas de empresas (`admin/manager/user`)
+* validações de payload de cadastro de empresas em cenários inválidos e válidos
+
+## 3) Validação executada em 28/02/2026
+
+Executado localmente:
+* `npm test` -> **11 suites / 39 testes passando**
+* `npm run test:e2e` -> **3 suites / 14 testes passando**
+
+Observação operacional:
+* a suíte e2e depende de bind de porta local; em ambiente restrito pode exigir execução com permissão ampliada.
+
+## 4) Resultado
+
+Conclusão:
+* backend validado com cobertura ampliada para cenários críticos de cadastro, autorização e listagem fiscal.
+* sem regressão observada nas suítes executadas nesta rodada.
