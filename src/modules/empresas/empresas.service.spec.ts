@@ -17,7 +17,15 @@ const buildFindChain = (docs: Record<string, unknown>[]): FindChain => {
 };
 
 describe('EmpresasService', () => {
-  const cnpjApi = {
+  const brasilApiCnpjApi = {
+    consultarCnpj: jest.fn(),
+  };
+
+  const receitaWsCnpjApi = {
+    consultarCnpj: jest.fn(),
+  };
+
+  const plugNotasCnpjApi = {
     consultarCnpj: jest.fn(),
   };
 
@@ -30,7 +38,12 @@ describe('EmpresasService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new EmpresasService(empresaModel as any, cnpjApi as any);
+    service = new EmpresasService(
+      empresaModel as any,
+      brasilApiCnpjApi as any,
+      receitaWsCnpjApi as any,
+      plugNotasCnpjApi as any,
+    );
   });
 
   it('searches by legacy CNPJ field cpf_cnpj and normalizes output', async () => {
@@ -178,5 +191,35 @@ describe('EmpresasService', () => {
         razaoSocial: 'LEGADO POR CNPJ',
       }),
     );
+  });
+
+  it('marks legacy cadastro as ready for emissão when certificado metadata exists without uploadedAt', async () => {
+    const toObject = () => ({
+      _id: 'legacy-ready',
+      cpf_cnpj: '43521115000134',
+      nome_razao_social: 'EMPRESA LEGADO SA',
+      inscricao_municipal: '123456',
+      endereco: {
+        logradouro: 'Rua A',
+        numero: '100',
+        bairro: 'Centro',
+        municipio: 'Manaus',
+        uf: 'AM',
+        cep: '69000000',
+      },
+      certificadoDigital: {
+        filename: 'empresa-legado.pfx',
+      },
+    });
+    empresaModel.findOne.mockResolvedValue({ toObject });
+
+    const resumo = await service.getCadastroResumoByCnpj('43.521.115/0001-34');
+
+    expect(resumo).toEqual(
+      expect.objectContaining({
+        prontoParaEmitir: true,
+      }),
+    );
+    expect(resumo?.camposFaltantesEmissao).not.toContain('certificado.uploadedAt');
   });
 });

@@ -783,12 +783,27 @@ export class EmpresasService {
   }
 
   private buildCadastroResumo(raw: Record<string, unknown>): EmpresaCadastroResumo {
-    const enderecoRaw = (raw.endereco as Record<string, unknown> | undefined) ?? {};
+    const enderecoRaw =
+      ((raw.endereco as Record<string, unknown> | undefined) ??
+        (raw.endereco_empresa as Record<string, unknown> | undefined) ??
+        ((raw.estabelecimento as Record<string, unknown> | undefined)?.endereco as
+          | Record<string, unknown>
+          | undefined) ??
+        (raw.localizacao as Record<string, unknown> | undefined) ??
+        {}) as Record<string, unknown>;
     const regimeTributario = raw.regimeTributario ?? raw.regime_tributario;
     const opcaoPeloSimples = raw.opcaoPeloSimples ?? raw.opcao_pelo_simples;
     const aliquotaSN = raw.aliquotaSimplesNacional ?? raw.aliquota_simples_nacional;
     const apuracaoSN = raw.apuracaoSimplesNacional ?? raw.apuracao_simples_nacional;
-    const certificadoRaw = (raw.certificado as Record<string, unknown> | undefined) ?? {};
+    const certificadoRaw =
+      ((raw.certificado as Record<string, unknown> | undefined) ??
+        (raw.certificado_digital as Record<string, unknown> | undefined) ??
+        (raw.certificadoDigital as Record<string, unknown> | undefined) ??
+        {}) as Record<string, unknown>;
+    const hasCertificado =
+      this.hasValue(certificadoRaw.uploadedAt) ||
+      this.hasValue(certificadoRaw.filename) ||
+      this.hasValue(certificadoRaw.sha256);
 
     const requiredForCadastro: Array<{ field: string; ok: boolean }> = [
       { field: 'razaoSocial', ok: this.hasValue(raw.razaoSocial ?? raw.nome_razao_social) },
@@ -804,10 +819,13 @@ export class EmpresasService {
       { field: 'endereco.logradouro', ok: this.hasValue(enderecoRaw.logradouro) },
       { field: 'endereco.numero', ok: this.hasValue(enderecoRaw.numero) },
       { field: 'endereco.bairro', ok: this.hasValue(enderecoRaw.bairro) },
-      { field: 'endereco.cidade', ok: this.hasValue(enderecoRaw.cidade ?? enderecoRaw.municipio) },
+      {
+        field: 'endereco.cidade',
+        ok: this.hasValue(enderecoRaw.cidade ?? enderecoRaw.municipio ?? enderecoRaw.localidade),
+      },
       { field: 'endereco.uf', ok: this.hasValue(enderecoRaw.uf ?? enderecoRaw.estado) },
       { field: 'endereco.cep', ok: this.hasValue(enderecoRaw.cep) },
-      { field: 'certificado.uploadedAt', ok: this.hasValue(certificadoRaw.uploadedAt) },
+      { field: 'certificado.uploadedAt', ok: hasCertificado },
     ];
 
     const requiredForEmissao: Array<{ field: string; ok: boolean }> = [
@@ -816,10 +834,13 @@ export class EmpresasService {
       { field: 'endereco.logradouro', ok: this.hasValue(enderecoRaw.logradouro) },
       { field: 'endereco.numero', ok: this.hasValue(enderecoRaw.numero) },
       { field: 'endereco.bairro', ok: this.hasValue(enderecoRaw.bairro) },
-      { field: 'endereco.cidade', ok: this.hasValue(enderecoRaw.cidade ?? enderecoRaw.municipio) },
+      {
+        field: 'endereco.cidade',
+        ok: this.hasValue(enderecoRaw.cidade ?? enderecoRaw.municipio ?? enderecoRaw.localidade),
+      },
       { field: 'endereco.uf', ok: this.hasValue(enderecoRaw.uf ?? enderecoRaw.estado) },
       { field: 'endereco.cep', ok: this.hasValue(enderecoRaw.cep) },
-      { field: 'certificado.uploadedAt', ok: this.hasValue(certificadoRaw.uploadedAt) },
+      { field: 'certificado.uploadedAt', ok: hasCertificado },
     ];
 
     const camposFaltantes = requiredForCadastro.filter((item) => !item.ok).map((item) => item.field);
