@@ -1291,3 +1291,54 @@ Conclusão operacional:
 * backend apto para consumo do frontend em produção nos fluxos de:
   * autocomplete de municípios/CEP
   * emissão NFSe com proteção contra E0625
+
+---
+
+# ATUALIZAÇÃO (28/02/2026) – Cadastro de prestador em etapas + bloqueio seguro de emissão
+
+## 1) Problema atacado
+
+Com o frontend dividido em múltiplas seções de cadastro do prestador, havia risco operacional de:
+* salvar apenas parte dos dados (queda de energia/internet/interrupção de sessão);
+* tentar emitir NFSe com cadastro incompleto.
+
+## 2) Mudanças no backend
+
+### 2.1 Resumo de completude no cadastro de empresa
+
+A resposta normalizada de empresa passou a incluir:
+* `statusCadastro`: `PENDENTE | COMPLETO`
+* `prontoParaEmitir`: `boolean`
+* `percentualCompletude`: `number`
+* `camposFaltantes`: `string[]`
+* `camposFaltantesEmissao`: `string[]`
+
+Esse resumo é calculado no backend e reflete pendências cadastrais e pendências mínimas para emissão.
+
+### 2.2 Bloqueio de emissão quando prestador está incompleto
+
+Fluxos protegidos:
+* `POST /nfse/emitir` -> retorna `PRESTADOR_INCOMPLETO` quando `prontoParaEmitir=false`
+* `POST /nfse/quick` -> retorna `QUICK_PRESTADOR_INCOMPLETO` quando `prontoParaEmitir=false`
+
+Payload de erro inclui `details` com:
+* `statusCadastro`
+* `percentualCompletude`
+* `camposFaltantes`
+* `camposFaltantesEmissao`
+
+Objetivo:
+* impedir emissão “quebrada” por cadastro parcial.
+
+## 3) Resultado operacional esperado
+
+Mesmo com interrupções durante cadastro:
+* dados já salvos permanecem;
+* empresa fica marcada como `PENDENTE` enquanto faltar informação;
+* emissão só libera quando requisitos mínimos forem concluídos.
+
+## 4) Validação técnica executada (28/02/2026)
+
+* `npm run test` ✅
+* `npm run build` ✅
+* `npm run test:e2e` ✅

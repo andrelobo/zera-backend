@@ -1,6 +1,6 @@
 # ZERA Backend – Current State
 
-Snapshot operacional do backend em **26/02/2026** (última atualização consolidada).
+Snapshot operacional do backend em **28/02/2026** (última atualização consolidada).
 
 ## 1. Objetivo do documento
 
@@ -123,6 +123,12 @@ Importantes para quick flow:
   * default final `"100"`
 * Teste de regressão adicionado em `src/fiscal/infra/plugnotas.provider.spec.ts` para garantir que o payload siga com `codigoTributacao` mesmo quando o frontend não envia o campo.
 
+* Cadastro de prestador passou a expor resumo de completude:
+  * `statusCadastro`, `prontoParaEmitir`, `percentualCompletude`, `camposFaltantes`, `camposFaltantesEmissao`.
+* Emissões foram protegidas por prontidão cadastral:
+  * `POST /nfse/emitir` bloqueia com `PRESTADOR_INCOMPLETO` quando necessário.
+  * `POST /nfse/quick` bloqueia com `QUICK_PRESTADOR_INCOMPLETO` quando necessário.
+
 ## 11. Referências
 
 * Histórico completo: `CONTEXT.md`
@@ -140,6 +146,21 @@ Importantes para quick flow:
   * `npm run test:e2e` ✅ (`1 suite`, `2 testes`)
   * `npm run build` ✅
 * Lint executado com autofix: sem erros bloqueantes; warnings remanescentes de `@typescript-eslint` seguem como dívida técnica de tipagem.
+
+## 14. Atualização operacional (28/02/2026)
+
+* Endpoints de lookup para frontend disponíveis e ativos:
+  * `GET /empresas/lookup/municipios?uf=XX`
+  * `GET /empresas/lookup/cep/:cep`
+* Hardening anti-E0625 no provider:
+  * omissão de `iss.aliquota` para Simples sem retenção (`opSimpNac=3`, `regApTribSN=1`, `iss.retido=false`).
+* Completude cadastral implementada no backend para cenários de cadastro em etapas/interrupção:
+  * empresa pode ficar `PENDENTE` até finalizar dados;
+  * emissão bloqueada até `prontoParaEmitir=true`.
+* Validação executada:
+  * `npm run test` ✅
+  * `npm run build` ✅
+  * `npm run test:e2e` ✅
 
 ## 13. Checklist MVP -> BI (operacional)
 
