@@ -222,4 +222,32 @@ describe('EmpresasService', () => {
     );
     expect(resumo?.camposFaltantesEmissao).not.toContain('certificado.uploadedAt');
   });
+
+  it('marks legacy cadastro as ready when endereço fields are stored at root level', async () => {
+    const toObject = () => ({
+      _id: 'legacy-root-address',
+      cnpj: '12345678000190',
+      razaoSocial: 'EMPRESA COM ENDERECO LEGADO',
+      inscricaoMunicipal: '998877',
+      endereco: 'Av. Brasil',
+      numero: '500',
+      bairro: 'Centro',
+      cidade: 'Manaus',
+      uf: 'AM',
+      cep: '69000000',
+      certificado: {
+        filename: 'certificado.pfx',
+      },
+    });
+    empresaModel.findOne.mockResolvedValue({ toObject });
+
+    const resumo = await service.getCadastroResumoByCnpj('12.345.678/0001-90');
+
+    expect(resumo).toEqual(
+      expect.objectContaining({
+        prontoParaEmitir: true,
+      }),
+    );
+    expect(resumo?.camposFaltantesEmissao).toEqual([]);
+  });
 });

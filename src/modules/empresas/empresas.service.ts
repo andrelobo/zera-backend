@@ -800,6 +800,18 @@ export class EmpresasService {
         (raw.certificado_digital as Record<string, unknown> | undefined) ??
         (raw.certificadoDigital as Record<string, unknown> | undefined) ??
         {}) as Record<string, unknown>;
+    const logradouro = enderecoRaw.logradouro ?? raw.endereco ?? raw.logradouro;
+    const numero = enderecoRaw.numero ?? raw.numero;
+    const bairro = enderecoRaw.bairro ?? raw.bairro;
+    const cidade =
+      enderecoRaw.cidade ??
+      enderecoRaw.municipio ??
+      enderecoRaw.localidade ??
+      raw.cidade ??
+      raw.municipio ??
+      raw.localidade;
+    const uf = enderecoRaw.uf ?? enderecoRaw.estado ?? raw.uf ?? raw.estado;
+    const cep = enderecoRaw.cep ?? raw.cep;
     const hasCertificado =
       this.hasValue(certificadoRaw.uploadedAt) ||
       this.hasValue(certificadoRaw.filename) ||
@@ -816,30 +828,24 @@ export class EmpresasService {
       { field: 'regimeTributario', ok: this.hasValue(regimeTributario) || this.hasValue(opcaoPeloSimples) },
       { field: 'apuracaoSimplesNacional', ok: this.hasValue(apuracaoSN) },
       { field: 'aliquotaSimplesNacional', ok: this.hasValue(aliquotaSN) },
-      { field: 'endereco.logradouro', ok: this.hasValue(enderecoRaw.logradouro) },
-      { field: 'endereco.numero', ok: this.hasValue(enderecoRaw.numero) },
-      { field: 'endereco.bairro', ok: this.hasValue(enderecoRaw.bairro) },
-      {
-        field: 'endereco.cidade',
-        ok: this.hasValue(enderecoRaw.cidade ?? enderecoRaw.municipio ?? enderecoRaw.localidade),
-      },
-      { field: 'endereco.uf', ok: this.hasValue(enderecoRaw.uf ?? enderecoRaw.estado) },
-      { field: 'endereco.cep', ok: this.hasValue(enderecoRaw.cep) },
+      { field: 'endereco.logradouro', ok: this.hasValue(logradouro) },
+      { field: 'endereco.numero', ok: this.hasValue(numero) },
+      { field: 'endereco.bairro', ok: this.hasValue(bairro) },
+      { field: 'endereco.cidade', ok: this.hasValue(cidade) },
+      { field: 'endereco.uf', ok: this.hasValue(uf) },
+      { field: 'endereco.cep', ok: this.hasValue(cep) },
       { field: 'certificado.uploadedAt', ok: hasCertificado },
     ];
 
     const requiredForEmissao: Array<{ field: string; ok: boolean }> = [
       { field: 'razaoSocial', ok: this.hasValue(raw.razaoSocial ?? raw.nome_razao_social) },
       { field: 'inscricaoMunicipal', ok: this.hasValue(raw.inscricaoMunicipal ?? raw.inscricao_municipal) },
-      { field: 'endereco.logradouro', ok: this.hasValue(enderecoRaw.logradouro) },
-      { field: 'endereco.numero', ok: this.hasValue(enderecoRaw.numero) },
-      { field: 'endereco.bairro', ok: this.hasValue(enderecoRaw.bairro) },
-      {
-        field: 'endereco.cidade',
-        ok: this.hasValue(enderecoRaw.cidade ?? enderecoRaw.municipio ?? enderecoRaw.localidade),
-      },
-      { field: 'endereco.uf', ok: this.hasValue(enderecoRaw.uf ?? enderecoRaw.estado) },
-      { field: 'endereco.cep', ok: this.hasValue(enderecoRaw.cep) },
+      { field: 'endereco.logradouro', ok: this.hasValue(logradouro) },
+      { field: 'endereco.numero', ok: this.hasValue(numero) },
+      { field: 'endereco.bairro', ok: this.hasValue(bairro) },
+      { field: 'endereco.cidade', ok: this.hasValue(cidade) },
+      { field: 'endereco.uf', ok: this.hasValue(uf) },
+      { field: 'endereco.cep', ok: this.hasValue(cep) },
       { field: 'certificado.uploadedAt', ok: hasCertificado },
     ];
 
