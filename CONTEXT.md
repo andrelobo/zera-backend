@@ -1249,3 +1249,45 @@ Garantir estabilidade do MVP de emissão enquanto o produto passa a capturar dad
 * [ ] Zero regressões no fluxo de emissão em produção.
 * [ ] Dados essenciais para BI coletados em >80% das empresas ativas.
 * [ ] Rastreabilidade rápida de origem/confiabilidade dos campos principais.
+
+---
+
+# ATUALIZAÇÃO (28/02/2026) – Contrato Front/Backend e correções PROD
+
+## 1) Endpoints de lookup adicionados em `empresas`
+
+Foram adicionados endpoints consumidos pelo frontend para autocomplete e preenchimento:
+
+* `GET /empresas/lookup/municipios?uf=XX`
+* `GET /empresas/lookup/cep/:cep`
+
+Detalhe técnico:
+* municípios consultados via IBGE (`servicodados.ibge.gov.br`)
+* CEP consultado via ViaCEP (`viacep.com.br`)
+* timeout externo configurável por `EXTERNAL_LOOKUP_TIMEOUT_MS` (default `8000ms`)
+* erros retornam contrato padronizado (`code/message/details`)
+
+## 2) Hardening de payload contra rejeição E0625
+
+No provider PlugNotas, para cenário de Simples Nacional sem retenção:
+* se `opSimpNac=3`, `regApTribSN=1` e `iss.retido=false`,
+* o backend passa a **omitir `iss.aliquota`** no payload enviado ao provider.
+
+Objetivo:
+* evitar rejeição fiscal `E0625` ("não é permitido informar alíquota quando não há retenção...").
+
+Cobertura de teste:
+* novo teste unitário em `src/fiscal/infra/plugnotas.provider.spec.ts` validando omissão de alíquota nesse cenário.
+
+## 3) Validação executada em 28/02/2026
+
+Executado localmente após as mudanças:
+* `npm run test` -> **10 suites / 32 testes passando**
+* `npm run test:e2e` -> **1 suite / 2 testes passando**
+* `npm run build` -> **ok**
+* `npm run lint` -> sem erros bloqueantes (warnings existentes de tipagem estrita)
+
+Conclusão operacional:
+* backend apto para consumo do frontend em produção nos fluxos de:
+  * autocomplete de municípios/CEP
+  * emissão NFSe com proteção contra E0625
