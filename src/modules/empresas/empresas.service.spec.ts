@@ -305,6 +305,29 @@ describe('EmpresasService', () => {
     );
   });
 
+  it('maps inscrições when CNPJA registrations come with numeric number and municipal type', async () => {
+    cnpjaCnpjApi.consultarCnpj.mockResolvedValue({
+      taxId: '12345678000190',
+      company: { name: 'EMPRESA TESTE LTDA' },
+      registrations: [
+        { number: 998877, type: { text: 'IM Municipal' } },
+        { number: 11223344, type: { text: 'IE Normal' } },
+      ],
+      suframa: [{ number: 445566 }],
+    });
+
+    const preview = await service.previewFromCnpj('12.345.678/0001-90');
+
+    expect(preview).toEqual(
+      expect.objectContaining({
+        cnpj: '12345678000190',
+        inscricaoMunicipal: '998877',
+        inscricaoEstadual: '11223344',
+        suframa: '445566',
+      }),
+    );
+  });
+
   it('falls back to BrasilAPI when CNPJA fails', async () => {
     cnpjaCnpjApi.consultarCnpj.mockRejectedValue({ status: 429, body: { message: 'rate limit' } });
     brasilApiCnpjApi.consultarCnpj.mockResolvedValue({

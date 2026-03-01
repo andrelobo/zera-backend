@@ -377,7 +377,7 @@ export class EmpresasService {
   private mapProviderData(cnpj: string, data: Record<string, any>): Partial<Empresa> {
     const safeProviderData = this.sanitizeProviderData(data);
     const trimmedProviderData = this.trimProviderData(safeProviderData);
-    const cnpjaRegistrationNumber = this.extractFirstRegistrationNumber(safeProviderData);
+    const cnpjaRegistrations = this.extractRegistrationNumbers(safeProviderData);
     const cnpjaSuframaNumber = this.extractFirstSuframaNumber(safeProviderData);
 
     const getByPath = (obj: any, path: string) =>
@@ -439,13 +439,15 @@ export class EmpresasService {
       inscricaoMunicipal: pick(safeProviderData, [
         'inscricao_municipal',
         'inscricaoMunicipal',
+        'municipalRegistration',
+        'municipal_registration',
         'im',
-      ]),
+      ]) ?? cnpjaRegistrations.municipal,
       inscricaoEstadual:
         this.toScalarStringOrUndefined(
           pick(safeProviderData, ['inscricao_estadual', 'inscricaoEstadual', 'ie']),
         ) ??
-        cnpjaRegistrationNumber,
+        cnpjaRegistrations.estadual,
       suframa: this.toScalarStringOrUndefined(pick(safeProviderData, ['suframa'])) ?? cnpjaSuframaNumber,
       situacaoCadastral: pick(safeProviderData, [
         'situacao_cadastral',
@@ -575,7 +577,12 @@ export class EmpresasService {
       data_situacao: data?.data_situacao,
       abertura: data?.abertura,
       inscricao_estadual:
-        data?.inscricao_estadual ?? data?.ie ?? this.extractFirstRegistrationNumber(data),
+        data?.inscricao_estadual ?? data?.ie ?? this.extractRegistrationNumbers(data).estadual,
+      inscricao_municipal:
+        data?.inscricao_municipal ??
+        data?.inscricaoMunicipal ??
+        data?.im ??
+        this.extractRegistrationNumbers(data).municipal,
       registrations,
       suframa: data?.suframa ?? this.extractFirstSuframaNumber(data),
       suframa_entries: suframaRaw,
@@ -619,23 +626,57 @@ export class EmpresasService {
     };
   }
 
-  private extractFirstRegistrationNumber(data: Record<string, any>): string | undefined {
+  private extractRegistrationNumbers(data: Record<string, any>): {
+    estadual?: string;
+    municipal?: string;
+  } {
     const registrations = data?.registrations;
-    if (!Array.isArray(registrations)) return undefined;
+    if (!Array.isArray(registrations)) return {};
+
+    let firstAny: string | undefined;
+    let estadual: string | undefined;
+    let municipal: string | undefined;
+
     for (const entry of registrations) {
-      const number = entry?.number;
-      if (typeof number === 'string' && number.trim()) return number.trim();
+      const number = this.toScalarStringOrUndefined(entry?.number ?? entry?.registration ?? entry?.value);
+      if (!number) continue;
+      if (!firstAny) firstAny = number;
+
+      const typeText = String(
+        entry?.type?.text ?? entry?.type?.name ?? entry?.kind ?? entry?.registrationType ?? '',
+      ).toLowerCase();
+
+      if (!municipal && (typeText.includes('municip') || typeText.includes('im'))) {
+        municipal = number;
+      }
+      if (
+        !estadual &&
+        (typeText.includes('estad') ||
+          typeText.includes('state') ||
+          typeText.includes('ie') ||
+          typeText.includes('sintegra') ||
+          typeText.includes('ccc'))
+      ) {
+        estadual = number;
+      }
     }
-    return undefined;
+
+    return {
+      estadual: estadual ?? firstAny,
+      municipal,
+    };
   }
 
   private extractFirstSuframaNumber(data: Record<string, any>): string | undefined {
     const value = data?.suframa;
-    if (typeof value === 'string' && value.trim()) return value.trim();
+    const scalar = this.toScalarStringOrUndefined(value);
+    if (scalar) return scalar;
     if (!Array.isArray(value)) return undefined;
     for (const entry of value) {
-      const number = entry?.number;
-      if (typeof number === 'string' && number.trim()) return number.trim();
+      const number = this.toScalarStringOrUndefined(
+        entry?.number ?? entry?.registration ?? entry?.value,
+      );
+      if (number) return number;
     }
     return undefined;
   }
