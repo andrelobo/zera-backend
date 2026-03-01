@@ -17,6 +17,10 @@ const buildFindChain = (docs: Record<string, unknown>[]): FindChain => {
 };
 
 describe('EmpresasService', () => {
+  const cnpjaCnpjApi = {
+    consultarCnpj: jest.fn(),
+  };
+
   const brasilApiCnpjApi = {
     consultarCnpj: jest.fn(),
   };
@@ -40,6 +44,7 @@ describe('EmpresasService', () => {
     jest.clearAllMocks();
     service = new EmpresasService(
       empresaModel as any,
+      cnpjaCnpjApi as any,
       brasilApiCnpjApi as any,
       receitaWsCnpjApi as any,
       plugNotasCnpjApi as any,
@@ -249,5 +254,75 @@ describe('EmpresasService', () => {
       }),
     );
     expect(resumo?.camposFaltantesEmissao).toEqual([]);
+  });
+
+  it('uses CNPJA as primary provider and maps IE/SUFRAMA from arrays', async () => {
+    cnpjaCnpjApi.consultarCnpj.mockResolvedValue({
+      taxId: '04337168000148',
+      alias: 'MOTO HONDA',
+      founded: '1975-07-05',
+      company: {
+        name: 'MOTO HONDA DA AMAZONIA LTDA',
+        equity: 1466281857,
+        simples: { optant: true, since: '2020-01-01' },
+        simei: { optant: false },
+      },
+      registrations: [
+        {
+          number: '063002280',
+          state: 'AM',
+        },
+      ],
+      suframa: [
+        {
+          number: '200106023',
+        },
+      ],
+      address: {
+        street: 'Rua Exemplo',
+        number: '100',
+        district: 'Centro',
+        city: 'Manaus',
+        state: 'AM',
+        zip: '69000000',
+      },
+    });
+
+    const preview = await service.previewFromCnpj('04.337.168/0001-48');
+
+    expect(cnpjaCnpjApi.consultarCnpj).toHaveBeenCalledWith('04337168000148');
+    expect(brasilApiCnpjApi.consultarCnpj).not.toHaveBeenCalled();
+    expect(preview).toEqual(
+      expect.objectContaining({
+        cnpj: '04337168000148',
+        razaoSocial: 'MOTO HONDA DA AMAZONIA LTDA',
+        nomeFantasia: 'MOTO HONDA',
+        inscricaoEstadual: '063002280',
+        suframa: '200106023',
+        opcaoPeloSimples: true,
+        opcaoPeloMei: false,
+      }),
+    );
+  });
+
+  it('falls back to BrasilAPI when CNPJA fails', async () => {
+    cnpjaCnpjApi.consultarCnpj.mockRejectedValue({ status: 429, body: { message: 'rate limit' } });
+    brasilApiCnpjApi.consultarCnpj.mockResolvedValue({
+      cnpj: '43521115000134',
+      razao_social: 'BURGUS LTDA',
+      nome_fantasia: 'ECONTABILIS LTDA',
+    });
+
+    const preview = await service.previewFromCnpj('43.521.115/0001-34');
+
+    expect(cnpjaCnpjApi.consultarCnpj).toHaveBeenCalledWith('43521115000134');
+    expect(brasilApiCnpjApi.consultarCnpj).toHaveBeenCalledWith('43521115000134');
+    expect(preview).toEqual(
+      expect.objectContaining({
+        cnpj: '43521115000134',
+        razaoSocial: 'BURGUS LTDA',
+        nomeFantasia: 'ECONTABILIS LTDA',
+      }),
+    );
   });
 });
