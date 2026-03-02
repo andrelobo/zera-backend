@@ -17,6 +17,7 @@ import {
   ApiBearerAuth,
   ApiBody,
   ApiParam,
+  ApiPropertyOptional,
   ApiOperation,
   ApiProduces,
   ApiQuery,
@@ -38,6 +39,21 @@ import { NfseEmissionStatus } from '../../fiscal/domain/types/nfse-emission-stat
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/guards/roles.decorator';
+
+class CancelarNfseDto {
+  @ApiPropertyOptional({
+    description:
+      'Código de cancelamento. NFSe Nacional: 1 (Erro na Emissão), 2 (Serviço não Prestado), 9 (Outros)',
+    example: '9',
+  })
+  codigo?: string;
+
+  @ApiPropertyOptional({
+    description: 'Motivo do cancelamento',
+    example: 'Cancelamento a pedido do Prestador',
+  })
+  motivo?: string;
+}
 
 function extractIdNota(providerResponse: any): string | null {
   if (!providerResponse) return null;
@@ -91,11 +107,89 @@ export class FiscalController {
     return this.emitirNfseQuickService.execute(dto);
   }
 
+  @Post(':id/cancelamento')
+  @ApiOperation({
+    summary: 'Solicitar cancelamento da NFSe por emissão interna',
+    description:
+      'Só permite solicitar cancelamento de emissão AUTHORIZED. Se não informado, usa codigo=9 e motivo padrão.',
+  })
+  @ApiBody({ type: CancelarNfseDto, required: false })
+  async solicitarCancelamento(@Param('id') id: string, @Body() body?: CancelarNfseDto) {
+    const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null;
+    if (!doc) {
+      throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
+    }
+
+    if (doc.status !== NfseEmissionStatus.AUTHORIZED) {
+      throw new BadRequestException({
+        code: 'CANCELAMENTO_STATUS_INVALIDO',
+        message: 'Somente notas com status AUTHORIZED podem ser canceladas',
+      });
+    }
+
+    const idNota = extractIdNota(doc.providerResponse) ?? doc.externalId ?? null;
+    if (!idNota) {
+      throw new BadRequestException({
+        code: 'ID_NOTA_NOT_FOUND',
+        message: 'idNota not found in provider response',
+      });
+    }
+
+    const codigo = body?.codigo?.trim() || '9';
+    const motivo = body?.motivo?.trim() || 'Cancelamento a pedido do Prestador';
+    const result = await this.provider.solicitarCancelamentoNfse(idNota, { codigo, motivo });
+
+    const nextProviderResponse = {
+      ...(doc.providerResponse as Record<string, unknown> | null),
+      cancelamento: {
+        solicitadoEm: new Date().toISOString(),
+        codigo,
+        motivo,
+        protocol: result.protocol,
+        response: result.providerResponse,
+      },
+    };
+
+    await this.repo.updateEmission(id, {
+      providerResponse: nextProviderResponse as Record<string, any>,
+    });
+
+    return {
+      id: doc._id.toString(),
+      externalId: doc.externalId ?? null,
+      idNota,
+      cancellationProtocol: result.protocol,
+      providerResponse: result.providerResponse,
+    };
+  }
+
+  @Get('cancelamento/:cancellationProtocol')
+  @ApiOperation({ summary: 'Consultar solicitação de cancelamento da NFSe' })
+  async consultarCancelamento(@Param('cancellationProtocol') cancellationProtocol: string) {
+    if (!cancellationProtocol?.trim()) {
+      throw new BadRequestException({
+        code: 'INVALID_CANCELLATION_PROTOCOL',
+        message: 'cancellationProtocol is required',
+      });
+    }
+
+    const result = await this.provider.consultarSolicitacaoCancelamentoNfse(
+      cancellationProtocol.trim(),
+    );
+
+    return {
+      cancellationProtocol: cancellationProtocol.trim(),
+      status: result.status ?? null,
+      providerResponse: result.providerResponse,
+    };
+  }
+
   @Get()
   @ApiOperation({ summary: 'List NFSe emissions (paginated)' })
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 20 })
   @ApiQuery({ name: 'provider', required: false, example: 'plugnotas' })
+  @ApiQuery({ name: 'dateFrom', required: false, example: '2026-02-01' })
   @ApiQuery({
     name: 'status',
     required: false,
@@ -112,6 +206,7 @@ export class FiscalController {
     @Query('limit') limitRaw?: string,
     @Query('provider') provider?: string,
     @Query('status') status?: string,
+    @Query('dateFrom') dateFromRaw?: string,
   ) {
     const page = pageRaw ? Number(pageRaw) : 1;
     const limit = limitRaw ? Number(limitRaw) : 20;
@@ -134,11 +229,24 @@ export class FiscalController {
       });
     }
 
+    let createdFrom: Date | undefined;
+    if (dateFromRaw?.trim()) {
+      const parsed = new Date(dateFromRaw.trim());
+      if (Number.isNaN(parsed.getTime())) {
+        throw new BadRequestException({
+          code: 'INVALID_DATE_FROM',
+          message: 'dateFrom must be a valid date (e.g., 2026-02-01)',
+        });
+      }
+      createdFrom = parsed;
+    }
+
     const result = await this.repo.findPaginated({
       page,
       limit,
       provider: provider?.trim() || undefined,
       status: statusFilter,
+      createdFrom,
     });
 
     return {

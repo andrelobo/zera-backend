@@ -191,6 +191,7 @@ export class NfseEmissionRepository {
     limit?: number;
     provider?: string;
     status?: NfseEmissionStatus;
+    createdFrom?: Date;
   }): Promise<{
     items: NfseEmissionDocument[];
     total: number;
@@ -205,6 +206,7 @@ export class NfseEmissionRepository {
     const filter: Record<string, any> = {};
     if (input?.provider) filter.provider = input.provider;
     if (input?.status) filter.status = input.status;
+    if (input?.createdFrom) filter.createdAt = { $gte: input.createdFrom };
 
     const [items, total] = await Promise.all([
       this.model.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
