@@ -24,6 +24,31 @@ export class PlugNotasNfseApi {
     });
   }
 
+  solicitarCancelamentoNfse(
+    idNota: string,
+    body?: {
+      codigo?: string;
+      motivo?: string;
+    },
+  ): Promise<any> {
+    const cfg = getPlugNotasConfig();
+    const path = cfg.nfseCancelPathTemplate.replace('{id}', idNota);
+    return this.http.request<any>({
+      method: 'POST',
+      path,
+      body,
+    });
+  }
+
+  consultarSolicitacaoCancelamentoNfse(cancellationProtocol: string): Promise<any> {
+    const cfg = getPlugNotasConfig();
+    const path = cfg.nfseCancelStatusPathTemplate.replace('{protocol}', cancellationProtocol);
+    return this.http.request<any>({
+      method: 'GET',
+      path,
+    });
+  }
+
   baixarXmlNfse(idNota: string): Promise<Uint8Array> {
     const cfg = getPlugNotasConfig();
     const path = cfg.nfseXmlPathTemplate.replace('{id}', idNota);

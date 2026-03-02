@@ -10,6 +10,8 @@ export type PlugNotasConfig = {
   cnpjPathTemplate: string;
   nfseXmlPathTemplate: string;
   nfsePdfPathTemplate: string;
+  nfseCancelPathTemplate: string;
+  nfseCancelStatusPathTemplate: string;
   prereqMode: PlugNotasPrereqMode;
   prereqCityCheckEnabled: boolean;
   prereqCompanyEnableEnabled: boolean;
@@ -53,6 +55,10 @@ export function getPlugNotasConfig(): PlugNotasConfig {
   const cnpjPathTemplate = process.env.PLUGNOTAS_CNPJ_PATH ?? '/cnpj/{cnpj}';
   const nfseXmlPathTemplate = process.env.PLUGNOTAS_NFSE_XML_PATH ?? '/nfse/xml/{id}';
   const nfsePdfPathTemplate = process.env.PLUGNOTAS_NFSE_PDF_PATH ?? '/nfse/pdf/{id}';
+  const nfseCancelPathTemplate =
+    process.env.PLUGNOTAS_NFSE_CANCEL_PATH ?? '/nfse/{id}/cancelamento';
+  const nfseCancelStatusPathTemplate =
+    process.env.PLUGNOTAS_NFSE_CANCEL_STATUS_PATH ?? '/nfse/cancelamento/{protocol}';
   const prereqMode = parsePrereqMode(process.env.PLUGNOTAS_PREREQ_MODE);
   const prereqCityCheckEnabled = parseBoolean(process.env.PLUGNOTAS_PREREQ_CHECK_CITY, true);
   const prereqCompanyEnableEnabled = parseBoolean(
@@ -82,6 +88,8 @@ export function getPlugNotasConfig(): PlugNotasConfig {
     cnpjPathTemplate,
     nfseXmlPathTemplate,
     nfsePdfPathTemplate,
+    nfseCancelPathTemplate,
+    nfseCancelStatusPathTemplate,
     prereqMode,
     prereqCityCheckEnabled,
     prereqCompanyEnableEnabled,

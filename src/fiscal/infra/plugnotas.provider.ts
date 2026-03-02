@@ -210,4 +210,38 @@ export class PlugNotasProvider implements FiscalProvider {
   ): Promise<Uint8Array> {
     return this.nfseApi.baixarPdfNfse(externalId, query);
   }
+
+  async solicitarCancelamentoNfse(
+    idNota: string,
+    input?: { codigo?: string; motivo?: string },
+  ): Promise<{
+    protocol: string | null;
+    providerResponse: any;
+  }> {
+    const payload = compact({
+      codigo: input?.codigo,
+      motivo: input?.motivo,
+    });
+    const response = await this.nfseApi.solicitarCancelamentoNfse(idNota, payload);
+    const root = Array.isArray(response) ? response[0] : response;
+    const data = root?.data ?? root?.retorno ?? {};
+    const protocol = data?.protocol ?? data?.protocolo ?? root?.protocol ?? root?.protocolo ?? null;
+    return {
+      protocol: protocol ? String(protocol) : null,
+      providerResponse: response,
+    };
+  }
+
+  async consultarSolicitacaoCancelamentoNfse(cancellationProtocol: string): Promise<{
+    status: string | undefined;
+    providerResponse: any;
+  }> {
+    const response = await this.nfseApi.consultarSolicitacaoCancelamentoNfse(cancellationProtocol);
+    const root = Array.isArray(response) ? response[0] : response;
+    const status = extractPlugNotasStatus(root);
+    return {
+      status,
+      providerResponse: response,
+    };
+  }
 }

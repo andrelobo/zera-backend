@@ -14,4 +14,15 @@ export interface FiscalProvider {
     externalId: string,
     query?: { logotipo?: boolean; mensagem_rodape?: string },
   ): Promise<Uint8Array>;
+  solicitarCancelamentoNfse(
+    idNota: string,
+    input?: { codigo?: string; motivo?: string },
+  ): Promise<{
+    protocol: string | null;
+    providerResponse: any;
+  }>;
+  consultarSolicitacaoCancelamentoNfse(cancellationProtocol: string): Promise<{
+    status: string | undefined;
+    providerResponse: any;
+  }>;
 }

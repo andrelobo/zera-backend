@@ -95,6 +95,8 @@ PLUGNOTAS_API_KEY=
 PLUGNOTAS_CNPJ_PATH=/cnpj/{cnpj}
 PLUGNOTAS_NFSE_XML_PATH=/nfse/xml/{id}
 PLUGNOTAS_NFSE_PDF_PATH=/nfse/pdf/{id}
+PLUGNOTAS_NFSE_CANCEL_PATH=/nfse/{id}/cancelamento
+PLUGNOTAS_NFSE_CANCEL_STATUS_PATH=/nfse/cancelamento/{protocol}
 PLUGNOTAS_PREREQ_MODE=off
 PLUGNOTAS_PREREQ_CHECK_CITY=true
 PLUGNOTAS_PREREQ_ENABLE_COMPANY=false
@@ -194,3 +196,7 @@ Download (local, se artifacts foram salvos):
 Download direto do provider (usa idNota da PlugNotas):
 - `GET /nfse/:id/remote/xml`
 - `GET /nfse/:id/remote/pdf`
+
+Cancelamento:
+- `POST /nfse/:id/cancelamento` (default `codigo=9`, motivo padrão se omitidos)
+- `GET /nfse/cancelamento/:cancellationProtocol`
