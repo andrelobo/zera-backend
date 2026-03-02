@@ -318,6 +318,48 @@ XML autorizado pelo Portal Nacional (Manaus) mostrou:
 
 * `cTribNac = 171901`
 * `cTribMun = 100`
+
+---
+
+## HANDOVER 2026-03-02
+
+### 1. Ajustes aplicados no backend hoje
+- Empresas/Cadastro:
+  - Correção para persistir campos fiscais que estavam sendo descartados pela validação com `whitelist: true`:
+    - `regimeTributario`
+    - `aliquotaSimplesNacional`
+    - `apuracaoSimplesNacional`
+    - `ctnCodigo`
+    - `nbsCodigo`
+  - Arquivos afetados:
+    - `src/modules/empresas/dtos/create-empresa.dto.ts`
+    - `src/modules/empresas/dtos/update-empresa.dto.ts`
+    - `src/modules/empresas/schemas/empresa.schema.ts`
+- Consulta CNPJ:
+  - Estratégia operacional definida como `CNPJA primária + fallback automático`.
+  - Ordem atual efetiva no serviço:
+    1. CNPJA
+    2. BrasilAPI + ReceitaWS (merge)
+    3. BrasilAPI
+    4. ReceitaWS
+    5. PlugNotas
+  - Mensagem de erro consolidada para cenário de indisponibilidade geral.
+
+### 2. Esclarecimentos funcionais confirmados
+- Campos `dps` (ex.: `dps.numero`, `dps.serie`, `dps.id`) não são enviados no payload inicial.
+- Esses dados só ficam disponíveis após processamento do provider (resposta assíncrona/webhook/polling), via `providerResponse`.
+
+### 3. Estado atual para retomada
+- Objetivo de negócio mantido:
+  - cadastro do prestador deve abrir com dados existentes;
+  - completar pendências fiscais no banco para sair de `PENDENTE`.
+- Após deploy backend, é necessário salvar novamente o prestador para recalcular completude com os campos fiscais persistidos.
+
+### 4. Próximos passos recomendados
+1. Deploy das mudanças de DTO/schema/serviço de empresas.
+2. Revalidar cadastro do prestador em produção:
+   - confirmar remoção de pendências `apuracaoSimplesNacional` e `aliquotaSimplesNacional` quando preenchidas.
+3. Opcional: adicionar testes específicos de persistência desses campos no módulo `empresas`.
 * competência: **2026-01-21**
 
 Em produção, esses códigos retornam **E0312/E0314**.
