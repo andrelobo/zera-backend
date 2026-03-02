@@ -119,6 +119,21 @@ export class Empresa {
   opcaoPeloMei?: boolean;
 
   @Prop()
+  regimeTributario?: string;
+
+  @Prop()
+  aliquotaSimplesNacional?: string;
+
+  @Prop()
+  apuracaoSimplesNacional?: string;
+
+  @Prop()
+  ctnCodigo?: string;
+
+  @Prop()
+  nbsCodigo?: string;
+
+  @Prop()
   email?: string;
 
   @Prop()

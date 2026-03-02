@@ -152,6 +152,31 @@ export class UpdateEmpresaDto {
   @IsBoolean()
   opcaoPeloMei?: boolean;
 
+  @ApiPropertyOptional({ enum: ['simples_nacional', 'lucro_presumido', 'lucro_real'] })
+  @IsOptional()
+  @IsString()
+  regimeTributario?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  aliquotaSimplesNacional?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  apuracaoSimplesNacional?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  ctnCodigo?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  nbsCodigo?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
