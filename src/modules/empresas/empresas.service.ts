@@ -363,7 +363,7 @@ export class EmpresasService {
 
     throw new BadRequestException({
       code: 'CNPJ_LOOKUP_FAILED',
-      message: 'Falha ao consultar CNPJ nos provedores disponíveis',
+      message: 'Falha ao consultar CNPJ em CNPJA e provedores de fallback',
       details: {
         cnpj,
         cnpja: cnpjaError,
@@ -436,19 +436,20 @@ export class EmpresasService {
         'nomeRazaoSocial',
       ]),
       nomeFantasia: pick(safeProviderData, ['alias', 'nome_fantasia', 'nomeFantasia', 'fantasia']),
-      inscricaoMunicipal: pick(safeProviderData, [
-        'inscricao_municipal',
-        'inscricaoMunicipal',
-        'municipalRegistration',
-        'municipal_registration',
-        'im',
-      ]) ?? cnpjaRegistrations.municipal,
+      inscricaoMunicipal:
+        pick(safeProviderData, [
+          'inscricao_municipal',
+          'inscricaoMunicipal',
+          'municipalRegistration',
+          'municipal_registration',
+          'im',
+        ]) ?? cnpjaRegistrations.municipal,
       inscricaoEstadual:
         this.toScalarStringOrUndefined(
           pick(safeProviderData, ['inscricao_estadual', 'inscricaoEstadual', 'ie']),
-        ) ??
-        cnpjaRegistrations.estadual,
-      suframa: this.toScalarStringOrUndefined(pick(safeProviderData, ['suframa'])) ?? cnpjaSuframaNumber,
+        ) ?? cnpjaRegistrations.estadual,
+      suframa:
+        this.toScalarStringOrUndefined(pick(safeProviderData, ['suframa'])) ?? cnpjaSuframaNumber,
       situacaoCadastral: pick(safeProviderData, [
         'situacao_cadastral',
         'situacaoCadastral',
@@ -463,7 +464,12 @@ export class EmpresasService {
         ]),
       ),
       dataInicioAtividade: this.toDateOrUndefined(
-        pick(safeProviderData, ['founded', 'data_inicio_atividade', 'dataInicioAtividade', 'abertura']),
+        pick(safeProviderData, [
+          'founded',
+          'data_inicio_atividade',
+          'dataInicioAtividade',
+          'abertura',
+        ]),
       ),
       cnaeFiscal: this.toStringOrUndefined(
         pick(safeProviderData, ['cnae_fiscal', 'cnaeFiscal']) ?? atividadePrincipalCodigo,
@@ -638,7 +644,9 @@ export class EmpresasService {
     let municipal: string | undefined;
 
     for (const entry of registrations) {
-      const number = this.toScalarStringOrUndefined(entry?.number ?? entry?.registration ?? entry?.value);
+      const number = this.toScalarStringOrUndefined(
+        entry?.number ?? entry?.registration ?? entry?.value,
+      );
       if (!number) continue;
       if (!firstAny) firstAny = number;
 
