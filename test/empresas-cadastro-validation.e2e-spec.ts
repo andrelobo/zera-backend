@@ -158,4 +158,3 @@ describe('Empresas Cadastro Validation (e2e)', () => {
     expect(good.body.capitalSocial).toBe(120000);
   });
 });
-

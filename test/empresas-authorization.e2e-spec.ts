@@ -127,4 +127,3 @@ describe('Empresas Authorization (e2e)', () => {
     expect(response.body.action).toBe('update');
   });
 });
-
