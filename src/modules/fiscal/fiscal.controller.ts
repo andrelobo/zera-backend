@@ -296,6 +296,7 @@ export class FiscalController {
         tomadorCpfCnpj: doc.tomadorCpfCnpj ?? null,
         tomadorRazaoSocial: doc.tomadorRazaoSocial ?? null,
         codigoServico: doc.codigoServico ?? null,
+        numeroNfse: doc.numeroNfse ?? null,
         descricaoServico: doc.descricaoServico ?? null,
         valorServico: doc.valorServico ?? null,
         aliquotaIss: doc.aliquotaIss ?? null,

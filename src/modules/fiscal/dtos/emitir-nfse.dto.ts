@@ -221,6 +221,15 @@ class ServicoDto {
 export class EmitirNfseDto {
   @ApiProperty({
     required: false,
+    description: 'Número da NFS-e informado manualmente no front',
+    example: '12345',
+  })
+  @IsOptional()
+  @IsString()
+  numeroNfse?: string;
+
+  @ApiProperty({
+    required: false,
     description: 'Define emissão como nota substituta quando true',
     example: true,
   })

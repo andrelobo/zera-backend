@@ -20,6 +20,7 @@ export class NfseEmissionRepository {
     tomadorRazaoSocial?: string;
     descricaoServico?: string;
     codigoServico?: string;
+    numeroNfse?: string;
     valorServico?: number;
     aliquotaIss?: number;
     valorIss?: number;
@@ -38,6 +39,7 @@ export class NfseEmissionRepository {
       tomadorRazaoSocial: input.tomadorRazaoSocial,
       descricaoServico: input.descricaoServico,
       codigoServico: input.codigoServico,
+      numeroNfse: input.numeroNfse,
       valorServico: input.valorServico,
       aliquotaIss: input.aliquotaIss,
       valorIss: input.valorIss,

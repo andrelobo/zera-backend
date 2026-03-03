@@ -32,6 +32,9 @@ export class NfseEmission {
   codigoServico?: string;
 
   @Prop()
+  numeroNfse?: string;
+
+  @Prop()
   valorServico?: number;
 
   @Prop()

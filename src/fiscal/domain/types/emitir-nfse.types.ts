@@ -1,4 +1,5 @@
 export interface EmitirNfseInput {
+  numeroNfse?: string;
   substituicao?: boolean;
   idNotaSubstituida?: string;
 

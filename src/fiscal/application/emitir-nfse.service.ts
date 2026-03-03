@@ -107,6 +107,7 @@ export class EmitirNfseService {
         tomadorRazaoSocial: bi.tomadorRazaoSocial,
         descricaoServico: bi.descricaoServico,
         codigoServico: bi.codigoServico,
+        numeroNfse: bi.numeroNfse,
         valorServico: bi.valorServico,
         aliquotaIss: bi.aliquotaIss,
         valorIss: bi.valorIss,
@@ -212,6 +213,7 @@ export class EmitirNfseService {
     tomadorRazaoSocial?: string;
     descricaoServico?: string;
     codigoServico?: string;
+    numeroNfse?: string;
     valorServico?: number;
     aliquotaIss?: number;
     valorIss?: number;
@@ -224,6 +226,7 @@ export class EmitirNfseService {
 
     const biSnapshot = {
       referenciaExterna: input.referenciaExterna,
+      numeroNfse: input.numeroNfse,
       substituicao: input.substituicao ?? false,
       idNotaSubstituida: input.idNotaSubstituida,
       prestador: {
@@ -262,6 +265,7 @@ export class EmitirNfseService {
       tomadorRazaoSocial: input.tomador?.razaoSocial,
       descricaoServico: input.servico?.descricao,
       codigoServico: input.servico?.codigoNacional ?? input.servico?.codigoMunicipal,
+      numeroNfse: input.numeroNfse,
       valorServico,
       aliquotaIss,
       valorIss,
