@@ -107,6 +107,43 @@ export class FiscalController {
     return this.emitirNfseQuickService.execute(dto);
   }
 
+  @Post(':id/substituicao')
+  @ApiOperation({
+    summary: 'Emitir nota substituta por emissão interna',
+    description:
+      'Usa a emissão original para inferir idNotaSubstituida quando não informado no body. Encaminha a emissão com substituicao=true.',
+  })
+  @ApiBody({ type: EmitirNfseDto })
+  @ApiResponse({ status: 201, type: EmitirNfseResponseDto })
+  async emitirSubstituicao(@Param('id') id: string, @Body() dto: EmitirNfseDto) {
+    const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null;
+    if (!doc) {
+      throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
+    }
+
+    if (doc.status !== NfseEmissionStatus.AUTHORIZED) {
+      throw new BadRequestException({
+        code: 'SUBSTITUICAO_STATUS_INVALIDO',
+        message: 'Somente notas com status AUTHORIZED podem ser substituídas',
+      });
+    }
+
+    const idNotaOriginal = extractIdNota(doc.providerResponse) ?? doc.externalId ?? null;
+    const idNotaSubstituida = dto.idNotaSubstituida?.trim() || idNotaOriginal;
+    if (!idNotaSubstituida) {
+      throw new BadRequestException({
+        code: 'ID_NOTA_NOT_FOUND',
+        message: 'idNota da nota original não encontrado para substituição',
+      });
+    }
+
+    return this.emitirNfseService.execute({
+      ...dto,
+      substituicao: true,
+      idNotaSubstituida,
+    });
+  }
+
   @Post(':id/cancelamento')
   @ApiOperation({
     summary: 'Solicitar cancelamento da NFSe por emissão interna',

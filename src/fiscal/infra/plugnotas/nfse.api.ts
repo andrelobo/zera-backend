@@ -32,7 +32,7 @@ export class PlugNotasNfseApi {
     },
   ): Promise<any> {
     const cfg = getPlugNotasConfig();
-    const path = cfg.nfseCancelPathTemplate.replace('{id}', idNota);
+    const path = cfg.nfseCancelPathTemplate.replace('{idNota}', idNota).replace('{id}', idNota);
     return this.http.request<any>({
       method: 'POST',
       path,
@@ -42,9 +42,11 @@ export class PlugNotasNfseApi {
 
   consultarSolicitacaoCancelamentoNfse(cancellationProtocol: string): Promise<any> {
     const cfg = getPlugNotasConfig();
-    const path = cfg.nfseCancelStatusPathTemplate.replace('{protocol}', cancellationProtocol);
+    const path = cfg.nfseCancelStatusPathTemplate
+      .replace('{cancellationProtocol}', cancellationProtocol)
+      .replace('{protocol}', cancellationProtocol);
     return this.http.request<any>({
-      method: 'GET',
+      method: 'POST',
       path,
     });
   }

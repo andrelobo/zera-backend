@@ -19,6 +19,8 @@ describe('FiscalController', () => {
   const provider = {
     getNfseByExternalId: jest.fn(),
     getDocumentById: jest.fn(),
+    solicitarCancelamentoNfse: jest.fn(),
+    consultarSolicitacaoCancelamentoNfse: jest.fn(),
   };
 
   let controller: FiscalController;
@@ -121,6 +123,78 @@ describe('FiscalController', () => {
       limit: 10,
       provider: undefined,
       status: NfseEmissionStatus.AUTHORIZED,
+    });
+  });
+
+  it('emits substituicao using idNota from original emission when body does not provide idNotaSubstituida', async () => {
+    repo.findById.mockResolvedValue({
+      _id: { toString: () => 'em-1' },
+      status: NfseEmissionStatus.AUTHORIZED,
+      externalId: 'ext-1',
+      providerResponse: { idNota: 'nota-123' },
+    });
+    emitirNfseService.execute.mockResolvedValue({
+      emissionId: 'em-2',
+      idempotentReplay: false,
+      result: { status: NfseEmissionStatus.PENDING, provider: 'PLUGNOTAS' },
+    });
+
+    const payload = {
+      referenciaExterna: 'sub-001',
+      prestador: {
+        cnpj: '43521115000134',
+        razaoSocial: 'BURGUS LTDA',
+        endereco: {
+          logradouro: 'R A',
+          numero: '1',
+          bairro: 'CENTRO',
+          municipio: 'MANAUS',
+          uf: 'AM',
+          cep: '69010000',
+        },
+      },
+      tomador: {
+        cpfCnpj: '11144477735',
+        razaoSocial: 'CLIENTE',
+        endereco: {
+          logradouro: 'R B',
+          numero: '2',
+          bairro: 'CENTRO',
+          municipio: 'MANAUS',
+          uf: 'AM',
+          cep: '69010000',
+        },
+      },
+      servico: {
+        codigoNacional: '171901',
+        descricao: 'SERVICO',
+        valor: 100,
+      },
+    };
+
+    await controller.emitirSubstituicao('em-1', payload as any);
+
+    expect(emitirNfseService.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        substituicao: true,
+        idNotaSubstituida: 'nota-123',
+      }),
+    );
+  });
+
+  it('rejects substituicao when original emission is not AUTHORIZED', async () => {
+    repo.findById.mockResolvedValue({
+      _id: { toString: () => 'em-1' },
+      status: NfseEmissionStatus.PENDING,
+      providerResponse: { idNota: 'nota-123' },
+    });
+
+    await expect(
+      controller.emitirSubstituicao('em-1', {
+        referenciaExterna: 'sub-001',
+      } as any),
+    ).rejects.toMatchObject({
+      response: { code: 'SUBSTITUICAO_STATUS_INVALIDO' },
     });
   });
 });

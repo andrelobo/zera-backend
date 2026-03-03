@@ -220,6 +220,24 @@ class ServicoDto {
 
 export class EmitirNfseDto {
   @ApiProperty({
+    required: false,
+    description: 'Define emissão como nota substituta quando true',
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  substituicao?: boolean;
+
+  @ApiProperty({
+    required: false,
+    description: 'ID da nota substituída (idNota/idIntegracao da nota original)',
+    example: 'c3fdb27e-2ab0-4a00-bd95-9b7f2ec83920',
+  })
+  @IsOptional()
+  @IsString()
+  idNotaSubstituida?: string;
+
+  @ApiProperty({
     example: {
       cnpj: '43521115000134',
       inscricaoMunicipal: '51754301',

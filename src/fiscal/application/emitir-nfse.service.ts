@@ -224,6 +224,8 @@ export class EmitirNfseService {
 
     const biSnapshot = {
       referenciaExterna: input.referenciaExterna,
+      substituicao: input.substituicao ?? false,
+      idNotaSubstituida: input.idNotaSubstituida,
       prestador: {
         cnpj: empresaCnpj || undefined,
         inscricaoMunicipal: input.prestador?.inscricaoMunicipal,

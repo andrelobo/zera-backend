@@ -1,4 +1,7 @@
 export interface EmitirNfseInput {
+  substituicao?: boolean;
+  idNotaSubstituida?: string;
+
   prestador: {
     cnpj: string;
     inscricaoMunicipal?: string;

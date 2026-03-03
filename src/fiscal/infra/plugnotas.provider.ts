@@ -100,6 +100,8 @@ export class PlugNotasProvider implements FiscalProvider {
     const payload = [
       compact({
         idIntegracao: input.referenciaExterna,
+        substituicao: input.substituicao ?? undefined,
+        idNotaSubstituida: input.idNotaSubstituida,
         regimeApuracaoTributaria,
         emitente: {
           tipo: cnpjPrest.length === 14 ? 1 : 2,
