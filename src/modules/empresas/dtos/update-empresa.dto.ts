@@ -217,6 +217,12 @@ export class UpdateEmpresaDto {
   @IsString()
   apuracaoSimplesNacional?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  rbt12?: number;
+
   @ApiPropertyOptional({ type: [UpdateEmpresaCnaeListaItemDto] })
   @IsOptional()
   @IsArray()
@@ -260,6 +266,21 @@ export class UpdateEmpresaDto {
   @IsOptional()
   @IsString()
   whatsapp?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  nfseNum?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  dpsNum?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  serieDpsNum?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

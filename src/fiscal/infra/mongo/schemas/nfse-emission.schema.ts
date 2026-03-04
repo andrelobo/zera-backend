@@ -35,13 +35,40 @@ export class NfseEmission {
   numeroNfse?: string;
 
   @Prop()
+  competencia?: string;
+
+  @Prop()
+  dataEmissao?: string;
+
+  @Prop()
   valorServico?: number;
+
+  @Prop()
+  baseCalculo?: number;
+
+  @Prop()
+  desconto?: number;
 
   @Prop()
   aliquotaIss?: number;
 
   @Prop()
   valorIss?: number;
+
+  @Prop()
+  retPis?: number;
+
+  @Prop()
+  retCofins?: number;
+
+  @Prop()
+  retCsll?: number;
+
+  @Prop()
+  retIr?: number;
+
+  @Prop()
+  retInss?: number;
 
   @Prop({ index: true })
   idempotencyKey?: string;

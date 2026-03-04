@@ -13,6 +13,7 @@ describe('FiscalController', () => {
   const syncNfseArtifactsService = { execute: jest.fn() };
   const repo = {
     findPaginated: jest.fn(),
+    getBiSummary: jest.fn(),
     findById: jest.fn(),
     findByExternalId: jest.fn(),
   };
@@ -86,6 +87,8 @@ describe('FiscalController', () => {
       limit: 20,
       provider: 'plugnotas',
       status: undefined,
+      createdFrom: undefined,
+      createdTo: undefined,
     });
     expect(out).toEqual({
       items: [
@@ -123,6 +126,43 @@ describe('FiscalController', () => {
       limit: 10,
       provider: undefined,
       status: NfseEmissionStatus.AUTHORIZED,
+      createdFrom: undefined,
+      createdTo: undefined,
+    });
+  });
+
+  it('throws INVALID_DATE_TO when dateTo is invalid', async () => {
+    await expect(
+      controller.list('1', '20', undefined, undefined, undefined, 'invalid'),
+    ).rejects.toMatchObject({
+      response: { code: 'INVALID_DATE_TO' },
+    });
+  });
+
+  it('forwards BI summary filters with sanitization', async () => {
+    repo.getBiSummary.mockResolvedValue({
+      totals: { totalEmissoes: 0 },
+      retencoes: {},
+      seriesCompetencia: [],
+      topServicos: [],
+    });
+
+    await controller.getBiSummary(
+      ' plugnotas ',
+      NfseEmissionStatus.AUTHORIZED,
+      '43.521.115/0001-34',
+      '17.19.01',
+      '2026-02-01',
+      '2026-03-31',
+    );
+
+    expect(repo.getBiSummary).toHaveBeenCalledWith({
+      provider: 'plugnotas',
+      status: NfseEmissionStatus.AUTHORIZED,
+      empresaCnpj: '43521115000134',
+      codigoServico: '171901',
+      createdFrom: new Date('2026-02-01'),
+      createdTo: new Date('2026-03-31'),
     });
   });
 

@@ -222,6 +222,12 @@ export class CreateEmpresaDto {
   @IsString()
   apuracaoSimplesNacional?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  rbt12?: number;
+
   @ApiPropertyOptional({ type: [CreateEmpresaCnaeListaItemDto] })
   @IsOptional()
   @IsArray()
@@ -265,6 +271,21 @@ export class CreateEmpresaDto {
   @IsOptional()
   @IsString()
   whatsapp?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  nfseNum?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  dpsNum?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  serieDpsNum?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

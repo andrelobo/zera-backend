@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsDateString,
   IsEmail,
   IsNotEmpty,
   IsNumber,
@@ -185,6 +186,28 @@ class TributacaoTotalDto {
   municipal?: TributacaoParcialDto;
 }
 
+class RetencoesFederaisDto {
+  @IsOptional()
+  @IsNumber()
+  pis?: number;
+
+  @IsOptional()
+  @IsNumber()
+  cofins?: number;
+
+  @IsOptional()
+  @IsNumber()
+  csll?: number;
+
+  @IsOptional()
+  @IsNumber()
+  ir?: number;
+
+  @IsOptional()
+  @IsNumber()
+  inss?: number;
+}
+
 class ServicoDto {
   @IsOptional()
   @IsString()
@@ -204,6 +227,20 @@ class ServicoDto {
 
   @IsNumber()
   valor!: number;
+
+  @IsOptional()
+  @IsNumber()
+  baseCalculo?: number;
+
+  @IsOptional()
+  @IsNumber()
+  desconto?: number;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => RetencoesFederaisDto)
+  retencoesFederais?: RetencoesFederaisDto;
 
   @IsOptional()
   @IsObject()
@@ -227,6 +264,24 @@ export class EmitirNfseDto {
   @IsOptional()
   @IsString()
   numeroNfse?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Competência no formato mm/aaaa',
+    example: '03/2026',
+  })
+  @IsOptional()
+  @IsString()
+  competencia?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Data de emissão no formato ISO (yyyy-mm-dd)',
+    example: '2026-03-04',
+  })
+  @IsOptional()
+  @IsDateString()
+  dataEmissao?: string;
 
   @ApiProperty({
     required: false,

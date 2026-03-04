@@ -21,9 +21,18 @@ export class NfseEmissionRepository {
     descricaoServico?: string;
     codigoServico?: string;
     numeroNfse?: string;
+    competencia?: string;
+    dataEmissao?: string;
     valorServico?: number;
+    baseCalculo?: number;
+    desconto?: number;
     aliquotaIss?: number;
     valorIss?: number;
+    retPis?: number;
+    retCofins?: number;
+    retCsll?: number;
+    retIr?: number;
+    retInss?: number;
     idempotencyKey?: string;
     status?: NfseEmissionStatus;
     externalId?: string;
@@ -40,9 +49,18 @@ export class NfseEmissionRepository {
       descricaoServico: input.descricaoServico,
       codigoServico: input.codigoServico,
       numeroNfse: input.numeroNfse,
+      competencia: input.competencia,
+      dataEmissao: input.dataEmissao,
       valorServico: input.valorServico,
+      baseCalculo: input.baseCalculo,
+      desconto: input.desconto,
       aliquotaIss: input.aliquotaIss,
       valorIss: input.valorIss,
+      retPis: input.retPis,
+      retCofins: input.retCofins,
+      retCsll: input.retCsll,
+      retIr: input.retIr,
+      retInss: input.retInss,
       idempotencyKey: input.idempotencyKey,
       status: input.status ?? NfseEmissionStatus.PENDING,
       externalId: input.externalId,
@@ -194,6 +212,7 @@ export class NfseEmissionRepository {
     provider?: string;
     status?: NfseEmissionStatus;
     createdFrom?: Date;
+    createdTo?: Date;
   }): Promise<{
     items: NfseEmissionDocument[];
     total: number;
@@ -208,7 +227,11 @@ export class NfseEmissionRepository {
     const filter: Record<string, any> = {};
     if (input?.provider) filter.provider = input.provider;
     if (input?.status) filter.status = input.status;
-    if (input?.createdFrom) filter.createdAt = { $gte: input.createdFrom };
+    if (input?.createdFrom || input?.createdTo) {
+      filter.createdAt = {};
+      if (input.createdFrom) filter.createdAt.$gte = input.createdFrom;
+      if (input.createdTo) filter.createdAt.$lte = input.createdTo;
+    }
 
     const [items, total] = await Promise.all([
       this.model.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
@@ -223,6 +246,168 @@ export class NfseEmissionRepository {
       page,
       limit,
       totalPages,
+    };
+  }
+
+  async getBiSummary(input?: {
+    provider?: string;
+    status?: NfseEmissionStatus;
+    createdFrom?: Date;
+    createdTo?: Date;
+    empresaCnpj?: string;
+    codigoServico?: string;
+  }): Promise<{
+    totals: {
+      totalEmissoes: number;
+      totalAutorizadas: number;
+      totalPendentes: number;
+      totalRejeitadas: number;
+      totalCanceladas: number;
+      totalComErro: number;
+      somaValorServico: number;
+      somaBaseCalculo: number;
+      somaDesconto: number;
+      somaValorIss: number;
+      somaRetencoes: number;
+      ticketMedio: number;
+    };
+    retencoes: {
+      pis: number;
+      cofins: number;
+      csll: number;
+      ir: number;
+      inss: number;
+    };
+    seriesCompetencia: Array<{
+      competencia: string;
+      quantidade: number;
+      valorServico: number;
+      valorIss: number;
+    }>;
+    topServicos: Array<{
+      codigoServico: string;
+      descricaoServico: string;
+      quantidade: number;
+      valorServico: number;
+    }>;
+  }> {
+    const filter: Record<string, any> = {};
+    if (input?.provider) filter.provider = input.provider;
+    if (input?.status) filter.status = input.status;
+    if (input?.empresaCnpj) filter.empresaCnpj = input.empresaCnpj;
+    if (input?.codigoServico) filter.codigoServico = input.codigoServico;
+    if (input?.createdFrom || input?.createdTo) {
+      filter.createdAt = {};
+      if (input.createdFrom) filter.createdAt.$gte = input.createdFrom;
+      if (input.createdTo) filter.createdAt.$lte = input.createdTo;
+    }
+
+    const [agg] = await this.model.aggregate([
+      { $match: filter },
+      {
+        $facet: {
+          totals: [
+            {
+              $group: {
+                _id: null,
+                totalEmissoes: { $sum: 1 },
+                totalAutorizadas: {
+                  $sum: { $cond: [{ $eq: ['$status', NfseEmissionStatus.AUTHORIZED] }, 1, 0] },
+                },
+                totalPendentes: {
+                  $sum: { $cond: [{ $eq: ['$status', NfseEmissionStatus.PENDING] }, 1, 0] },
+                },
+                totalRejeitadas: {
+                  $sum: { $cond: [{ $eq: ['$status', NfseEmissionStatus.REJECTED] }, 1, 0] },
+                },
+                totalCanceladas: {
+                  $sum: { $cond: [{ $eq: ['$status', NfseEmissionStatus.CANCELED] }, 1, 0] },
+                },
+                totalComErro: {
+                  $sum: { $cond: [{ $eq: ['$status', NfseEmissionStatus.ERROR] }, 1, 0] },
+                },
+                somaValorServico: { $sum: { $ifNull: ['$valorServico', 0] } },
+                somaBaseCalculo: { $sum: { $ifNull: ['$baseCalculo', 0] } },
+                somaDesconto: { $sum: { $ifNull: ['$desconto', 0] } },
+                somaValorIss: { $sum: { $ifNull: ['$valorIss', 0] } },
+                retPis: { $sum: { $ifNull: ['$retPis', 0] } },
+                retCofins: { $sum: { $ifNull: ['$retCofins', 0] } },
+                retCsll: { $sum: { $ifNull: ['$retCsll', 0] } },
+                retIr: { $sum: { $ifNull: ['$retIr', 0] } },
+                retInss: { $sum: { $ifNull: ['$retInss', 0] } },
+              },
+            },
+          ],
+          seriesCompetencia: [
+            {
+              $group: {
+                _id: { $ifNull: ['$competencia', 'SEM_COMPETENCIA'] },
+                quantidade: { $sum: 1 },
+                valorServico: { $sum: { $ifNull: ['$valorServico', 0] } },
+                valorIss: { $sum: { $ifNull: ['$valorIss', 0] } },
+              },
+            },
+            { $sort: { _id: 1 } },
+          ],
+          topServicos: [
+            {
+              $group: {
+                _id: {
+                  codigoServico: { $ifNull: ['$codigoServico', 'SEM_CODIGO'] },
+                  descricaoServico: { $ifNull: ['$descricaoServico', 'Sem descrição'] },
+                },
+                quantidade: { $sum: 1 },
+                valorServico: { $sum: { $ifNull: ['$valorServico', 0] } },
+              },
+            },
+            { $sort: { valorServico: -1, quantidade: -1 } },
+            { $limit: 10 },
+          ],
+        },
+      },
+    ]);
+
+    const totalsRaw = (agg?.totals?.[0] ?? {}) as Record<string, number>;
+    const retencoes = {
+      pis: Number(totalsRaw.retPis ?? 0),
+      cofins: Number(totalsRaw.retCofins ?? 0),
+      csll: Number(totalsRaw.retCsll ?? 0),
+      ir: Number(totalsRaw.retIr ?? 0),
+      inss: Number(totalsRaw.retInss ?? 0),
+    };
+    const totalEmissoes = Number(totalsRaw.totalEmissoes ?? 0);
+    const somaValorServico = Number(totalsRaw.somaValorServico ?? 0);
+    const somaRetencoes =
+      retencoes.pis + retencoes.cofins + retencoes.csll + retencoes.ir + retencoes.inss;
+
+    return {
+      totals: {
+        totalEmissoes,
+        totalAutorizadas: Number(totalsRaw.totalAutorizadas ?? 0),
+        totalPendentes: Number(totalsRaw.totalPendentes ?? 0),
+        totalRejeitadas: Number(totalsRaw.totalRejeitadas ?? 0),
+        totalCanceladas: Number(totalsRaw.totalCanceladas ?? 0),
+        totalComErro: Number(totalsRaw.totalComErro ?? 0),
+        somaValorServico,
+        somaBaseCalculo: Number(totalsRaw.somaBaseCalculo ?? 0),
+        somaDesconto: Number(totalsRaw.somaDesconto ?? 0),
+        somaValorIss: Number(totalsRaw.somaValorIss ?? 0),
+        somaRetencoes,
+        ticketMedio: totalEmissoes > 0 ? Number((somaValorServico / totalEmissoes).toFixed(2)) : 0,
+      },
+      retencoes,
+      seriesCompetencia: (agg?.seriesCompetencia ?? []).map((item: any) => ({
+        competencia: String(item._id ?? 'SEM_COMPETENCIA'),
+        quantidade: Number(item.quantidade ?? 0),
+        valorServico: Number(item.valorServico ?? 0),
+        valorIss: Number(item.valorIss ?? 0),
+      })),
+      topServicos: (agg?.topServicos ?? []).map((item: any) => ({
+        codigoServico: String(item._id?.codigoServico ?? 'SEM_CODIGO'),
+        descricaoServico: String(item._id?.descricaoServico ?? 'Sem descrição'),
+        quantidade: Number(item.quantidade ?? 0),
+        valorServico: Number(item.valorServico ?? 0),
+      })),
     };
   }
 

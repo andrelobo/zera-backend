@@ -756,6 +756,7 @@ export class EmpresasService {
       regimeTributario: this.toStringOrUndefined(payload.regimeTributario),
       aliquotaSimplesNacional: this.toStringOrUndefined(payload.aliquotaSimplesNacional),
       apuracaoSimplesNacional: this.toStringOrUndefined(payload.apuracaoSimplesNacional),
+      rbt12: this.toNumberOrUndefined(payload.rbt12),
       cnaesLista: this.normalizeCnaesLista(payload.cnaesLista),
       parametroMunicipal: this.normalizeObjectList(payload.parametroMunicipal),
       configOperacionais: this.normalizeConfigOperacionais(payload.configOperacionais),
@@ -764,6 +765,9 @@ export class EmpresasService {
       email: payload.email,
       fone: payload.fone,
       whatsapp: payload.whatsapp,
+      nfseNum: this.toStringOrUndefined(payload.nfseNum),
+      dpsNum: this.toStringOrUndefined(payload.dpsNum),
+      serieDpsNum: this.toStringOrUndefined(payload.serieDpsNum),
       endereco: Object.keys(endereco ?? {}).length > 0 ? endereco : undefined,
     });
   }
@@ -918,6 +922,10 @@ export class EmpresasService {
       inscricaoEstadual: pick('inscricaoEstadual', 'inscricao_estadual', 'ie'),
       suframa: pick('suframa'),
       whatsapp: pick('whatsapp', 'fone', 'telefone'),
+      rbt12: pick('rbt12'),
+      nfseNum: pick('nfseNum', 'nfse_num'),
+      dpsNum: pick('dpsNum', 'dps_num'),
+      serieDpsNum: pick('serieDpsNum', 'serie_dps_num'),
       endereco: Object.keys(endereco).length > 0 ? endereco : undefined,
       statusCadastro: cadastroResumo.statusCadastro,
       prontoParaEmitir: cadastroResumo.prontoParaEmitir,

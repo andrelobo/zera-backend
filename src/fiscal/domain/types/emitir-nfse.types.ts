@@ -1,5 +1,7 @@
 export interface EmitirNfseInput {
   numeroNfse?: string;
+  competencia?: string;
+  dataEmissao?: string;
   substituicao?: boolean;
   idNotaSubstituida?: string;
 
@@ -45,6 +47,15 @@ export interface EmitirNfseInput {
     codigoTributacao?: string;
     descricao: string;
     valor: number;
+    baseCalculo?: number;
+    desconto?: number;
+    retencoesFederais?: {
+      pis?: number;
+      cofins?: number;
+      csll?: number;
+      ir?: number;
+      inss?: number;
+    };
     iss?: {
       tipoTributacao?: number;
       exigibilidade?: number;

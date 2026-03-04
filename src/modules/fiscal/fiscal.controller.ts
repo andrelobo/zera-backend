@@ -227,6 +227,7 @@ export class FiscalController {
   @ApiQuery({ name: 'limit', required: false, example: 20 })
   @ApiQuery({ name: 'provider', required: false, example: 'plugnotas' })
   @ApiQuery({ name: 'dateFrom', required: false, example: '2026-02-01' })
+  @ApiQuery({ name: 'dateTo', required: false, example: '2026-03-31' })
   @ApiQuery({
     name: 'status',
     required: false,
@@ -244,6 +245,7 @@ export class FiscalController {
     @Query('provider') provider?: string,
     @Query('status') status?: string,
     @Query('dateFrom') dateFromRaw?: string,
+    @Query('dateTo') dateToRaw?: string,
   ) {
     const page = pageRaw ? Number(pageRaw) : 1;
     const limit = limitRaw ? Number(limitRaw) : 20;
@@ -277,6 +279,17 @@ export class FiscalController {
       }
       createdFrom = parsed;
     }
+    let createdTo: Date | undefined;
+    if (dateToRaw?.trim()) {
+      const parsed = new Date(dateToRaw.trim());
+      if (Number.isNaN(parsed.getTime())) {
+        throw new BadRequestException({
+          code: 'INVALID_DATE_TO',
+          message: 'dateTo must be a valid date (e.g., 2026-03-31)',
+        });
+      }
+      createdTo = parsed;
+    }
 
     const result = await this.repo.findPaginated({
       page,
@@ -284,6 +297,7 @@ export class FiscalController {
       provider: provider?.trim() || undefined,
       status: statusFilter,
       createdFrom,
+      createdTo,
     });
 
     return {
@@ -297,10 +311,19 @@ export class FiscalController {
         tomadorRazaoSocial: doc.tomadorRazaoSocial ?? null,
         codigoServico: doc.codigoServico ?? null,
         numeroNfse: doc.numeroNfse ?? null,
+        competencia: doc.competencia ?? null,
+        dataEmissao: doc.dataEmissao ?? null,
         descricaoServico: doc.descricaoServico ?? null,
         valorServico: doc.valorServico ?? null,
+        baseCalculo: doc.baseCalculo ?? null,
+        desconto: doc.desconto ?? null,
         aliquotaIss: doc.aliquotaIss ?? null,
         valorIss: doc.valorIss ?? null,
+        retPis: doc.retPis ?? null,
+        retCofins: doc.retCofins ?? null,
+        retCsll: doc.retCsll ?? null,
+        retIr: doc.retIr ?? null,
+        retInss: doc.retInss ?? null,
         createdAt: (doc as any).createdAt ?? null,
         updatedAt: (doc as any).updatedAt ?? null,
         error: doc.error ?? null,
@@ -312,6 +335,68 @@ export class FiscalController {
         totalPages: result.totalPages,
       },
     };
+  }
+
+  @Get('bi/summary')
+  @ApiOperation({ summary: 'Resumo consolidado para BI de emissões NFSe' })
+  @ApiQuery({ name: 'provider', required: false, example: 'plugnotas' })
+  @ApiQuery({ name: 'status', required: false, enum: Object.values(NfseEmissionStatus) })
+  @ApiQuery({ name: 'empresaCnpj', required: false, example: '43521115000134' })
+  @ApiQuery({ name: 'codigoServico', required: false, example: '171901' })
+  @ApiQuery({ name: 'dateFrom', required: false, example: '2026-02-01' })
+  @ApiQuery({ name: 'dateTo', required: false, example: '2026-03-31' })
+  async getBiSummary(
+    @Query('provider') provider?: string,
+    @Query('status') status?: string,
+    @Query('empresaCnpj') empresaCnpjRaw?: string,
+    @Query('codigoServico') codigoServicoRaw?: string,
+    @Query('dateFrom') dateFromRaw?: string,
+    @Query('dateTo') dateToRaw?: string,
+  ) {
+    const statusFilter =
+      status && Object.values(NfseEmissionStatus).includes(status as NfseEmissionStatus)
+        ? (status as NfseEmissionStatus)
+        : undefined;
+
+    if (status && !statusFilter) {
+      throw new BadRequestException({
+        code: 'INVALID_STATUS',
+        message: `invalid status: ${status}`,
+      });
+    }
+
+    let createdFrom: Date | undefined;
+    if (dateFromRaw?.trim()) {
+      const parsed = new Date(dateFromRaw.trim());
+      if (Number.isNaN(parsed.getTime())) {
+        throw new BadRequestException({
+          code: 'INVALID_DATE_FROM',
+          message: 'dateFrom must be a valid date (e.g., 2026-02-01)',
+        });
+      }
+      createdFrom = parsed;
+    }
+
+    let createdTo: Date | undefined;
+    if (dateToRaw?.trim()) {
+      const parsed = new Date(dateToRaw.trim());
+      if (Number.isNaN(parsed.getTime())) {
+        throw new BadRequestException({
+          code: 'INVALID_DATE_TO',
+          message: 'dateTo must be a valid date (e.g., 2026-03-31)',
+        });
+      }
+      createdTo = parsed;
+    }
+
+    return this.repo.getBiSummary({
+      provider: provider?.trim() || undefined,
+      status: statusFilter,
+      empresaCnpj: empresaCnpjRaw?.replace(/\D/g, '') || undefined,
+      codigoServico: codigoServicoRaw?.replace(/\D/g, '') || undefined,
+      createdFrom,
+      createdTo,
+    });
   }
 
   @Get('servicos/autocomplete')
@@ -428,10 +513,20 @@ export class FiscalController {
       tomadorCpfCnpj: doc.tomadorCpfCnpj ?? null,
       tomadorRazaoSocial: doc.tomadorRazaoSocial ?? null,
       codigoServico: doc.codigoServico ?? null,
+      numeroNfse: doc.numeroNfse ?? null,
+      competencia: doc.competencia ?? null,
+      dataEmissao: doc.dataEmissao ?? null,
       descricaoServico: doc.descricaoServico ?? null,
       valorServico: doc.valorServico ?? null,
+      baseCalculo: doc.baseCalculo ?? null,
+      desconto: doc.desconto ?? null,
       aliquotaIss: doc.aliquotaIss ?? null,
       valorIss: doc.valorIss ?? null,
+      retPis: doc.retPis ?? null,
+      retCofins: doc.retCofins ?? null,
+      retCsll: doc.retCsll ?? null,
+      retIr: doc.retIr ?? null,
+      retInss: doc.retInss ?? null,
       createdAt: (doc as any).createdAt ?? null,
       updatedAt: (doc as any).updatedAt ?? null,
       error: doc.error ?? null,
@@ -455,10 +550,20 @@ export class FiscalController {
       tomadorCpfCnpj: doc.tomadorCpfCnpj ?? null,
       tomadorRazaoSocial: doc.tomadorRazaoSocial ?? null,
       codigoServico: doc.codigoServico ?? null,
+      numeroNfse: doc.numeroNfse ?? null,
+      competencia: doc.competencia ?? null,
+      dataEmissao: doc.dataEmissao ?? null,
       descricaoServico: doc.descricaoServico ?? null,
       valorServico: doc.valorServico ?? null,
+      baseCalculo: doc.baseCalculo ?? null,
+      desconto: doc.desconto ?? null,
       aliquotaIss: doc.aliquotaIss ?? null,
       valorIss: doc.valorIss ?? null,
+      retPis: doc.retPis ?? null,
+      retCofins: doc.retCofins ?? null,
+      retCsll: doc.retCsll ?? null,
+      retIr: doc.retIr ?? null,
+      retInss: doc.retInss ?? null,
       createdAt: (doc as any).createdAt ?? null,
       updatedAt: (doc as any).updatedAt ?? null,
       error: doc.error ?? null,

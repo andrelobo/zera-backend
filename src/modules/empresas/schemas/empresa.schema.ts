@@ -164,6 +164,9 @@ export class Empresa {
   @Prop()
   apuracaoSimplesNacional?: string;
 
+  @Prop()
+  rbt12?: number;
+
   @Prop({ type: [CnaeListaItemSchema], default: undefined })
   cnaesLista?: CnaeListaItem[];
 
@@ -187,6 +190,15 @@ export class Empresa {
 
   @Prop()
   whatsapp?: string;
+
+  @Prop()
+  nfseNum?: string;
+
+  @Prop()
+  dpsNum?: string;
+
+  @Prop()
+  serieDpsNum?: string;
 
   @Prop({ type: EnderecoSchema })
   endereco?: Endereco;

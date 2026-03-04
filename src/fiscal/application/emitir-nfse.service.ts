@@ -25,7 +25,8 @@ function normalizeNumber(value: unknown): number | undefined {
 }
 
 function calculateValorIss(input: EmitirNfseInput): number | undefined {
-  const valor = normalizeNumber(input.servico?.valor);
+  const valor =
+    normalizeNumber(input.servico?.baseCalculo) ?? normalizeNumber(input.servico?.valor);
   const aliquota = normalizeNumber(input.servico?.iss?.aliquota);
   if (valor === undefined || aliquota === undefined) return undefined;
   return Number(((valor * aliquota) / 100).toFixed(2));
@@ -108,9 +109,18 @@ export class EmitirNfseService {
         descricaoServico: bi.descricaoServico,
         codigoServico: bi.codigoServico,
         numeroNfse: bi.numeroNfse,
+        competencia: bi.competencia,
+        dataEmissao: bi.dataEmissao,
         valorServico: bi.valorServico,
+        baseCalculo: bi.baseCalculo,
+        desconto: bi.desconto,
         aliquotaIss: bi.aliquotaIss,
         valorIss: bi.valorIss,
+        retPis: bi.retPis,
+        retCofins: bi.retCofins,
+        retCsll: bi.retCsll,
+        retIr: bi.retIr,
+        retInss: bi.retInss,
         idempotencyKey,
         status: NfseEmissionStatus.PENDING,
       });
@@ -214,19 +224,41 @@ export class EmitirNfseService {
     descricaoServico?: string;
     codigoServico?: string;
     numeroNfse?: string;
+    competencia?: string;
+    dataEmissao?: string;
     valorServico?: number;
+    baseCalculo?: number;
+    desconto?: number;
     aliquotaIss?: number;
     valorIss?: number;
+    retPis?: number;
+    retCofins?: number;
+    retCsll?: number;
+    retIr?: number;
+    retInss?: number;
   } {
     const empresaCnpj = onlyDigits(input.prestador?.cnpj);
     const tomadorCpfCnpj = onlyDigits(input.tomador?.cpfCnpj);
     const valorServico = normalizeNumber(input.servico?.valor);
+    const baseCalculo =
+      normalizeNumber(input.servico?.baseCalculo) ??
+      (valorServico !== undefined
+        ? Number((valorServico - (normalizeNumber(input.servico?.desconto) ?? 0)).toFixed(2))
+        : undefined);
+    const desconto = normalizeNumber(input.servico?.desconto);
     const aliquotaIss = normalizeNumber(input.servico?.iss?.aliquota);
     const valorIss = calculateValorIss(input);
+    const retPis = normalizeNumber(input.servico?.retencoesFederais?.pis);
+    const retCofins = normalizeNumber(input.servico?.retencoesFederais?.cofins);
+    const retCsll = normalizeNumber(input.servico?.retencoesFederais?.csll);
+    const retIr = normalizeNumber(input.servico?.retencoesFederais?.ir);
+    const retInss = normalizeNumber(input.servico?.retencoesFederais?.inss);
 
     const biSnapshot = {
       referenciaExterna: input.referenciaExterna,
       numeroNfse: input.numeroNfse,
+      competencia: input.competencia,
+      dataEmissao: input.dataEmissao,
       substituicao: input.substituicao ?? false,
       idNotaSubstituida: input.idNotaSubstituida,
       prestador: {
@@ -247,14 +279,30 @@ export class EmitirNfseService {
         codigoTributacao: input.servico?.codigoTributacao,
         descricao: input.servico?.descricao,
         valor: valorServico,
+        baseCalculo,
+        desconto,
+        retencoesFederais: {
+          pis: retPis,
+          cofins: retCofins,
+          csll: retCsll,
+          ir: retIr,
+          inss: retInss,
+        },
         iss: input.servico?.iss,
         tributacaoTotal: input.servico?.tributacaoTotal,
       },
       metricas: {
         valorServico,
+        baseCalculo,
+        desconto,
         aliquotaIss,
         valorIss,
         issRetido: input.servico?.iss?.retido ?? false,
+        retPis,
+        retCofins,
+        retCsll,
+        retIr,
+        retInss,
       },
     };
 
@@ -266,9 +314,18 @@ export class EmitirNfseService {
       descricaoServico: input.servico?.descricao,
       codigoServico: input.servico?.codigoNacional ?? input.servico?.codigoMunicipal,
       numeroNfse: input.numeroNfse,
+      competencia: input.competencia,
+      dataEmissao: input.dataEmissao,
       valorServico,
+      baseCalculo,
+      desconto,
       aliquotaIss,
       valorIss,
+      retPis,
+      retCofins,
+      retCsll,
+      retIr,
+      retInss,
     };
   }
 
