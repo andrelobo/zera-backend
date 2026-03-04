@@ -98,6 +98,23 @@ class UpdateEmpresaCnaeListaItemDto {
   anexoLoading?: boolean;
 }
 
+class UpdateEmpresaConfigOperacionalItemDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  natureza?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  descricao?: string;
+}
+
 export class UpdateEmpresaDto {
   @ApiPropertyOptional()
   @IsOptional()
@@ -206,6 +223,18 @@ export class UpdateEmpresaDto {
   @ValidateNested({ each: true })
   @Type(() => UpdateEmpresaCnaeListaItemDto)
   cnaesLista?: UpdateEmpresaCnaeListaItemDto[];
+
+  @ApiPropertyOptional({ type: [Object] })
+  @IsOptional()
+  @IsArray()
+  parametroMunicipal?: Record<string, unknown>[];
+
+  @ApiPropertyOptional({ type: [UpdateEmpresaConfigOperacionalItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateEmpresaConfigOperacionalItemDto)
+  configOperacionais?: UpdateEmpresaConfigOperacionalItemDto[];
 
   @ApiPropertyOptional()
   @IsOptional()

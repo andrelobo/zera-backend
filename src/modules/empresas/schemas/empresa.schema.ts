@@ -85,6 +85,20 @@ export class CnaeListaItem {
 
 const CnaeListaItemSchema = SchemaFactory.createForClass(CnaeListaItem);
 
+@Schema({ _id: false })
+export class ConfigOperacionalItem {
+  @Prop()
+  id?: string;
+
+  @Prop()
+  natureza?: string;
+
+  @Prop()
+  descricao?: string;
+}
+
+const ConfigOperacionalItemSchema = SchemaFactory.createForClass(ConfigOperacionalItem);
+
 @Schema({ timestamps: true })
 export class Empresa {
   @Prop({ required: true, unique: true, index: true })
@@ -152,6 +166,12 @@ export class Empresa {
 
   @Prop({ type: [CnaeListaItemSchema], default: undefined })
   cnaesLista?: CnaeListaItem[];
+
+  @Prop({ type: [Object], default: undefined })
+  parametroMunicipal?: Record<string, any>[];
+
+  @Prop({ type: [ConfigOperacionalItemSchema], default: undefined })
+  configOperacionais?: ConfigOperacionalItem[];
 
   @Prop()
   ctnCodigo?: string;

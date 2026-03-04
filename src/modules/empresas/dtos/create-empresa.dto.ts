@@ -98,6 +98,23 @@ class CreateEmpresaCnaeListaItemDto {
   anexoLoading?: boolean;
 }
 
+class CreateEmpresaConfigOperacionalItemDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  natureza?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  descricao?: string;
+}
+
 export class CreateEmpresaDto {
   @ApiProperty({ example: '43521115000134' })
   @IsString()
@@ -211,6 +228,18 @@ export class CreateEmpresaDto {
   @ValidateNested({ each: true })
   @Type(() => CreateEmpresaCnaeListaItemDto)
   cnaesLista?: CreateEmpresaCnaeListaItemDto[];
+
+  @ApiPropertyOptional({ type: [Object] })
+  @IsOptional()
+  @IsArray()
+  parametroMunicipal?: Record<string, unknown>[];
+
+  @ApiPropertyOptional({ type: [CreateEmpresaConfigOperacionalItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateEmpresaConfigOperacionalItemDto)
+  configOperacionais?: CreateEmpresaConfigOperacionalItemDto[];
 
   @ApiPropertyOptional()
   @IsOptional()

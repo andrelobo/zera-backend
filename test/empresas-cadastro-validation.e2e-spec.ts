@@ -146,6 +146,40 @@ describe('Empresas Cadastro Validation (e2e)', () => {
     expect(response.body.cnaesLista[0].anexo).toBe('III');
   });
 
+  it('accepts create with parametroMunicipal and configOperacionais payload', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/empresas')
+      .send({
+        cnpj: '43521115000134',
+        parametroMunicipal: [
+          {
+            codigo: '6201500',
+            cnaeDescricao: 'DESENVOLVIMENTO DE SOFTWARE',
+            lc116Item: '1.01',
+            vinculos: [
+              {
+                id: 'v1',
+                ctn: '1.01',
+                nbs: '102000000',
+              },
+            ],
+          },
+        ],
+        configOperacionais: [
+          {
+            id: 'svc-1',
+            natureza: 'TRIBUTAVEL',
+            descricao: 'SERVICO PADRAO',
+          },
+        ],
+      })
+      .expect(201);
+
+    expect(Array.isArray(response.body.parametroMunicipal)).toBe(true);
+    expect(Array.isArray(response.body.configOperacionais)).toBe(true);
+    expect(response.body.configOperacionais[0].natureza).toBe('TRIBUTAVEL');
+  });
+
   it('rejects legacy-only payload on create (cpf_cnpj without cnpj)', async () => {
     const response = await request(app.getHttpServer())
       .post('/empresas')

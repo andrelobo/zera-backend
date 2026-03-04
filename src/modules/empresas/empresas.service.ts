@@ -757,6 +757,8 @@ export class EmpresasService {
       aliquotaSimplesNacional: this.toStringOrUndefined(payload.aliquotaSimplesNacional),
       apuracaoSimplesNacional: this.toStringOrUndefined(payload.apuracaoSimplesNacional),
       cnaesLista: this.normalizeCnaesLista(payload.cnaesLista),
+      parametroMunicipal: this.normalizeObjectList(payload.parametroMunicipal),
+      configOperacionais: this.normalizeConfigOperacionais(payload.configOperacionais),
       ctnCodigo: this.toStringOrUndefined(payload.ctnCodigo),
       nbsCodigo: this.toStringOrUndefined(payload.nbsCodigo),
       email: payload.email,
@@ -793,6 +795,36 @@ export class EmpresasService {
       .filter((item) => Object.keys(item).length > 0);
 
     return normalized;
+  }
+
+  private normalizeConfigOperacionais(value: unknown):
+    | Array<{
+        id?: string;
+        natureza?: string;
+        descricao?: string;
+      }>
+    | undefined {
+    if (!Array.isArray(value)) return undefined;
+    return value
+      .map((item) => {
+        const raw = (item ?? {}) as Record<string, unknown>;
+        return this.compactObject({
+          id: this.toScalarStringOrUndefined(raw.id),
+          natureza: this.toScalarStringOrUndefined(raw.natureza),
+          descricao: this.toScalarStringOrUndefined(raw.descricao),
+        });
+      })
+      .filter((item) => Object.keys(item).length > 0);
+  }
+
+  private normalizeObjectList(value: unknown): Record<string, unknown>[] | undefined {
+    if (!Array.isArray(value)) return undefined;
+    return value
+      .map((item) => {
+        const sanitized = this.sanitizeProviderData((item ?? {}) as Record<string, unknown>);
+        return sanitized as Record<string, unknown>;
+      })
+      .filter((item) => Object.keys(item).length > 0);
   }
 
   private toDateOrUndefined(value: unknown): Date | undefined {
@@ -892,6 +924,8 @@ export class EmpresasService {
       percentualCompletude: cadastroResumo.percentualCompletude,
       camposFaltantes: cadastroResumo.camposFaltantes,
       camposFaltantesEmissao: cadastroResumo.camposFaltantesEmissao,
+      parametroMunicipal: pick('parametroMunicipal', 'parametro_municipal'),
+      configOperacionais: pick('configOperacionais', 'config_operacionais'),
     });
   }
 
