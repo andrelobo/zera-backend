@@ -122,6 +122,30 @@ describe('Empresas Cadastro Validation (e2e)', () => {
     expect(response.body.unknownField).toBeUndefined();
   });
 
+  it('accepts create with cnaesLista payload', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/empresas')
+      .send({
+        cnpj: '43521115000134',
+        cnaesLista: [
+          {
+            codigo: '6201500',
+            descricao: 'DESENVOLVIMENTO DE SOFTWARE',
+            isPrincipal: true,
+            isManual: true,
+            anexo: 'III',
+            anexoLoading: false,
+          },
+        ],
+      })
+      .expect(201);
+
+    expect(response.body.cnpj).toBe('43521115000134');
+    expect(Array.isArray(response.body.cnaesLista)).toBe(true);
+    expect(response.body.cnaesLista[0].codigo).toBe('6201500');
+    expect(response.body.cnaesLista[0].anexo).toBe('III');
+  });
+
   it('rejects legacy-only payload on create (cpf_cnpj without cnpj)', async () => {
     const response = await request(app.getHttpServer())
       .post('/empresas')

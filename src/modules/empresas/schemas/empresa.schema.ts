@@ -62,6 +62,29 @@ export class CertificadoDigital {
 
 const CertificadoDigitalSchema = SchemaFactory.createForClass(CertificadoDigital);
 
+@Schema({ _id: false })
+export class CnaeListaItem {
+  @Prop()
+  codigo?: string;
+
+  @Prop()
+  descricao?: string;
+
+  @Prop()
+  isPrincipal?: boolean;
+
+  @Prop()
+  isManual?: boolean;
+
+  @Prop()
+  anexo?: string;
+
+  @Prop()
+  anexoLoading?: boolean;
+}
+
+const CnaeListaItemSchema = SchemaFactory.createForClass(CnaeListaItem);
+
 @Schema({ timestamps: true })
 export class Empresa {
   @Prop({ required: true, unique: true, index: true })
@@ -126,6 +149,9 @@ export class Empresa {
 
   @Prop()
   apuracaoSimplesNacional?: string;
+
+  @Prop({ type: [CnaeListaItemSchema], default: undefined })
+  cnaesLista?: CnaeListaItem[];
 
   @Prop()
   ctnCodigo?: string;

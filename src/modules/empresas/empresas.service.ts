@@ -753,11 +753,46 @@ export class EmpresasService {
       dataOpcaoPeloSimples: this.toDateOrUndefined(payload.dataOpcaoPeloSimples),
       dataExclusaoDoSimples: this.toDateOrUndefined(payload.dataExclusaoDoSimples),
       opcaoPeloMei: this.toBooleanOrUndefined(payload.opcaoPeloMei),
+      regimeTributario: this.toStringOrUndefined(payload.regimeTributario),
+      aliquotaSimplesNacional: this.toStringOrUndefined(payload.aliquotaSimplesNacional),
+      apuracaoSimplesNacional: this.toStringOrUndefined(payload.apuracaoSimplesNacional),
+      cnaesLista: this.normalizeCnaesLista(payload.cnaesLista),
+      ctnCodigo: this.toStringOrUndefined(payload.ctnCodigo),
+      nbsCodigo: this.toStringOrUndefined(payload.nbsCodigo),
       email: payload.email,
       fone: payload.fone,
       whatsapp: payload.whatsapp,
       endereco: Object.keys(endereco ?? {}).length > 0 ? endereco : undefined,
     });
+  }
+
+  private normalizeCnaesLista(value: unknown):
+    | Array<{
+        codigo?: string;
+        descricao?: string;
+        isPrincipal?: boolean;
+        isManual?: boolean;
+        anexo?: string;
+        anexoLoading?: boolean;
+      }>
+    | undefined {
+    if (!Array.isArray(value)) return undefined;
+
+    const normalized = value
+      .map((item) => {
+        const raw = (item ?? {}) as Record<string, unknown>;
+        return this.compactObject({
+          codigo: this.toScalarStringOrUndefined(raw.codigo),
+          descricao: this.toScalarStringOrUndefined(raw.descricao),
+          isPrincipal: this.toBooleanOrUndefined(raw.isPrincipal),
+          isManual: this.toBooleanOrUndefined(raw.isManual),
+          anexo: this.toScalarStringOrUndefined(raw.anexo),
+          anexoLoading: this.toBooleanOrUndefined(raw.anexoLoading),
+        });
+      })
+      .filter((item) => Object.keys(item).length > 0);
+
+    return normalized;
   }
 
   private toDateOrUndefined(value: unknown): Date | undefined {

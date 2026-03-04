@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsDateString,
   IsNotEmpty,
@@ -63,6 +64,38 @@ class UpdateEmpresaEnderecoDto {
   @IsOptional()
   @IsString()
   cep?: string;
+}
+
+class UpdateEmpresaCnaeListaItemDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  codigo?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  descricao?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isPrincipal?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isManual?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  anexo?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  anexoLoading?: boolean;
 }
 
 export class UpdateEmpresaDto {
@@ -166,6 +199,13 @@ export class UpdateEmpresaDto {
   @IsOptional()
   @IsString()
   apuracaoSimplesNacional?: string;
+
+  @ApiPropertyOptional({ type: [UpdateEmpresaCnaeListaItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateEmpresaCnaeListaItemDto)
+  cnaesLista?: UpdateEmpresaCnaeListaItemDto[];
 
   @ApiPropertyOptional()
   @IsOptional()
