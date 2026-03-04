@@ -188,3 +188,13 @@ Importantes para quick flow:
   * `npm run test:e2e` ✅ (`3 suites`, `14 testes`)
 
 Estado: backend estável com reforço de segurança de contrato em cadastro/autorização/listagem NFSe.
+
+## 16. Atualização operacional (03/03/2026)
+
+* Ciclo focado em clone visual de telas no `zera-frontend` (prestador/tomador/emissão) concluído sem alteração contratual obrigatória no backend.
+* APIs de suporte usadas pelo frontend permaneceram estáveis:
+  * `empresas` (cadastro/edição/listagem/preview),
+  * `tomadores` (CRUD + autocomplete),
+  * `nfse` (emissão normal/rápida/listagem/detalhe/artifacts).
+* Compatibilidade mantida com payload de emissão contendo `numeroNfse` (quando informado pelo frontend).
+* Sem regressões de contrato reportadas neste ciclo para integração frontend-backend.
