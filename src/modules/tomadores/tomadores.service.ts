@@ -41,7 +41,12 @@ export class TomadoresService {
         empresaCnpj,
         cpfCnpj,
         razaoSocial: dto.razaoSocial.trim(),
+        nomeFantasia: dto.nomeFantasia?.trim(),
         inscricaoMunicipal: dto.inscricaoMunicipal,
+        inscricaoEstadual: dto.inscricaoEstadual,
+        suframa: dto.suframa,
+        substitutoTributario: dto.substitutoTributario,
+        whatsapp: dto.whatsapp,
         email: dto.email?.toLowerCase().trim(),
         endereco: dto.endereco,
       });
@@ -112,7 +117,12 @@ export class TomadoresService {
         empresaCnpj: 1,
         cpfCnpj: 1,
         razaoSocial: 1,
+        nomeFantasia: 1,
         inscricaoMunicipal: 1,
+        inscricaoEstadual: 1,
+        suframa: 1,
+        substitutoTributario: 1,
+        whatsapp: 1,
         email: 1,
         endereco: 1,
         createdAt: 1,
@@ -152,6 +162,8 @@ export class TomadoresService {
         id,
         {
           ...dto,
+          razaoSocial: dto.razaoSocial?.trim(),
+          nomeFantasia: dto.nomeFantasia?.trim(),
           email: dto.email?.toLowerCase().trim(),
         },
         { new: true },
@@ -195,8 +207,13 @@ export class TomadoresService {
     empresaCnpj: string;
     cpfCnpj: string;
     razaoSocial: string;
+    nomeFantasia?: string;
     inscricaoMunicipal?: string;
+    inscricaoEstadual?: string;
+    suframa?: string;
+    substitutoTributario?: boolean;
     email?: string;
+    whatsapp?: string;
     endereco?: {
       logradouro?: string;
       numero?: string;
@@ -218,8 +235,14 @@ export class TomadoresService {
 
     const updatePayload = {
       razaoSocial,
+      nomeFantasia: nonEmpty(input.nomeFantasia),
       inscricaoMunicipal: nonEmpty(input.inscricaoMunicipal),
+      inscricaoEstadual: nonEmpty(input.inscricaoEstadual),
+      suframa: nonEmpty(input.suframa),
+      substitutoTributario:
+        typeof input.substitutoTributario === 'boolean' ? input.substitutoTributario : undefined,
       email: nonEmpty(input.email)?.toLowerCase(),
+      whatsapp: nonEmpty(input.whatsapp),
       endereco: input.endereco,
     };
 

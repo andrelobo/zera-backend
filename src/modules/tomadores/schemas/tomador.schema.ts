@@ -39,7 +39,22 @@ export class Tomador {
   razaoSocial: string;
 
   @Prop()
+  nomeFantasia?: string;
+
+  @Prop()
   inscricaoMunicipal?: string;
+
+  @Prop()
+  inscricaoEstadual?: string;
+
+  @Prop()
+  suframa?: string;
+
+  @Prop()
+  substitutoTributario?: boolean;
+
+  @Prop()
+  whatsapp?: string;
 
   @Prop()
   email?: string;

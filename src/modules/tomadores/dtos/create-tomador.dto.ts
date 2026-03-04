@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsEmail,
   IsNotEmpty,
   IsObject,
@@ -69,11 +70,36 @@ export class CreateTomadorDto {
   @IsString()
   inscricaoMunicipal?: string;
 
+  @ApiPropertyOptional({ example: '152233440001' })
+  @IsOptional()
+  @IsString()
+  inscricaoEstadual?: string;
+
+  @ApiPropertyOptional({ example: '12345678' })
+  @IsOptional()
+  @IsString()
+  suframa?: string;
+
+  @ApiPropertyOptional({ example: 'CLIENTE EXEMPLO LTDA' })
+  @IsOptional()
+  @IsString()
+  nomeFantasia?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  substitutoTributario?: boolean;
+
   @ApiPropertyOptional({ example: 'cliente@example.com' })
   @IsOptional()
   @IsString()
   @IsEmail()
   email?: string;
+
+  @ApiPropertyOptional({ example: '92999998888' })
+  @IsOptional()
+  @IsString()
+  whatsapp?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
