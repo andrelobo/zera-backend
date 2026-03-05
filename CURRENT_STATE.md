@@ -1,6 +1,6 @@
 # ZERA Backend – Current State
 
-Snapshot operacional do backend em **28/02/2026** (última atualização consolidada).
+Snapshot operacional do backend em **05/03/2026** (última atualização consolidada).
 
 ## 1. Objetivo do documento
 
@@ -198,3 +198,57 @@ Estado: backend estável com reforço de segurança de contrato em cadastro/auto
   * `nfse` (emissão normal/rápida/listagem/detalhe/artifacts).
 * Compatibilidade mantida com payload de emissão contendo `numeroNfse` (quando informado pelo frontend).
 * Sem regressões de contrato reportadas neste ciclo para integração frontend-backend.
+
+## 17. Snapshot canônico (05/03/2026)
+
+Fonte: `codigo local` + `git log` em `main` (sem alterações locais).
+
+### 17.1 Estado vigente para operação
+
+- Branch `main` sincronizada com `origin/main`.
+- Ciclo recente consolidado (commits de 02/03 a 05/03):
+  - `197a38d`: cancelamento PlugNotas + nota substituta com testes.
+  - `6b27784`: persistência de `numeroNfse` na emissão e exposição na listagem.
+  - `f6cb117` e `6fb4779`: persistência de `cnaesLista`, `parametroMunicipal` e `configOperacionais`.
+  - `9db0989`: tomadores com campos completos para emissão e BI.
+  - `2f86eb9`: expansão de campos fiscais da emissão e resumo consolidado para BI.
+
+### 17.2 Contrato operacional backend que sustenta o front atual
+
+- Empresas:
+  - cadastro/edição com dados cadastrais, regime e parâmetros fiscais.
+  - lookup/preview para autocomplete com estratégia de normalização e fallback.
+- Tomadores:
+  - CRUD completo + autocomplete por empresa.
+- NFSe:
+  - emissão normal e rápida;
+  - listagem com filtros (incluindo recorte por data) e detalhamento;
+  - artefatos XML/PDF locais/remotos;
+  - cancelamento e consulta de cancelamento;
+  - base para nota substituta já introduzida no ciclo recente.
+
+### 17.3 Situação de qualidade técnica
+
+- Bateria de testes reportada no ciclo:
+  - unit, e2e e build executando com sucesso.
+- Lint:
+  - sem erros bloqueantes;
+  - warnings de tipagem `any` permanecem como dívida técnica mapeada.
+
+### 17.4 Gaps operacionais ainda abertos
+
+- Pré-requisitos NFSe Nacional continuam por flag (rollout gradual pendente).
+- Webhook com token compartilhado ativo, mas sem assinatura criptográfica.
+- Cobertura global ainda baixa em módulos não críticos (auth/users/infra), apesar de evolução no fiscal.
+
+### 17.5 Próximo passo recomendado
+
+1. Fechar contrato canônico de dados para BI (campos obrigatórios + origem por campo).
+2. Endurecer tipagem (`no-unsafe-*`) nas camadas fiscal/empresas para reduzir warnings estruturais.
+3. Evoluir segurança de webhook (assinatura/HMAC) e trilha de auditoria de eventos.
+
+### 17.6 Rastreabilidade
+
+- Última atualização: 2026-03-05T09:30:00-04:00
+- Responsável: Codex (GPT-5)
+- Tipo de atualização: consolidação canônica do estado pós-ciclo de emissão/cancelamento/BI.
