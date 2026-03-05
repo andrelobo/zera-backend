@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { createCipheriv, createHash, randomBytes } from 'crypto';
 import type { File as MulterFile } from 'multer';
@@ -23,6 +23,8 @@ export interface EmpresaCadastroResumo {
 
 @Injectable()
 export class EmpresasService {
+  private readonly logger = new Logger(EmpresasService.name);
+
   constructor(
     @InjectModel(Empresa.name) private readonly empresaModel: Model<EmpresaDocument>,
     private readonly cnpjaCnpjApi: CnpjaCnpjApi,
@@ -83,8 +85,11 @@ export class EmpresasService {
       throw new BadRequestException('CNPJ inválido');
     }
 
-    const { data } = await this.fetchProviderData(normalized);
-    return this.mapProviderData(normalized, data);
+    const { data, source } = await this.fetchProviderData(normalized);
+    return {
+      ...this.mapProviderData(normalized, data),
+      fonteConsulta: source,
+    };
   }
 
   async importCertificado(cnpj: string, senhaCertificado: string, file: MulterFile) {
@@ -320,6 +325,26 @@ export class EmpresasService {
       return { data: cnpjaData, source: 'cnpja' as const };
     }
 
+    const strictPrimary = (process.env.CNPJA_STRICT_PRIMARY ?? 'false').trim() === 'true';
+    if (strictPrimary) {
+      this.logger.error(
+        {
+          event: 'cnpja_primary_failed_strict',
+          cnpj,
+          cnpja: cnpjaError,
+        },
+        'CNPJA primária falhou e fallback está bloqueado por CNPJA_STRICT_PRIMARY=true',
+      );
+      throw new BadRequestException({
+        code: 'CNPJA_PRIMARY_FAILED',
+        message: 'Falha ao consultar CNPJá (modo estrito ativo, fallback desabilitado)',
+        details: {
+          cnpj,
+          cnpja: cnpjaError,
+        },
+      });
+    }
+
     try {
       brasilApiData = await this.brasilApiCnpjApi.consultarCnpj(cnpj);
     } catch (e: any) {
@@ -339,20 +364,56 @@ export class EmpresasService {
     }
 
     if (brasilApiData && receitaWsData) {
+      this.logger.warn(
+        {
+          event: 'cnpj_lookup_fallback',
+          cnpj,
+          source: 'brasilapi+receitaws',
+          cnpja: cnpjaError,
+        },
+        'Consulta CNPJ caiu em fallback após falha na CNPJá',
+      );
       return {
         data: this.mergeProviderData(brasilApiData, receitaWsData),
         source: 'brasilapi+receitaws' as const,
       };
     }
     if (brasilApiData) {
+      this.logger.warn(
+        {
+          event: 'cnpj_lookup_fallback',
+          cnpj,
+          source: 'brasilapi',
+          cnpja: cnpjaError,
+        },
+        'Consulta CNPJ caiu em fallback após falha na CNPJá',
+      );
       return { data: brasilApiData, source: 'brasilapi' as const };
     }
     if (receitaWsData) {
+      this.logger.warn(
+        {
+          event: 'cnpj_lookup_fallback',
+          cnpj,
+          source: 'receitaws',
+          cnpja: cnpjaError,
+        },
+        'Consulta CNPJ caiu em fallback após falha na CNPJá',
+      );
       return { data: receitaWsData, source: 'receitaws' as const };
     }
 
     try {
       const data = await this.plugNotasCnpjApi.consultarCnpj(cnpj);
+      this.logger.warn(
+        {
+          event: 'cnpj_lookup_fallback',
+          cnpj,
+          source: 'plugnotas',
+          cnpja: cnpjaError,
+        },
+        'Consulta CNPJ caiu em fallback após falha na CNPJá',
+      );
       return { data, source: 'plugnotas' as const };
     } catch (e: any) {
       plugNotasError = {

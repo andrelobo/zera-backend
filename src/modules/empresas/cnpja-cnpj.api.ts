@@ -26,6 +26,11 @@ export class CnpjaCnpjApi {
     const includeSimples = (process.env.CNPJA_INCLUDE_SIMPLES ?? 'true') !== 'false';
     const includeSuframa = (process.env.CNPJA_INCLUDE_SUFRAMA ?? 'true') !== 'false';
     const registrationsMode = (process.env.CNPJA_REGISTRATIONS_MODE ?? 'ORIGIN').trim();
+    const authScheme = (process.env.CNPJA_AUTH_SCHEME ?? 'raw').trim().toLowerCase();
+    const authorization =
+      authScheme === 'bearer'
+        ? `Bearer ${apiKey}`
+        : apiKey;
 
     const params = new URLSearchParams();
     if (includeSimples) params.set('simples', 'true');
@@ -45,7 +50,7 @@ export class CnpjaCnpjApi {
         method: 'GET',
         headers: {
           Accept: 'application/json',
-          Authorization: apiKey,
+          Authorization: authorization,
         },
         signal: controller.signal,
       });
