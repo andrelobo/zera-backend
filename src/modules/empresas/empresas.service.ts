@@ -9,6 +9,7 @@ import { CnpjaCnpjApi } from './cnpja-cnpj.api';
 import { ReceitaWsCnpjApi } from './receitaws-cnpj.api';
 import { CreateEmpresaDto } from './dtos/create-empresa.dto';
 import { UpdateEmpresaDto } from './dtos/update-empresa.dto';
+import { CnaeCatalogo, CnaeCatalogoDocument } from './schemas/cnae-catalogo.schema';
 import { Empresa, EmpresaDocument } from './schemas/empresa.schema';
 
 type CadastroStatus = 'PENDENTE' | 'COMPLETO';
@@ -24,9 +25,11 @@ export interface EmpresaCadastroResumo {
 @Injectable()
 export class EmpresasService {
   private readonly logger = new Logger(EmpresasService.name);
+  private cnaeCatalogSeeded = false;
 
   constructor(
     @InjectModel(Empresa.name) private readonly empresaModel: Model<EmpresaDocument>,
+    @InjectModel(CnaeCatalogo.name) private readonly cnaeCatalogoModel: Model<CnaeCatalogoDocument>,
     private readonly cnpjaCnpjApi: CnpjaCnpjApi,
     private readonly brasilApiCnpjApi: BrasilApiCnpjApi,
     private readonly receitaWsCnpjApi: ReceitaWsCnpjApi,
@@ -262,6 +265,123 @@ export class EmpresasService {
       cidade: String(data?.localidade ?? ''),
       uf: String(data?.uf ?? '').toUpperCase(),
       complemento: String(data?.complemento ?? ''),
+    };
+  }
+
+  async lookupCnaeAnexo(codigoRaw: string) {
+    await this.ensureCnaeCatalogSeed();
+    const codigoCnae = this.onlyDigits(String(codigoRaw ?? ''));
+    if (codigoCnae.length !== 7) {
+      throw new BadRequestException({
+        code: 'CNAE_INVALID',
+        message: 'codigo deve conter 7 dígitos',
+      });
+    }
+
+    const found = await this.cnaeCatalogoModel.findOne({ codigoCnae }).lean();
+    if (!found) {
+      return {
+        codigoCnae,
+        descricao: '',
+        anexo: 'III',
+        permiteFatorR: false,
+        found: false,
+        source: 'fallback_default',
+      };
+    }
+
+    return {
+      codigoCnae: found.codigoCnae,
+      descricao: found.descricao ?? '',
+      anexo: found.anexo ?? 'III',
+      permiteFatorR: Boolean(found.permiteFatorR),
+      found: true,
+      source: 'catalog',
+    };
+  }
+
+  async lookupCnaeAnexoBatch(codes: string[]) {
+    await this.ensureCnaeCatalogSeed();
+    const normalized = Array.from(
+      new Set(
+        (codes || [])
+          .map((code) => this.onlyDigits(String(code ?? '')))
+          .filter((code) => code.length === 7),
+      ),
+    );
+
+    if (normalized.length === 0) {
+      return [];
+    }
+
+    const docs = await this.cnaeCatalogoModel.find({ codigoCnae: { $in: normalized } }).lean();
+    const byCode = new Map(docs.map((row) => [row.codigoCnae, row]));
+
+    return normalized.map((codigoCnae) => {
+      const found = byCode.get(codigoCnae);
+      if (!found) {
+        return {
+          codigoCnae,
+          descricao: '',
+          anexo: 'III',
+          permiteFatorR: false,
+          found: false,
+          source: 'fallback_default',
+        };
+      }
+      return {
+        codigoCnae: found.codigoCnae,
+        descricao: found.descricao ?? '',
+        anexo: found.anexo ?? 'III',
+        permiteFatorR: Boolean(found.permiteFatorR),
+        found: true,
+        source: 'catalog',
+      };
+    });
+  }
+
+  async importCnaeCatalog(
+    items: Array<{ codigoCnae: string; descricao?: string; anexo: string; permiteFatorR?: boolean }>,
+  ) {
+    await this.ensureCnaeCatalogSeed();
+
+    const normalizedItems = items
+      .map((item) => ({
+        codigoCnae: this.onlyDigits(String(item.codigoCnae ?? '')),
+        descricao: String(item.descricao ?? '').trim(),
+        anexo: String(item.anexo ?? '').trim().toUpperCase().replace(/ANEXO\s*/i, ''),
+        permiteFatorR: Boolean(item.permiteFatorR),
+      }))
+      .filter((item) => item.codigoCnae.length === 7 && ['I', 'II', 'III', 'IV', 'V'].includes(item.anexo));
+
+    if (normalizedItems.length === 0) {
+      throw new BadRequestException({
+        code: 'CNAE_IMPORT_EMPTY',
+        message: 'Nenhum item válido para importação',
+      });
+    }
+
+    const ops = normalizedItems.map((item) => ({
+      updateOne: {
+        filter: { codigoCnae: item.codigoCnae },
+        update: {
+          $set: {
+            descricao: item.descricao,
+            anexo: item.anexo,
+            permiteFatorR: item.permiteFatorR,
+          },
+        },
+        upsert: true,
+      },
+    }));
+
+    const result = await this.cnaeCatalogoModel.bulkWrite(ops, { ordered: false });
+    return {
+      received: items.length,
+      imported: normalizedItems.length,
+      matchedCount: result.matchedCount,
+      modifiedCount: result.modifiedCount,
+      upsertedCount: result.upsertedCount,
     };
   }
 
@@ -1153,6 +1273,64 @@ export class EmpresasService {
       camposFaltantes,
       camposFaltantesEmissao,
     };
+  }
+
+  private async ensureCnaeCatalogSeed() {
+    if (this.cnaeCatalogSeeded) return;
+    const seed = [
+      ['6201501', 'Desenvolvimento de programas de computador sob encomenda', 'III', true],
+      [
+        '6202300',
+        'Desenvolvimento e licenciamento de programas de computador customizáveis',
+        'III',
+        true,
+      ],
+      [
+        '6203100',
+        'Desenvolvimento e licenciamento de programas de computador não customizáveis',
+        'III',
+        true,
+      ],
+      ['6204000', 'Consultoria em tecnologia da informação', 'III', true],
+      [
+        '6209100',
+        'Suporte técnico, manutenção e outros serviços em tecnologia da informação',
+        'III',
+        true,
+      ],
+      [
+        '6311900',
+        'Tratamento de dados, provedores de serviços de aplicação e serviços de hospedagem na internet',
+        'III',
+        false,
+      ],
+      ['7020400', 'Atividades de consultoria em gestão empresarial', 'III', true],
+      ['7111100', 'Serviços de arquitetura', 'III', true],
+      ['7112000', 'Serviços de engenharia', 'III', true],
+      ['7120100', 'Testes e análises técnicas', 'III', false],
+      ['6920601', 'Atividades de contabilidade', 'III', true],
+      [
+        '7490104',
+        'Atividades de intermediação e agenciamento de serviços e negócios em geral',
+        'V',
+        true,
+      ],
+      ['8511200', 'Educação infantil - creche', 'III', false],
+      ['8599604', 'Treinamento em desenvolvimento profissional e gerencial', 'III', true],
+    ] as const;
+
+    const ops = seed.map(([codigoCnae, descricao, anexo, permiteFatorR]) => ({
+      updateOne: {
+        filter: { codigoCnae },
+        update: {
+          $setOnInsert: { codigoCnae, descricao, anexo, permiteFatorR },
+        },
+        upsert: true,
+      },
+    }));
+
+    await this.cnaeCatalogoModel.bulkWrite(ops, { ordered: false });
+    this.cnaeCatalogSeeded = true;
   }
 
   private hasValue(value: unknown): boolean {

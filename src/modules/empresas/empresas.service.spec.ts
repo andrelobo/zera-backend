@@ -38,12 +38,19 @@ describe('EmpresasService', () => {
     findOne: jest.fn(),
   };
 
+  const cnaeCatalogoModel = {
+    find: jest.fn(),
+    findOne: jest.fn(),
+    bulkWrite: jest.fn(),
+  };
+
   let service: EmpresasService;
 
   beforeEach(() => {
     jest.clearAllMocks();
     service = new EmpresasService(
       empresaModel as any,
+      cnaeCatalogoModel as any,
       cnpjaCnpjApi as any,
       brasilApiCnpjApi as any,
       receitaWsCnpjApi as any,

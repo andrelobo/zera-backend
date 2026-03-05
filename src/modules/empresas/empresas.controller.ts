@@ -27,6 +27,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/guards/roles.decorator';
 import { CreateEmpresaDto } from './dtos/create-empresa.dto';
 import { ImportCertificadoDto } from './dtos/import-certificado.dto';
+import { ImportCnaeCatalogDto } from './dtos/import-cnae-catalog.dto';
 import { UpdateEmpresaDto } from './dtos/update-empresa.dto';
 import { EmpresasService } from './empresas.service';
 
@@ -101,6 +102,36 @@ export class EmpresasController {
   @ApiOperation({ summary: 'Consultar endereço por CEP (autocomplete)' })
   lookupCep(@Param('cep') cep: string) {
     return this.empresas.lookupCep(cep);
+  }
+
+  @Get('lookup/cnae-anexo')
+  @Roles('admin', 'manager', 'user')
+  @ApiOperation({ summary: 'Consultar anexo do Simples por código CNAE' })
+  lookupCnaeAnexo(@Query('codigo') codigo?: string, @Query('codes') codes?: string) {
+    const batch = String(codes ?? '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+
+    if (batch.length > 0) {
+      return this.empresas.lookupCnaeAnexoBatch(batch);
+    }
+
+    if (!codigo?.trim()) {
+      throw new BadRequestException({
+        code: 'CNAE_CODIGO_REQUIRED',
+        message: 'Informe codigo ou codes',
+      });
+    }
+    return this.empresas.lookupCnaeAnexo(codigo);
+  }
+
+  @Post('lookup/cnae-anexo/import')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Importar catálogo CNAE/Anexo em lote' })
+  @ApiBody({ type: ImportCnaeCatalogDto })
+  importCnaeCatalog(@Body() dto: ImportCnaeCatalogDto) {
+    return this.empresas.importCnaeCatalog(dto.items || []);
   }
 
   @Get('cnpj/:cnpj')

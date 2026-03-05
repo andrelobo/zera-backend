@@ -8,10 +8,16 @@ import { BrasilApiCnpjApi } from './brasilapi-cnpj.api';
 import { CnpjaCnpjApi } from './cnpja-cnpj.api';
 import { EmpresasService } from './empresas.service';
 import { ReceitaWsCnpjApi } from './receitaws-cnpj.api';
+import { CnaeCatalogo, CnaeCatalogoSchema } from './schemas/cnae-catalogo.schema';
 import { Empresa, EmpresaSchema } from './schemas/empresa.schema';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: Empresa.name, schema: EmpresaSchema }])],
+  imports: [
+    MongooseModule.forFeature([
+      { name: Empresa.name, schema: EmpresaSchema },
+      { name: CnaeCatalogo.name, schema: CnaeCatalogoSchema },
+    ]),
+  ],
   controllers: [EmpresasController],
   providers: [
     EmpresasService,
