@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsEmail,
   IsNotEmpty,
@@ -9,6 +11,18 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
+
+class CreateTomadorServicoDto {
+  @ApiProperty({ example: '171901' })
+  @IsString()
+  @IsNotEmpty()
+  codigoServico!: string;
+
+  @ApiProperty({ example: 'Serviços de contabilidade' })
+  @IsString()
+  @IsNotEmpty()
+  descricaoServico!: string;
+}
 
 class CreateTomadorEnderecoDto {
   @ApiPropertyOptional({ example: 'Rua Exemplo' })
@@ -107,4 +121,12 @@ export class CreateTomadorDto {
   @ValidateNested()
   @Type(() => CreateTomadorEnderecoDto)
   endereco?: CreateTomadorEnderecoDto;
+
+  @ApiPropertyOptional({ type: [CreateTomadorServicoDto] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => CreateTomadorServicoDto)
+  servicos?: CreateTomadorServicoDto[];
 }

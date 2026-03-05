@@ -14,6 +14,25 @@ function nonEmpty(value?: string): string | undefined {
   return normalized ? normalized : undefined;
 }
 
+type TomadorServicoInput = {
+  codigoServico?: string;
+  descricaoServico?: string;
+};
+
+function normalizeTomadorServicos(input?: TomadorServicoInput[]) {
+  if (!Array.isArray(input)) return [];
+  const now = new Date();
+  const unique = new Map<string, { codigoServico: string; descricaoServico: string; updatedAt: Date }>();
+  for (const item of input) {
+    const codigoServico = nonEmpty(item?.codigoServico)?.replace(/\D/g, '').slice(0, 6);
+    const descricaoServico = nonEmpty(item?.descricaoServico);
+    if (!codigoServico || !descricaoServico) continue;
+    unique.set(codigoServico, { codigoServico, descricaoServico, updatedAt: now });
+    if (unique.size >= 20) break;
+  }
+  return Array.from(unique.values());
+}
+
 @Injectable()
 export class TomadoresService {
   constructor(@InjectModel(Tomador.name) private readonly tomadorModel: Model<TomadorDocument>) {}
@@ -49,6 +68,7 @@ export class TomadoresService {
         whatsapp: dto.whatsapp,
         email: dto.email?.toLowerCase().trim(),
         endereco: dto.endereco,
+        servicos: normalizeTomadorServicos(dto.servicos),
       });
     } catch (error: any) {
       if (error?.code === 11000) {
@@ -125,6 +145,7 @@ export class TomadoresService {
         whatsapp: 1,
         email: 1,
         endereco: 1,
+        servicos: 1,
         createdAt: 1,
         updatedAt: 1,
       })
@@ -165,6 +186,7 @@ export class TomadoresService {
           razaoSocial: dto.razaoSocial?.trim(),
           nomeFantasia: dto.nomeFantasia?.trim(),
           email: dto.email?.toLowerCase().trim(),
+          servicos: dto.servicos ? normalizeTomadorServicos(dto.servicos) : undefined,
         },
         { new: true },
       );
@@ -223,6 +245,10 @@ export class TomadoresService {
       uf?: string;
       cep?: string;
     };
+    servico?: {
+      codigoServico?: string;
+      descricaoServico?: string;
+    };
   }) {
     const empresaCnpj = onlyDigits(input.empresaCnpj);
     const cpfCnpj = onlyDigits(input.cpfCnpj);
@@ -233,7 +259,7 @@ export class TomadoresService {
     const razaoSocial = nonEmpty(input.razaoSocial);
     if (!razaoSocial) return null;
 
-    const updatePayload = {
+    const updatePayload: Record<string, unknown> = {
       razaoSocial,
       nomeFantasia: nonEmpty(input.nomeFantasia),
       inscricaoMunicipal: nonEmpty(input.inscricaoMunicipal),
@@ -245,6 +271,24 @@ export class TomadoresService {
       whatsapp: nonEmpty(input.whatsapp),
       endereco: input.endereco,
     };
+
+    const codigoServico = nonEmpty(input.servico?.codigoServico)?.replace(/\D/g, '').slice(0, 6);
+    const descricaoServico = nonEmpty(input.servico?.descricaoServico);
+    if (codigoServico && descricaoServico) {
+      const existing = await this.tomadorModel.findOne({ empresaCnpj, cpfCnpj }).lean();
+      const currentList = Array.isArray(existing?.servicos) ? existing.servicos : [];
+      const merged = [
+        { codigoServico, descricaoServico, updatedAt: new Date() },
+        ...currentList
+          .map((item: any) => ({
+            codigoServico: nonEmpty(item?.codigoServico)?.replace(/\D/g, '').slice(0, 6),
+            descricaoServico: nonEmpty(item?.descricaoServico),
+            updatedAt: item?.updatedAt ? new Date(item.updatedAt) : new Date(0),
+          }))
+          .filter((item: any) => item.codigoServico && item.descricaoServico && item.codigoServico !== codigoServico),
+      ].slice(0, 20);
+      updatePayload.servicos = merged;
+    }
 
     return this.tomadorModel.findOneAndUpdate(
       { empresaCnpj, cpfCnpj },

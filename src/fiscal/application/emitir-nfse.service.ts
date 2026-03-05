@@ -338,6 +338,10 @@ export class EmitirNfseService {
         inscricaoMunicipal: input.tomador.inscricaoMunicipal,
         email: input.tomador.email,
         endereco: input.tomador.endereco,
+        servico: {
+          codigoServico: input.servico.codigoNacional ?? input.servico.codigoMunicipal,
+          descricaoServico: input.servico.descricao,
+        },
       });
     } catch (error) {
       // Emissão não deve falhar por falha de atualização de cadastro analítico.

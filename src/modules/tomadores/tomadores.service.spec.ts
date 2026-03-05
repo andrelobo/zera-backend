@@ -69,6 +69,7 @@ describe('TomadoresService', () => {
         whatsapp: 1,
         email: 1,
         endereco: 1,
+        servicos: 1,
         createdAt: 1,
         updatedAt: 1,
       },

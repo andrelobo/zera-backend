@@ -27,6 +27,20 @@ export class TomadorEndereco {
 
 const TomadorEnderecoSchema = SchemaFactory.createForClass(TomadorEndereco);
 
+@Schema({ _id: false })
+export class TomadorServico {
+  @Prop({ required: true })
+  codigoServico!: string;
+
+  @Prop({ required: true })
+  descricaoServico!: string;
+
+  @Prop({ required: true })
+  updatedAt!: Date;
+}
+
+const TomadorServicoSchema = SchemaFactory.createForClass(TomadorServico);
+
 @Schema({ timestamps: true })
 export class Tomador {
   @Prop({ required: true, index: true })
@@ -61,6 +75,9 @@ export class Tomador {
 
   @Prop({ type: TomadorEnderecoSchema })
   endereco?: TomadorEndereco;
+
+  @Prop({ type: [TomadorServicoSchema], default: [] })
+  servicos?: TomadorServico[];
 }
 
 export type TomadorDocument = HydratedDocument<Tomador>;
