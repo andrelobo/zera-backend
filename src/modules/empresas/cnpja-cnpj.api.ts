@@ -5,6 +5,8 @@ type CnpjaError = {
   body?: unknown;
 };
 
+type AuthScheme = 'raw' | 'bearer';
+
 @Injectable()
 export class CnpjaCnpjApi {
   private readonly logger = new Logger(CnpjaCnpjApi.name);
@@ -26,11 +28,8 @@ export class CnpjaCnpjApi {
     const includeSimples = (process.env.CNPJA_INCLUDE_SIMPLES ?? 'true') !== 'false';
     const includeSuframa = (process.env.CNPJA_INCLUDE_SUFRAMA ?? 'true') !== 'false';
     const registrationsMode = (process.env.CNPJA_REGISTRATIONS_MODE ?? 'ORIGIN').trim();
-    const authScheme = (process.env.CNPJA_AUTH_SCHEME ?? 'raw').trim().toLowerCase();
-    const authorization =
-      authScheme === 'bearer'
-        ? `Bearer ${apiKey}`
-        : apiKey;
+    const authScheme = (process.env.CNPJA_AUTH_SCHEME ?? 'auto').trim().toLowerCase();
+    const authCandidates = this.resolveAuthCandidates(authScheme);
 
     const params = new URLSearchParams();
     if (includeSimples) params.set('simples', 'true');
@@ -45,37 +44,73 @@ export class CnpjaCnpjApi {
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      this.logger.log({ cnpj }, 'Consultando CNPJ na CNPJA');
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          Authorization: authorization,
-        },
-        signal: controller.signal,
-      });
+      let lastError: CnpjaError | null = null;
+      for (let index = 0; index < authCandidates.length; index += 1) {
+        const scheme = authCandidates[index];
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            Authorization: this.formatAuthorization(apiKey, scheme),
+          },
+          signal: controller.signal,
+        });
 
-      const text = await response.text();
-      const body = text ? this.safeJsonParse(text) : undefined;
+        const text = await response.text();
+        const body = text ? this.safeJsonParse(text) : undefined;
 
-      if (!response.ok) {
-        throw {
+        if (response.ok) {
+          if (!body || typeof body !== 'object' || Array.isArray(body)) {
+            throw {
+              status: 502,
+              body: { message: 'Resposta inválida da CNPJA' },
+            } as CnpjaError;
+          }
+
+          if (index > 0) {
+            this.logger.warn(
+              { cnpj, scheme },
+              'CNPJA autenticou após fallback de esquema Authorization',
+            );
+          } else {
+            this.logger.log({ cnpj, scheme }, 'Consultando CNPJ na CNPJA');
+          }
+          return body as Record<string, unknown>;
+        }
+
+        lastError = {
           status: response.status,
           body,
-        } as CnpjaError;
+        };
+
+        // Se vier 401 no primeiro esquema, tentamos o próximo.
+        if (response.status === 401 && index < authCandidates.length - 1) {
+          this.logger.warn(
+            { cnpj, scheme, status: response.status, body },
+            'Falha de auth na CNPJA; tentando esquema alternativo',
+          );
+          continue;
+        }
+
+        throw lastError;
       }
 
-      if (!body || typeof body !== 'object' || Array.isArray(body)) {
-        throw {
-          status: 502,
-          body: { message: 'Resposta inválida da CNPJA' },
-        } as CnpjaError;
-      }
-
-      return body as Record<string, unknown>;
+      throw (
+        lastError ?? ({ status: 502, body: { message: 'Falha desconhecida CNPJA' } } as CnpjaError)
+      );
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  private resolveAuthCandidates(rawScheme: string): AuthScheme[] {
+    if (rawScheme === 'raw') return ['raw', 'bearer'];
+    if (rawScheme === 'bearer') return ['bearer', 'raw'];
+    return ['raw', 'bearer'];
+  }
+
+  private formatAuthorization(apiKey: string, scheme: AuthScheme): string {
+    return scheme === 'bearer' ? `Bearer ${apiKey}` : apiKey;
   }
 
   private safeJsonParse(value: string): unknown {
