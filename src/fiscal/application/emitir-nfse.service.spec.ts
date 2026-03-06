@@ -170,4 +170,52 @@ describe('EmitirNfseService idempotency', () => {
     expect(output.idempotentReplay).toBe(false);
     expect(output.emissionId).toBe('em-789');
   });
+
+  it('enriches prestador.regimeTributarioSn in normal flow when missing', async () => {
+    const created = { _id: { toString: () => 'em-790' } };
+    const repository = {
+      findByReference: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue(created),
+      updateEmission: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = {
+      providerName: 'PLUGNOTAS',
+      emitirNfse: jest.fn().mockResolvedValue({
+        status: NfseEmissionStatus.PENDING,
+        provider: 'PLUGNOTAS',
+        externalId: 'ext-790',
+      }),
+    };
+
+    const empresasService = {
+      getByCnpj: jest.fn().mockResolvedValue({
+        cnpj: '43521115000134',
+        providerData: { simples: { optante: true } },
+      }),
+      getCadastroResumoByCnpj: jest.fn().mockResolvedValue({
+        statusCadastro: 'COMPLETO',
+        prontoParaEmitir: true,
+        percentualCompletude: 100,
+        camposFaltantes: [],
+        camposFaltantesEmissao: [],
+      }),
+    };
+    const tomadoresService = makeTomadoresServiceMock();
+    const service = new EmitirNfseService(
+      provider as any,
+      repository as any,
+      empresasService as any,
+      tomadoresService as any,
+    );
+
+    await service.execute(makeInput() as any);
+
+    expect(provider.emitirNfse).toHaveBeenCalledTimes(1);
+    const payload = provider.emitirNfse.mock.calls[0][0];
+    expect(payload.prestador.regimeTributarioSn).toEqual({
+      opSimpNac: 3,
+      regApTribSN: 1,
+      regEspTrib: 0,
+    });
+  });
 });

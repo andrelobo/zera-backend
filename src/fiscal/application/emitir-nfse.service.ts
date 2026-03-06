@@ -24,6 +24,26 @@ function normalizeNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
+function optionalNumberFromEnv(value: string | undefined): number | undefined {
+  if (!value?.trim()) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function booleanLike(value: unknown): boolean | undefined {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') {
+    if (value === 1) return true;
+    if (value === 0) return false;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', '1', 'sim', 's', 'yes', 'y', 'optante', 'ativo'].includes(normalized)) return true;
+    if (['false', '0', 'nao', 'não', 'n', 'no', 'inativo'].includes(normalized)) return false;
+  }
+  return undefined;
+}
+
 function calculateValorIss(input: EmitirNfseInput): number | undefined {
   const valor =
     normalizeNumber(input.servico?.baseCalculo) ?? normalizeNumber(input.servico?.valor);
@@ -49,6 +69,7 @@ export class EmitirNfseService {
     result: EmitirNfseResult;
     idempotentReplay: boolean;
   }> {
+    const enrichedInput = await this.enrichInputForProvider(input);
     const tomadorEndereco = input?.tomador?.endereco;
     if (!tomadorEndereco) {
       throw new BadRequestException({
@@ -73,8 +94,8 @@ export class EmitirNfseService {
     }
 
     const idempotencyKey = normalizeIdempotencyKey(input.referenciaExterna);
-    await this.assertPrestadorHasCertificate(input.prestador.cnpj);
-    const bi = this.buildBiSnapshot(input);
+    await this.assertPrestadorHasCertificate(enrichedInput.prestador.cnpj);
+    const bi = this.buildBiSnapshot(enrichedInput);
 
     if (idempotencyKey) {
       const existing = await this.repository.findByReference(
@@ -101,7 +122,7 @@ export class EmitirNfseService {
     try {
       emission = await this.repository.create({
         provider: this.provider.providerName,
-        payload: input,
+        payload: enrichedInput,
         biSnapshot: bi.biSnapshot,
         empresaCnpj: bi.empresaCnpj,
         tomadorCpfCnpj: bi.tomadorCpfCnpj,
@@ -148,8 +169,8 @@ export class EmitirNfseService {
     }
 
     try {
-      await this.upsertTomadorFromEmission(input);
-      const result = await this.provider.emitirNfse(input);
+      await this.upsertTomadorFromEmission(enrichedInput);
+      const result = await this.provider.emitirNfse(enrichedInput);
 
       await this.repository.updateEmission(emission._id.toString(), {
         provider: result.provider,
@@ -183,6 +204,37 @@ export class EmitirNfseService {
 
       throw error;
     }
+  }
+
+  private async enrichInputForProvider(input: EmitirNfseInput): Promise<EmitirNfseInput> {
+    if (input.prestador?.regimeTributarioSn) return input;
+
+    const cnpj = onlyDigits(input.prestador?.cnpj);
+    if (cnpj.length !== 14) return input;
+
+    const empresa = await this.empresasService.getByCnpj(cnpj);
+    const providerData = (empresa as Record<string, unknown> | null)?.providerData as Record<string, unknown> | undefined;
+    const simplesData = (providerData?.simples as Record<string, unknown> | undefined) ?? undefined;
+
+    const optante =
+      booleanLike(simplesData?.optante) ??
+      booleanLike(simplesData?.optanteSimples) ??
+      booleanLike(simplesData?.isOptante) ??
+      booleanLike(simplesData);
+
+    if (optante === false) return input;
+
+    return {
+      ...input,
+      prestador: {
+        ...input.prestador,
+        regimeTributarioSn: {
+          opSimpNac: optionalNumberFromEnv(process.env.QUICK_NFSE_OP_SIMP_NAC) ?? 3,
+          regApTribSN: optionalNumberFromEnv(process.env.QUICK_NFSE_REG_AP_TRIB_SN) ?? 1,
+          regEspTrib: optionalNumberFromEnv(process.env.QUICK_NFSE_REG_ESP_TRIB) ?? 0,
+        },
+      },
+    };
   }
 
   private async assertPrestadorHasCertificate(prestadorCnpj: string): Promise<void> {
