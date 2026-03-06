@@ -4,6 +4,7 @@ import { createCipheriv, createHash, randomBytes } from 'crypto';
 import type { File as MulterFile } from 'multer';
 import { Model } from 'mongoose';
 import { PlugNotasCnpjApi } from '../../fiscal/infra/plugnotas/cnpj.api';
+import { NfseEmission, NfseEmissionDocument } from '../../fiscal/infra/mongo/schemas/nfse-emission.schema';
 import { BrasilApiCnpjApi } from './brasilapi-cnpj.api';
 import { CnpjaCnpjApi } from './cnpja-cnpj.api';
 import { ReceitaWsCnpjApi } from './receitaws-cnpj.api';
@@ -30,6 +31,7 @@ export class EmpresasService {
   constructor(
     @InjectModel(Empresa.name) private readonly empresaModel: Model<EmpresaDocument>,
     @InjectModel(CnaeCatalogo.name) private readonly cnaeCatalogoModel: Model<CnaeCatalogoDocument>,
+    @InjectModel(NfseEmission.name) private readonly nfseEmissionModel: Model<NfseEmissionDocument>,
     private readonly cnpjaCnpjApi: CnpjaCnpjApi,
     private readonly brasilApiCnpjApi: BrasilApiCnpjApi,
     private readonly receitaWsCnpjApi: ReceitaWsCnpjApi,
@@ -156,6 +158,112 @@ export class EmpresasService {
         sha256,
         uploadedAt: now.toISOString(),
       },
+    };
+  }
+
+  async removeCertificadoById(id: string) {
+    const doc = await this.empresaModel.findByIdAndUpdate(
+      id,
+      {
+        $unset: {
+          certificado: '',
+          certificado_digital: '',
+          certificadoDigital: '',
+        },
+      },
+      { new: true },
+    );
+    return this.toNormalizedFromDoc(doc);
+  }
+
+  async removeCertificadoByCnpj(cnpj: string) {
+    const normalized = this.onlyDigits(cnpj);
+    if (!normalized) {
+      throw new BadRequestException('CNPJ inválido');
+    }
+
+    const doc = await this.empresaModel.findOneAndUpdate(
+      { $or: [{ cnpj: normalized }, { cpf_cnpj: normalized }] } as any,
+      {
+        $unset: {
+          certificado: '',
+          certificado_digital: '',
+          certificadoDigital: '',
+        },
+      },
+      { new: true },
+    );
+
+    return this.toNormalizedFromDoc(doc);
+  }
+
+  async diagnosticarCertificadoByCnpj(cnpj: string) {
+    const normalized = this.onlyDigits(cnpj);
+    if (!normalized) {
+      throw new BadRequestException('CNPJ inválido');
+    }
+
+    const empresa = await this.empresaModel
+      .findOne({ $or: [{ cnpj: normalized }, { cpf_cnpj: normalized }] } as any)
+      .select('+certificado.pfxBase64 +certificado.passwordEncrypted')
+      .lean();
+
+    if (!empresa) {
+      return { found: false };
+    }
+
+    const empresaRaw = empresa as unknown as Record<string, unknown>;
+    const certRaw = ((empresaRaw.certificado as Record<string, unknown> | undefined) ??
+      (empresaRaw.certificado_digital as Record<string, unknown> | undefined) ??
+      (empresaRaw.certificadoDigital as Record<string, unknown> | undefined) ??
+      {}) as Record<string, unknown>;
+
+    const latestEmission = await this.nfseEmissionModel
+      .findOne({ empresaCnpj: normalized })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const latestEmissionRaw = latestEmission as unknown as Record<string, unknown> | null;
+    const providerResponse = latestEmissionRaw?.providerResponse as Record<string, unknown> | Record<string, unknown>[] | undefined;
+    const providerRoot = Array.isArray(providerResponse)
+      ? providerResponse[0]
+      : providerResponse;
+    const providerPrestador = (providerRoot?.prestador ?? {}) as Record<string, unknown>;
+    const providerCertificadoId = this.toScalarStringOrUndefined(
+      providerPrestador.certificado ?? providerPrestador.certificadoId,
+    );
+
+    return {
+      found: true,
+      empresa: {
+        id: String(empresa._id ?? ''),
+        cnpj: normalized,
+        razaoSocial: this.toScalarStringOrUndefined(
+          empresaRaw.razaoSocial ?? empresaRaw.nome_razao_social,
+        ),
+      },
+      certificadoBanco: {
+        filename: this.toScalarStringOrUndefined(certRaw.filename),
+        uploadedAt: certRaw.uploadedAt ?? undefined,
+        sha256: this.toScalarStringOrUndefined(certRaw.sha256),
+        size: certRaw.size ?? undefined,
+        hasPfxBase64: this.hasValue(certRaw.pfxBase64),
+        hasPasswordEncrypted: this.hasValue(certRaw.passwordEncrypted),
+      },
+      ultimaEmissao: latestEmission
+        ? {
+            id: String(latestEmission._id),
+            provider: latestEmission.provider,
+            status: latestEmission.status,
+            createdAt: latestEmissionRaw?.createdAt,
+            externalId: latestEmission.externalId ?? null,
+            providerCertificadoId: providerCertificadoId ?? null,
+            providerRequestPrestadorCnpj:
+              this.toScalarStringOrUndefined(
+                (latestEmissionRaw?.providerRequest as Record<string, any> | undefined)?.payload?.[0]?.prestador?.cpfCnpj,
+              ) ?? null,
+          }
+        : null,
     };
   }
 

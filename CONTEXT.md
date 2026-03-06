@@ -1425,3 +1425,52 @@ Observação operacional:
 Conclusão:
 * backend validado com cobertura ampliada para cenários críticos de cadastro, autorização e listagem fiscal.
 * sem regressão observada nas suítes executadas nesta rodada.
+
+---
+
+# ATUALIZACAO (06/03/2026) - Certificado digital: diagnostico e remocao segura
+
+## 1) Problema operacional atacado
+
+Em ambiente de producao foi identificado risco de certificado residual/incorreto associado a prestador, com impacto potencial em emissao.
+Necessidade: identificar rapidamente qual certificado esta no banco e qual identificador aparece na ultima emissao ao provedor.
+
+## 2) Mudancas implementadas em `empresas`
+
+Novos endpoints:
+
+* `DELETE /empresas/:id/certificado`
+  - remove certificado digital por `id` da empresa.
+* `DELETE /empresas/cnpj/:cnpj/certificado`
+  - remove certificado digital por `cnpj`.
+* `GET /empresas/cnpj/:cnpj/certificado/diagnostico`
+  - retorna diagnostico combinado:
+    - metadados do certificado no banco (`filename`, `uploadedAt`, `sha256`, `size`, flags de segredo presente);
+    - dados da ultima emissao da empresa;
+    - `providerCertificadoId` observado no retorno do provedor (quando disponivel);
+    - CNPJ do prestador enviado no `providerRequest`.
+
+## 3) Estrategia tecnica
+
+* `EmpresasModule` passou a carregar `NfseEmission` schema para cruzar empresa x ultima emissao.
+* `EmpresasService` ganhou funcoes:
+  - `removeCertificadoById`
+  - `removeCertificadoByCnpj`
+  - `diagnosticarCertificadoByCnpj`
+* Remocao limpa campos legado e atual:
+  - `certificado`
+  - `certificado_digital`
+  - `certificadoDigital`
+
+## 4) Validacao executada
+
+* `npm run build` -> ok
+* `npm test -- --runInBand src/modules/empresas/empresas.service.spec.ts` -> passando
+
+## 5) Resultado operacional esperado
+
+Com os endpoints acima, operacao consegue:
+
+1. diagnosticar rapidamente se o certificado em uso confere com o esperado da empresa;
+2. remover certificado incorreto sem intervencao manual em banco;
+3. reimportar o certificado correto e revalidar antes da proxima emissao.

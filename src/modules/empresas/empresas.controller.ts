@@ -83,6 +83,27 @@ export class EmpresasController {
     return this.empresas.importCertificado(dto.cnpj, dto.senhaCertificado, file);
   }
 
+  @Delete(':id/certificado')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Remover certificado digital da empresa por id' })
+  removeCertificadoById(@Param('id') id: string) {
+    return this.empresas.removeCertificadoById(id);
+  }
+
+  @Delete('cnpj/:cnpj/certificado')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Remover certificado digital da empresa por CNPJ' })
+  removeCertificadoByCnpj(@Param('cnpj') cnpj: string) {
+    return this.empresas.removeCertificadoByCnpj(cnpj);
+  }
+
+  @Get('cnpj/:cnpj/certificado/diagnostico')
+  @Roles('admin', 'manager')
+  @ApiOperation({ summary: 'Diagnóstico de certificado por CNPJ (banco + última emissão)' })
+  diagnosticarCertificadoByCnpj(@Param('cnpj') cnpj: string) {
+    return this.empresas.diagnosticarCertificadoByCnpj(cnpj);
+  }
+
   @Get()
   @Roles('admin', 'manager', 'user')
   @ApiOperation({ summary: 'List empresas' })

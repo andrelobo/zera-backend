@@ -44,6 +44,10 @@ describe('EmpresasService', () => {
     bulkWrite: jest.fn(),
   };
 
+  const nfseEmissionModel = {
+    findOne: jest.fn(),
+  };
+
   let service: EmpresasService;
 
   beforeEach(() => {
@@ -51,6 +55,7 @@ describe('EmpresasService', () => {
     service = new EmpresasService(
       empresaModel as any,
       cnaeCatalogoModel as any,
+      nfseEmissionModel as any,
       cnpjaCnpjApi as any,
       brasilApiCnpjApi as any,
       receitaWsCnpjApi as any,
