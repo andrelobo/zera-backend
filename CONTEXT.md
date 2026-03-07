@@ -3,6 +3,60 @@
 > Leitura rápida operacional: veja `CURRENT_STATE.md` (snapshot atual).
 > Este documento (`CONTEXT.md`) permanece como histórico completo e linha do tempo.
 
+## ATUALIZACAO RAPIDA (2026-03-07)
+
+Fonte: `codigo local` + `execucao local` + `validacao funcional em producao`.
+
+### Correcao canonica do fluxo Prestador -> Emissao
+
+Diagnostico validado em producao:
+- `GET /empresas` estava retornando, para o prestador Burgus:
+  - `cnaeFiscal: "8650003"`
+  - `parametroMunicipal: []`
+  - `ctnCodigo: "040101"`
+  - `nbsCodigo: "1.2301.22.00"`
+- Efeito observado no frontend:
+  - DANFSE/emissao preenchia `04.01.01` e `Medicina`, apesar da tela de `Parâmetros Municipais` aparentar `Psicologia/Psicanálise`.
+
+Conclusao canonica:
+- o problema principal nao era renderizacao da emissao;
+- o problema estava no **save do prestador**, que persistia `ctnCodigo/nbsCodigo` legados e deixava `parametroMunicipal` vazio.
+
+### Ajuste aplicado no backend
+
+Arquivos:
+- `src/modules/empresas/empresas.service.ts`
+- `src/modules/empresas/empresas.service.spec.ts`
+
+Regra nova:
+- `EmpresasService.update()` agora reconcilia os parametros municipais canonicos antes de persistir.
+- Para CNAEs com defaults oficiais (atualmente `8650003`), se o patch vier vazio/incoerente:
+  - reconstrói `parametroMunicipal`
+  - alinha `ctnCodigo`
+  - alinha `nbsCodigo`
+
+Defaults oficiais atuais:
+- `8650003`:
+  - `041601 / Psicologia. / 1.2301.98.00 / Serviços de psicologia`
+  - `041501 / Psicanálise. / 1.2301.13.00 / Serviços psiquiátricos`
+
+### Teste executado
+
+- `npm test -- src/modules/empresas/empresas.service.spec.ts`
+- resultado: `15/15` passando
+
+### Estado esperado apos deploy
+
+Depois de salvar `Prestador > Parâmetros Fiscais`, a API deve devolver:
+- `parametroMunicipal` preenchido
+- `ctnCodigo = "041601"`
+- `nbsCodigo = "1.2301.98.00"`
+
+Se DANFSE continuar mostrando `04.01.01`, a verificacao correta e sempre:
+1. inspecionar `GET /empresas`
+2. confirmar se o retorno da API ja esta canonico
+3. so depois investigar frontend
+
 ## ATUALIZACAO RAPIDA (2026-03-05)
 
 Fonte: `codigo local` + `execucao local` + validacao funcional reportada em producao.

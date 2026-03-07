@@ -1,6 +1,36 @@
 # ZERA Backend – Current State
 
-Snapshot operacional do backend em **05/03/2026** (última atualização consolidada).
+Snapshot operacional do backend em **07/03/2026** (última atualização consolidada).
+
+## 0. Delta crítico de hoje
+
+Diagnóstico validado em produção:
+- `GET /empresas` estava devolvendo, para o prestador Burgus:
+  - `cnaeFiscal: "8650003"`
+  - `parametroMunicipal: []`
+  - `ctnCodigo: "040101"`
+  - `nbsCodigo: "1.2301.22.00"`
+
+Impacto:
+- o frontend de emissão/DANFSE passava a mostrar `04.01.01 / Medicina`, mesmo quando a tela de parâmetros municipais aparentava `Psicologia/Psicanálise`.
+
+Conclusão canônica:
+- o problema principal estava no **save do prestador**, não na renderização da emissão.
+
+Correção aplicada:
+- `src/modules/empresas/empresas.service.ts`
+  - `update()` agora reconcilia `parametroMunicipal`, `ctnCodigo` e `nbsCodigo` com os defaults canônicos por CNAE quando o patch vier vazio ou incoerente.
+- `src/modules/empresas/empresas.service.spec.ts`
+  - novo teste cobrindo explicitamente o caso `8650003 + parametroMunicipal vazio + ctn legado 040101`.
+
+Defaults oficiais vigentes:
+- `8650003`
+  - `041601 / Psicologia. / 1.2301.98.00 / Serviços de psicologia`
+  - `041501 / Psicanálise. / 1.2301.13.00 / Serviços psiquiátricos`
+
+Validação executada:
+- `npm test -- src/modules/empresas/empresas.service.spec.ts`
+- resultado: `15/15` testes passando
 
 ## 1. Objetivo do documento
 
