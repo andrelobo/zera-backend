@@ -3,6 +3,26 @@
 > Leitura rápida operacional: veja `CURRENT_STATE.md` (snapshot atual).
 > Este documento (`CONTEXT.md`) permanece como histórico completo e linha do tempo.
 
+## ATUALIZACAO RAPIDA (2026-03-05)
+
+Fonte: `codigo local` + `execucao local` + validacao funcional reportada em producao.
+
+- CNPJA continua como fonte primaria do autocomplete de CNPJ no backend (`EmpresasService.fetchProviderData`).
+- Foi aplicado ajuste no cliente CNPJA para autenticacao resiliente:
+  - `CNPJA_AUTH_SCHEME=auto` (tenta `raw`; em `401`, tenta `bearer`).
+  - arquivo: `src/modules/empresas/cnpja-cnpj.api.ts`.
+- `.env.example` atualizado para documentar `CNPJA_AUTH_SCHEME=auto`.
+- Teste local executado e passando para fluxo de empresas:
+  - `npm test -- src/modules/empresas/empresas.service.spec.ts` (12/12).
+
+Diagnostico operacional importante (producao):
+- Se resposta de `/empresas/preview` vem com `fonteConsulta: "receitaws"`, a instancia em runtime ainda esta em fallback.
+- Com `CNPJA_STRICT_PRIMARY=true`, fallback deve ser bloqueado; em falha de CNPJA deve retornar erro `CNPJA_PRIMARY_FAILED`.
+- Se mesmo assim retorna `receitaws`, revisar:
+  1. servico/URL de backend correto no Render,
+  2. variaveis aplicadas no servico correto (`CNPJA_API_KEY`, `CNPJA_AUTH_SCHEME=auto`, `CNPJA_STRICT_PRIMARY=true`),
+  3. deploy efetivamente realizado apos salvar envs.
+
 ## 1. Overview
 
 ZERA is a NestJS backend that powers a PWA to issue ultra-simplified NFSe (Brazilian national NFSe standard 2026), aimed at micro-entrepreneurs and small businesses.
