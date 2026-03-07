@@ -4,7 +4,10 @@ import { createCipheriv, createHash, randomBytes } from 'crypto';
 import type { File as MulterFile } from 'multer';
 import { Model } from 'mongoose';
 import { PlugNotasCnpjApi } from '../../fiscal/infra/plugnotas/cnpj.api';
-import { NfseEmission, NfseEmissionDocument } from '../../fiscal/infra/mongo/schemas/nfse-emission.schema';
+import {
+  NfseEmission,
+  NfseEmissionDocument,
+} from '../../fiscal/infra/mongo/schemas/nfse-emission.schema';
 import { BrasilApiCnpjApi } from './brasilapi-cnpj.api';
 import { CnpjaCnpjApi } from './cnpja-cnpj.api';
 import { ReceitaWsCnpjApi } from './receitaws-cnpj.api';
@@ -27,6 +30,30 @@ export interface EmpresaCadastroResumo {
 export class EmpresasService {
   private readonly logger = new Logger(EmpresasService.name);
   private cnaeCatalogSeeded = false;
+  private readonly cnaeOfficialDefaults: Record<
+    string,
+    Array<{
+      ctn: string;
+      ctnDescricao: string;
+      nbs: string;
+      nbsDescricao: string;
+    }>
+  > = {
+    '8650003': [
+      {
+        ctn: '041601',
+        ctnDescricao: 'Psicologia.',
+        nbs: '1.2301.98.00',
+        nbsDescricao: 'Serviços de psicologia',
+      },
+      {
+        ctn: '041501',
+        ctnDescricao: 'Psicanálise.',
+        nbs: '1.2301.13.00',
+        nbsDescricao: 'Serviços psiquiátricos',
+      },
+    ],
+  };
 
   constructor(
     @InjectModel(Empresa.name) private readonly empresaModel: Model<EmpresaDocument>,
@@ -224,10 +251,11 @@ export class EmpresasService {
       .lean();
 
     const latestEmissionRaw = latestEmission as unknown as Record<string, unknown> | null;
-    const providerResponse = latestEmissionRaw?.providerResponse as Record<string, unknown> | Record<string, unknown>[] | undefined;
-    const providerRoot = Array.isArray(providerResponse)
-      ? providerResponse[0]
-      : providerResponse;
+    const providerResponse = latestEmissionRaw?.providerResponse as
+      | Record<string, unknown>
+      | Record<string, unknown>[]
+      | undefined;
+    const providerRoot = Array.isArray(providerResponse) ? providerResponse[0] : providerResponse;
     const providerPrestador = (providerRoot?.prestador ?? {}) as Record<string, unknown>;
     const providerCertificadoId = this.toScalarStringOrUndefined(
       providerPrestador.certificado ?? providerPrestador.certificadoId,
@@ -260,7 +288,8 @@ export class EmpresasService {
             providerCertificadoId: providerCertificadoId ?? null,
             providerRequestPrestadorCnpj:
               this.toScalarStringOrUndefined(
-                (latestEmissionRaw?.providerRequest as Record<string, any> | undefined)?.payload?.[0]?.prestador?.cpfCnpj,
+                (latestEmissionRaw?.providerRequest as Record<string, any> | undefined)
+                  ?.payload?.[0]?.prestador?.cpfCnpj,
               ) ?? null,
           }
         : null,
@@ -449,7 +478,12 @@ export class EmpresasService {
   }
 
   async importCnaeCatalog(
-    items: Array<{ codigoCnae: string; descricao?: string; anexo: string; permiteFatorR?: boolean }>,
+    items: Array<{
+      codigoCnae: string;
+      descricao?: string;
+      anexo: string;
+      permiteFatorR?: boolean;
+    }>,
   ) {
     await this.ensureCnaeCatalogSeed();
 
@@ -457,10 +491,16 @@ export class EmpresasService {
       .map((item) => ({
         codigoCnae: this.onlyDigits(String(item.codigoCnae ?? '')),
         descricao: String(item.descricao ?? '').trim(),
-        anexo: String(item.anexo ?? '').trim().toUpperCase().replace(/ANEXO\s*/i, ''),
+        anexo: String(item.anexo ?? '')
+          .trim()
+          .toUpperCase()
+          .replace(/ANEXO\s*/i, ''),
         permiteFatorR: Boolean(item.permiteFatorR),
       }))
-      .filter((item) => item.codigoCnae.length === 7 && ['I', 'II', 'III', 'IV', 'V'].includes(item.anexo));
+      .filter(
+        (item) =>
+          item.codigoCnae.length === 7 && ['I', 'II', 'III', 'IV', 'V'].includes(item.anexo),
+      );
 
     if (normalizedItems.length === 0) {
       throw new BadRequestException({
@@ -1115,7 +1155,7 @@ export class EmpresasService {
     return value
       .map((item) => {
         const sanitized = this.sanitizeProviderData((item ?? {}) as Record<string, unknown>);
-        return sanitized as Record<string, unknown>;
+        return this.normalizeParametroMunicipalItem(sanitized as Record<string, unknown>);
       })
       .filter((item) => Object.keys(item).length > 0);
   }
@@ -1221,9 +1261,104 @@ export class EmpresasService {
       percentualCompletude: cadastroResumo.percentualCompletude,
       camposFaltantes: cadastroResumo.camposFaltantes,
       camposFaltantesEmissao: cadastroResumo.camposFaltantesEmissao,
-      parametroMunicipal: pick('parametroMunicipal', 'parametro_municipal'),
+      parametroMunicipal: this.normalizeObjectList(
+        pick('parametroMunicipal', 'parametro_municipal'),
+      ),
       configOperacionais: pick('configOperacionais', 'config_operacionais'),
     });
+  }
+
+  private normalizeParametroMunicipalItem(raw: Record<string, unknown>): Record<string, unknown> {
+    const codigo = this.onlyDigits(this.toScalarStringOrUndefined(raw.codigo) ?? '');
+    if (!codigo) return raw;
+
+    const vinculosRaw = Array.isArray(raw.vinculos)
+      ? raw.vinculos.map((item) => this.sanitizeProviderData(item) as Record<string, unknown>)
+      : [];
+
+    const defaults = this.cnaeOfficialDefaults[codigo];
+    if (!defaults?.length) {
+      return {
+        ...raw,
+        vinculos: this.normalizeParametroVinculos(vinculosRaw),
+      };
+    }
+
+    const vinculosNormalizados = this.normalizeParametroVinculos(vinculosRaw);
+    const defaultsKeys = new Set(defaults.map((item) => `${item.ctn}|${item.nbs}`));
+    const isCoherent =
+      vinculosNormalizados.length === defaults.length &&
+      vinculosNormalizados.every((item) =>
+        defaultsKeys.has(
+          `${this.toScalarStringOrUndefined(item.ctn) ?? ''}|${this.toScalarStringOrUndefined(item.nbs) ?? ''}`,
+        ),
+      );
+
+    if (isCoherent) {
+      return {
+        ...raw,
+        codigo,
+        vinculos: vinculosNormalizados.map((item) => this.normalizeParametroVinculoDescricao(item)),
+      };
+    }
+
+    return {
+      ...raw,
+      codigo,
+      vinculos: defaults.map((item, index) => ({
+        id:
+          this.toScalarStringOrUndefined(vinculosNormalizados[index]?.id) ??
+          `auto_${codigo}_${index + 1}`,
+        ctn: item.ctn,
+        ctnDescricao: item.ctnDescricao,
+        nbs: item.nbs,
+        nbsDescricao: item.nbsDescricao,
+      })),
+    };
+  }
+
+  private normalizeParametroVinculos(value: Array<Record<string, unknown>>) {
+    const seen = new Set<string>();
+    return value
+      .map((item, index) => {
+        const ctn = this.toScalarStringOrUndefined(item.ctn);
+        const nbs = this.toScalarStringOrUndefined(item.nbs);
+        if (!ctn && !nbs) return null;
+        const key = `${ctn ?? ''}|${nbs ?? ''}`;
+        if (seen.has(key)) return null;
+        seen.add(key);
+        return {
+          id: this.toScalarStringOrUndefined(item.id) ?? `imported_${index + 1}`,
+          ctn,
+          ctnDescricao: this.toScalarStringOrUndefined(item.ctnDescricao),
+          nbs,
+          nbsDescricao: this.toScalarStringOrUndefined(item.nbsDescricao),
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  }
+
+  private normalizeParametroVinculoDescricao(item: {
+    id?: string;
+    ctn?: string;
+    ctnDescricao?: string;
+    nbs?: string;
+    nbsDescricao?: string;
+  }) {
+    const official = this.findOfficialVinculo(item.ctn, item.nbs);
+    if (!official) return item;
+    return {
+      ...item,
+      ctn: official.ctn,
+      ctnDescricao: official.ctnDescricao,
+      nbs: official.nbs,
+      nbsDescricao: official.nbsDescricao,
+    };
+  }
+
+  private findOfficialVinculo(ctn?: string, nbs?: string) {
+    const all = Object.values(this.cnaeOfficialDefaults).flat();
+    return all.find((item) => item.ctn === ctn || item.nbs === nbs);
   }
 
   async getCadastroResumoByCnpj(cnpj: string): Promise<EmpresaCadastroResumo | null> {

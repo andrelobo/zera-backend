@@ -360,4 +360,92 @@ describe('EmpresasService', () => {
       }),
     );
   });
+
+  it('repairs incoherent parametroMunicipal for psicologia on normalized output', async () => {
+    const toObject = () => ({
+      _id: 'empresa-psi',
+      cnpj: '12345678000190',
+      razaoSocial: 'PSI LTDA',
+      parametroMunicipal: [
+        {
+          codigo: '8650-0/03',
+          cnaeDescricao: 'Atividades de psicologia e psicanálise',
+          vinculos: [
+            {
+              id: 'old-1',
+              ctn: '040101',
+              ctnDescricao: 'Medicina.',
+              nbs: '1.2301.22.00',
+              nbsDescricao: 'Serviços médicos especializados',
+            },
+          ],
+        },
+      ],
+    });
+    empresaModel.findOne.mockResolvedValue({ toObject });
+
+    const result = await service.getByCnpjNormalized('12.345.678/0001-90');
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        parametroMunicipal: [
+          expect.objectContaining({
+            codigo: '8650003',
+            vinculos: [
+              expect.objectContaining({
+                ctn: '041601',
+                ctnDescricao: 'Psicologia.',
+                nbs: '1.2301.98.00',
+                nbsDescricao: 'Serviços de psicologia',
+              }),
+              expect.objectContaining({
+                ctn: '041501',
+                ctnDescricao: 'Psicanálise.',
+                nbs: '1.2301.13.00',
+                nbsDescricao: 'Serviços psiquiátricos',
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
+  });
+
+  it('normalizes parametroMunicipal before persisting payload overrides', () => {
+    const patch = (service as any).pickEmpresaOverrides({
+      parametroMunicipal: [
+        {
+          codigo: '8650-0/03',
+          vinculos: [
+            {
+              ctn: '040101',
+              ctnDescricao: 'Medicina.',
+              nbs: '1.2301.22.00',
+              nbsDescricao: 'Serviços médicos especializados',
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(patch.parametroMunicipal).toEqual([
+      expect.objectContaining({
+        codigo: '8650003',
+        vinculos: [
+          expect.objectContaining({
+            ctn: '041601',
+            ctnDescricao: 'Psicologia.',
+            nbs: '1.2301.98.00',
+            nbsDescricao: 'Serviços de psicologia',
+          }),
+          expect.objectContaining({
+            ctn: '041501',
+            ctnDescricao: 'Psicanálise.',
+            nbs: '1.2301.13.00',
+            nbsDescricao: 'Serviços psiquiátricos',
+          }),
+        ],
+      }),
+    ]);
+  });
 });
