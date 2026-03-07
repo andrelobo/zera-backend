@@ -561,7 +561,11 @@ export class EmpresasService {
   }
 
   async update(id: string, data: Partial<UpdateEmpresaDto>) {
-    const patch = this.pickEmpresaOverrides(data);
+    const existing = await this.empresaModel.findById(id);
+    const patch = this.reconcileCanonicalMunicipalParams(
+      this.pickEmpresaOverrides(data),
+      existing?.toObject() as Record<string, unknown> | undefined,
+    );
     const doc = await this.empresaModel.findByIdAndUpdate(id, patch, { new: true });
     return this.toNormalizedFromDoc(doc);
   }
@@ -1099,6 +1103,74 @@ export class EmpresasService {
       serieDpsNum: this.toStringOrUndefined(payload.serieDpsNum),
       endereco: Object.keys(endereco ?? {}).length > 0 ? endereco : undefined,
     });
+  }
+
+  private reconcileCanonicalMunicipalParams(
+    patch: Partial<Empresa>,
+    existing?: Record<string, unknown>,
+  ): Partial<Empresa> {
+    const effectiveCnaeFiscal = this.onlyDigits(
+      this.toStringOrUndefined(patch.cnaeFiscal) ??
+      this.toScalarStringOrUndefined(existing?.cnaeFiscal) ??
+      '',
+    );
+
+    if (!effectiveCnaeFiscal) return patch;
+
+    const defaults = this.cnaeOfficialDefaults[effectiveCnaeFiscal];
+    if (!defaults?.length) return patch;
+
+    const patchParametroMunicipal = Array.isArray(patch.parametroMunicipal)
+      ? patch.parametroMunicipal
+      : undefined;
+
+    const existingParametroMunicipal = Array.isArray(existing?.parametroMunicipal)
+      ? this.normalizeObjectList(existing?.parametroMunicipal)
+      : undefined;
+
+    const currentParametroMunicipal = patchParametroMunicipal ?? existingParametroMunicipal;
+    const matchingItem = Array.isArray(currentParametroMunicipal)
+      ? currentParametroMunicipal.find((item) =>
+          this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? '') === effectiveCnaeFiscal,
+        )
+      : undefined;
+
+    const normalizedItem = this.normalizeParametroMunicipalItem({
+      codigo: effectiveCnaeFiscal,
+      cnaeDescricao:
+        this.toScalarStringOrUndefined(matchingItem?.cnaeDescricao) ??
+        this.toScalarStringOrUndefined(patch.cnaeFiscalDescricao) ??
+        this.toScalarStringOrUndefined(existing?.cnaeFiscalDescricao),
+      lc116Descricao: this.toScalarStringOrUndefined(matchingItem?.lc116Descricao),
+      lc116Item: this.toScalarStringOrUndefined(matchingItem?.lc116Item),
+      vinculos: Array.isArray(matchingItem?.vinculos) ? matchingItem.vinculos : [],
+      isManual: matchingItem?.isManual,
+      isPrincipal: matchingItem?.isPrincipal ?? true,
+      vinculadoSN: matchingItem?.vinculadoSN ?? true,
+    });
+
+    const normalizedList = [
+      normalizedItem,
+      ...((Array.isArray(currentParametroMunicipal) ? currentParametroMunicipal : [])
+        .filter((item) =>
+          this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? '') !== effectiveCnaeFiscal,
+        )),
+    ];
+
+    const firstVinculo = Array.isArray(normalizedItem.vinculos)
+      ? (normalizedItem.vinculos[0] as Record<string, unknown> | undefined)
+      : undefined;
+
+    return {
+      ...patch,
+      parametroMunicipal: normalizedList,
+      ctnCodigo:
+        this.toScalarStringOrUndefined(firstVinculo?.ctn) ??
+        patch.ctnCodigo,
+      nbsCodigo:
+        this.toScalarStringOrUndefined(firstVinculo?.nbs) ??
+        patch.nbsCodigo,
+    };
   }
 
   private normalizeCnaesLista(value: unknown):

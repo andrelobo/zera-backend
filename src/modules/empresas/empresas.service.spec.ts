@@ -36,6 +36,8 @@ describe('EmpresasService', () => {
   const empresaModel = {
     find: jest.fn(),
     findOne: jest.fn(),
+    findById: jest.fn(),
+    findByIdAndUpdate: jest.fn(),
   };
 
   const cnaeCatalogoModel = {
@@ -447,5 +449,70 @@ describe('EmpresasService', () => {
         ],
       }),
     ]);
+  });
+
+  it('reconciles empty parametroMunicipal on update using canonical defaults for psicologia', async () => {
+    empresaModel.findById.mockResolvedValue({
+      toObject: () => ({
+        _id: 'empresa-psi',
+        cnaeFiscal: '8650003',
+        cnaeFiscalDescricao: 'Atividades de psicologia e psicanálise',
+        parametroMunicipal: [],
+        ctnCodigo: '040101',
+        nbsCodigo: '1.2301.22.00',
+      }),
+    });
+    empresaModel.findByIdAndUpdate.mockResolvedValue({
+      toObject: () => ({
+        _id: 'empresa-psi',
+        cnaeFiscal: '8650003',
+        parametroMunicipal: [
+          {
+            codigo: '8650003',
+            vinculos: [
+              {
+                ctn: '041601',
+                ctnDescricao: 'Psicologia.',
+                nbs: '1.2301.98.00',
+                nbsDescricao: 'Serviços de psicologia',
+              },
+              {
+                ctn: '041501',
+                ctnDescricao: 'Psicanálise.',
+                nbs: '1.2301.13.00',
+                nbsDescricao: 'Serviços psiquiátricos',
+              },
+            ],
+          },
+        ],
+        ctnCodigo: '041601',
+        nbsCodigo: '1.2301.98.00',
+      }),
+    });
+
+    await service.update('empresa-psi', {
+      cnaeFiscal: '8650003',
+      parametroMunicipal: [],
+      ctnCodigo: '040101',
+      nbsCodigo: '1.2301.22.00',
+    });
+
+    expect(empresaModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      'empresa-psi',
+      expect.objectContaining({
+        ctnCodigo: '041601',
+        nbsCodigo: '1.2301.98.00',
+        parametroMunicipal: [
+          expect.objectContaining({
+            codigo: '8650003',
+            vinculos: [
+              expect.objectContaining({ ctn: '041601', nbs: '1.2301.98.00' }),
+              expect.objectContaining({ ctn: '041501', nbs: '1.2301.13.00' }),
+            ],
+          }),
+        ],
+      }),
+      { new: true },
+    );
   });
 });
