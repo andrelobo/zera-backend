@@ -460,6 +460,16 @@ describe('EmpresasService', () => {
         parametroMunicipal: [],
         ctnCodigo: '040101',
         nbsCodigo: '1.2301.22.00',
+        regimeTributario: 'simples_nacional',
+        rbt12: 180000,
+        cnaesLista: [
+          {
+            codigo: '8650003',
+            descricao: 'Atividades de psicologia e psicanálise',
+            isPrincipal: true,
+            anexo: 'III',
+          },
+        ],
       }),
     });
     empresaModel.findByIdAndUpdate.mockResolvedValue({
@@ -487,6 +497,16 @@ describe('EmpresasService', () => {
         ],
         ctnCodigo: '041601',
         nbsCodigo: '1.2301.98.00',
+        simplesSnapshot: {
+          anexo: 'III',
+          faixa: 1,
+          aliquotaNominal: 0.06,
+          parcelaDeduzir: 0,
+          aliquotaEfetiva: 0.06,
+          issReferencia: 0.0201,
+          rbt12: 180000,
+          valido: true,
+        },
       }),
     });
 
@@ -495,6 +515,16 @@ describe('EmpresasService', () => {
       parametroMunicipal: [],
       ctnCodigo: '040101',
       nbsCodigo: '1.2301.22.00',
+      regimeTributario: 'simples_nacional',
+      rbt12: 180000,
+      cnaesLista: [
+        {
+          codigo: '8650003',
+          descricao: 'Atividades de psicologia e psicanálise',
+          isPrincipal: true,
+          anexo: 'III',
+        },
+      ],
     });
 
     expect(empresaModel.findByIdAndUpdate).toHaveBeenCalledWith(
@@ -511,6 +541,54 @@ describe('EmpresasService', () => {
             ],
           }),
         ],
+        simplesSnapshot: expect.objectContaining({
+          anexo: 'III',
+          faixa: 1,
+          aliquotaNominal: 0.06,
+          parcelaDeduzir: 0,
+          aliquotaEfetiva: 0.06,
+          issReferencia: 0.0201,
+          rbt12: 180000,
+          valido: true,
+        }),
+      }),
+      { new: true },
+    );
+  });
+
+  it('marks simplesSnapshot as invalid when anexo is unsupported for calculation', async () => {
+    empresaModel.findById.mockResolvedValue({
+      toObject: () => ({
+        _id: 'empresa-faixa-invalida',
+      }),
+    });
+    empresaModel.findByIdAndUpdate.mockResolvedValue({
+      toObject: () => ({
+        _id: 'empresa-faixa-invalida',
+      }),
+    });
+
+    await service.update('empresa-faixa-invalida', {
+      regimeTributario: 'simples_nacional',
+      rbt12: 200000,
+      cnaesLista: [
+        {
+          codigo: '6201500',
+          descricao: 'Desenvolvimento de software',
+          isPrincipal: true,
+          anexo: 'V',
+        },
+      ],
+    });
+
+    expect(empresaModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      'empresa-faixa-invalida',
+      expect.objectContaining({
+        simplesSnapshot: expect.objectContaining({
+          anexo: 'V',
+          rbt12: 200000,
+          valido: false,
+        }),
       }),
       { new: true },
     );

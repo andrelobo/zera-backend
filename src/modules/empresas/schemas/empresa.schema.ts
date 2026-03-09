@@ -99,6 +99,38 @@ export class ConfigOperacionalItem {
 
 const ConfigOperacionalItemSchema = SchemaFactory.createForClass(ConfigOperacionalItem);
 
+@Schema({ _id: false })
+export class SimplesSnapshot {
+  @Prop()
+  anexo?: string;
+
+  @Prop()
+  faixa?: number;
+
+  @Prop()
+  aliquotaNominal?: number;
+
+  @Prop()
+  parcelaDeduzir?: number;
+
+  @Prop()
+  aliquotaEfetiva?: number;
+
+  @Prop()
+  issReferencia?: number;
+
+  @Prop()
+  rbt12?: number;
+
+  @Prop()
+  valido?: boolean;
+
+  @Prop()
+  calculadoEm?: Date;
+}
+
+const SimplesSnapshotSchema = SchemaFactory.createForClass(SimplesSnapshot);
+
 @Schema({ timestamps: true })
 export class Empresa {
   @Prop({ required: true, unique: true, index: true })
@@ -166,6 +198,9 @@ export class Empresa {
 
   @Prop()
   rbt12?: number;
+
+  @Prop({ type: SimplesSnapshotSchema, default: undefined })
+  simplesSnapshot?: SimplesSnapshot;
 
   @Prop({ type: [CnaeListaItemSchema], default: undefined })
   cnaesLista?: CnaeListaItem[];

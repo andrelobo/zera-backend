@@ -26,6 +26,14 @@ export interface EmpresaCadastroResumo {
   camposFaltantesEmissao: string[];
 }
 
+type SimplesFaixa = {
+  faixa: number;
+  limiteInferior: number;
+  limiteSuperior: number;
+  aliquotaNominal: number;
+  parcelaDeduzir: number;
+};
+
 @Injectable()
 export class EmpresasService {
   private readonly logger = new Logger(EmpresasService.name);
@@ -54,6 +62,51 @@ export class EmpresasService {
       },
     ],
   };
+  private readonly faixasAnexoIII: SimplesFaixa[] = [
+    {
+      faixa: 1,
+      limiteInferior: 0,
+      limiteSuperior: 180000,
+      aliquotaNominal: 0.06,
+      parcelaDeduzir: 0,
+    },
+    {
+      faixa: 2,
+      limiteInferior: 180000.01,
+      limiteSuperior: 360000,
+      aliquotaNominal: 0.112,
+      parcelaDeduzir: 9360,
+    },
+    {
+      faixa: 3,
+      limiteInferior: 360000.01,
+      limiteSuperior: 720000,
+      aliquotaNominal: 0.135,
+      parcelaDeduzir: 17640,
+    },
+    {
+      faixa: 4,
+      limiteInferior: 720000.01,
+      limiteSuperior: 1800000,
+      aliquotaNominal: 0.16,
+      parcelaDeduzir: 35640,
+    },
+    {
+      faixa: 5,
+      limiteInferior: 1800000.01,
+      limiteSuperior: 3600000,
+      aliquotaNominal: 0.21,
+      parcelaDeduzir: 125640,
+    },
+    {
+      faixa: 6,
+      limiteInferior: 3600000.01,
+      limiteSuperior: 4800000,
+      aliquotaNominal: 0.33,
+      parcelaDeduzir: 648000,
+    },
+  ];
+  private readonly percentualIssAnexoIII = 0.335;
 
   constructor(
     @InjectModel(Empresa.name) private readonly empresaModel: Model<EmpresaDocument>,
@@ -81,7 +134,11 @@ export class EmpresasService {
         const doc = await this.empresaModel.findById(existingWithCert._id);
         return this.toNormalizedFromDoc(doc);
       }
-      const doc = await this.empresaModel.findByIdAndUpdate(existingWithCert._id, overrides, {
+      const patch = this.withEmpresaBiSnapshot(
+        overrides,
+        existingWithCert.toObject() as Record<string, unknown>,
+      );
+      const doc = await this.empresaModel.findByIdAndUpdate(existingWithCert._id, patch, {
         new: true,
       });
       return this.toNormalizedFromDoc(doc);
@@ -96,7 +153,10 @@ export class EmpresasService {
 
     const { data } = await this.fetchProviderData(normalized);
     const mapped = this.mapProviderData(normalized, data);
-    const updateData = { ...mapped, ...overrides };
+    const updateData = this.withEmpresaBiSnapshot(
+      { ...mapped, ...overrides },
+      existingWithCert.toObject() as Record<string, unknown>,
+    );
 
     try {
       const doc = await this.empresaModel.findByIdAndUpdate(existingWithCert._id, updateData, {
@@ -562,8 +622,11 @@ export class EmpresasService {
 
   async update(id: string, data: Partial<UpdateEmpresaDto>) {
     const existing = await this.empresaModel.findById(id);
-    const patch = this.reconcileCanonicalMunicipalParams(
-      this.pickEmpresaOverrides(data),
+    const patch = this.withEmpresaBiSnapshot(
+      this.reconcileCanonicalMunicipalParams(
+        this.pickEmpresaOverrides(data),
+        existing?.toObject() as Record<string, unknown> | undefined,
+      ),
       existing?.toObject() as Record<string, unknown> | undefined,
     );
     const doc = await this.empresaModel.findByIdAndUpdate(id, patch, { new: true });
@@ -1105,14 +1168,83 @@ export class EmpresasService {
     });
   }
 
+  private withEmpresaBiSnapshot(
+    patch: Partial<Empresa>,
+    existing?: Record<string, unknown>,
+  ): Partial<Empresa> {
+    const snapshot = this.buildSimplesSnapshot(patch, existing);
+    if (!snapshot) return patch;
+    return {
+      ...patch,
+      simplesSnapshot: snapshot,
+    };
+  }
+
+  private buildSimplesSnapshot(patch: Partial<Empresa>, existing?: Record<string, unknown>) {
+    const regimeTributario =
+      this.toStringOrUndefined(patch.regimeTributario) ??
+      this.toScalarStringOrUndefined(existing?.regimeTributario);
+    const rbt12 =
+      this.toNumberOrUndefined(patch.rbt12) ?? this.toNumberOrUndefined(existing?.rbt12);
+
+    const cnaesLista = Array.isArray(patch.cnaesLista)
+      ? patch.cnaesLista
+      : Array.isArray(existing?.cnaesLista)
+        ? this.normalizeCnaesLista(existing?.cnaesLista)
+        : undefined;
+    const cnaePrincipal = cnaesLista?.find((item) => item.isPrincipal) ?? cnaesLista?.[0];
+    const anexo = String(
+      cnaePrincipal?.anexo ?? (regimeTributario === 'simples_nacional' ? 'III' : ''),
+    )
+      .trim()
+      .toUpperCase();
+
+    if (regimeTributario !== 'simples_nacional' || !rbt12 || !anexo) return undefined;
+    if (anexo !== 'III' || rbt12 <= 0 || rbt12 > 4_800_000) {
+      return {
+        anexo,
+        rbt12,
+        valido: false,
+        calculadoEm: new Date(),
+      };
+    }
+
+    const faixa = this.faixasAnexoIII.find(
+      (item) => rbt12 >= item.limiteInferior && rbt12 <= item.limiteSuperior,
+    );
+    if (!faixa) {
+      return {
+        anexo,
+        rbt12,
+        valido: false,
+        calculadoEm: new Date(),
+      };
+    }
+
+    const aliquotaEfetiva = (rbt12 * faixa.aliquotaNominal - faixa.parcelaDeduzir) / rbt12;
+    const issReferencia = aliquotaEfetiva * this.percentualIssAnexoIII;
+
+    return {
+      anexo,
+      faixa: faixa.faixa,
+      aliquotaNominal: faixa.aliquotaNominal,
+      parcelaDeduzir: faixa.parcelaDeduzir,
+      aliquotaEfetiva,
+      issReferencia,
+      rbt12,
+      valido: true,
+      calculadoEm: new Date(),
+    };
+  }
+
   private reconcileCanonicalMunicipalParams(
     patch: Partial<Empresa>,
     existing?: Record<string, unknown>,
   ): Partial<Empresa> {
     const effectiveCnaeFiscal = this.onlyDigits(
       this.toStringOrUndefined(patch.cnaeFiscal) ??
-      this.toScalarStringOrUndefined(existing?.cnaeFiscal) ??
-      '',
+        this.toScalarStringOrUndefined(existing?.cnaeFiscal) ??
+        '',
     );
 
     if (!effectiveCnaeFiscal) return patch;
@@ -1130,8 +1262,10 @@ export class EmpresasService {
 
     const currentParametroMunicipal = patchParametroMunicipal ?? existingParametroMunicipal;
     const matchingItem = Array.isArray(currentParametroMunicipal)
-      ? currentParametroMunicipal.find((item) =>
-          this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? '') === effectiveCnaeFiscal,
+      ? currentParametroMunicipal.find(
+          (item) =>
+            this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? '') ===
+            effectiveCnaeFiscal,
         )
       : undefined;
 
@@ -1151,10 +1285,11 @@ export class EmpresasService {
 
     const normalizedList = [
       normalizedItem,
-      ...((Array.isArray(currentParametroMunicipal) ? currentParametroMunicipal : [])
-        .filter((item) =>
-          this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? '') !== effectiveCnaeFiscal,
-        )),
+      ...(Array.isArray(currentParametroMunicipal) ? currentParametroMunicipal : []).filter(
+        (item) =>
+          this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? '') !==
+          effectiveCnaeFiscal,
+      ),
     ];
 
     const firstVinculo = Array.isArray(normalizedItem.vinculos)
@@ -1164,12 +1299,8 @@ export class EmpresasService {
     return {
       ...patch,
       parametroMunicipal: normalizedList,
-      ctnCodigo:
-        this.toScalarStringOrUndefined(firstVinculo?.ctn) ??
-        patch.ctnCodigo,
-      nbsCodigo:
-        this.toScalarStringOrUndefined(firstVinculo?.nbs) ??
-        patch.nbsCodigo,
+      ctnCodigo: this.toScalarStringOrUndefined(firstVinculo?.ctn) ?? patch.ctnCodigo,
+      nbsCodigo: this.toScalarStringOrUndefined(firstVinculo?.nbs) ?? patch.nbsCodigo,
     };
   }
 
