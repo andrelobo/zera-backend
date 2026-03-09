@@ -32,6 +32,15 @@ export class NfseEmission {
   codigoServico?: string;
 
   @Prop()
+  localPrestacaoPais?: string;
+
+  @Prop()
+  localPrestacaoUf?: string;
+
+  @Prop()
+  localPrestacaoMunicipio?: string;
+
+  @Prop()
   numeroNfse?: string;
 
   @Prop()
@@ -69,6 +78,15 @@ export class NfseEmission {
 
   @Prop()
   retInss?: number;
+
+  @Prop()
+  tributacaoTotalFederal?: number;
+
+  @Prop()
+  tributacaoTotalEstadual?: number;
+
+  @Prop()
+  tributacaoTotalMunicipal?: number;
 
   @Prop({ index: true })
   idempotencyKey?: string;

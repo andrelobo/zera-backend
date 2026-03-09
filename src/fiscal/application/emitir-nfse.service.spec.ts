@@ -27,6 +27,11 @@ describe('EmitirNfseService idempotency', () => {
   function makeInput() {
     return {
       referenciaExterna: 'nfse-idem-001',
+      localPrestacao: {
+        pais: 'Brasil',
+        uf: 'AM',
+        municipio: 'Manaus',
+      },
       prestador: {
         cnpj: '43521115000134',
         razaoSocial: 'BURGUS LTDA',
@@ -56,6 +61,11 @@ describe('EmitirNfseService idempotency', () => {
         codigoNacional: '171901',
         descricao: 'Servico',
         valor: 100,
+        tributacaoTotal: {
+          federal: { valor: 5 },
+          estadual: { valor: 0 },
+          municipal: { valor: 2.01 },
+        },
       },
     };
   }
@@ -217,5 +227,56 @@ describe('EmitirNfseService idempotency', () => {
       regApTribSN: 1,
       regEspTrib: 0,
     });
+  });
+
+  it('persists localPrestacao and tributacaoTotal as first-class BI fields', async () => {
+    const created = { _id: { toString: () => 'em-791' } };
+    const repository = {
+      findByReference: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue(created),
+      updateEmission: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = {
+      providerName: 'PLUGNOTAS',
+      emitirNfse: jest.fn().mockResolvedValue({
+        status: NfseEmissionStatus.PENDING,
+        provider: 'PLUGNOTAS',
+        externalId: 'ext-791',
+      }),
+    };
+
+    const empresasService = makeEmpresasServiceMock();
+    const tomadoresService = makeTomadoresServiceMock();
+    const service = new EmitirNfseService(
+      provider as any,
+      repository as any,
+      empresasService as any,
+      tomadoresService as any,
+    );
+
+    await service.execute(makeInput() as any);
+
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        localPrestacaoPais: 'Brasil',
+        localPrestacaoUf: 'AM',
+        localPrestacaoMunicipio: 'Manaus',
+        tributacaoTotalFederal: 5,
+        tributacaoTotalEstadual: 0,
+        tributacaoTotalMunicipal: 2.01,
+        biSnapshot: expect.objectContaining({
+          localPrestacao: expect.objectContaining({
+            pais: 'Brasil',
+            uf: 'AM',
+            municipio: 'Manaus',
+          }),
+          metricas: expect.objectContaining({
+            tributacaoTotalFederal: 5,
+            tributacaoTotalEstadual: 0,
+            tributacaoTotalMunicipal: 2.01,
+          }),
+        }),
+      }),
+    );
   });
 });

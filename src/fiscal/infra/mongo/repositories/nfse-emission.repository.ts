@@ -20,6 +20,9 @@ export class NfseEmissionRepository {
     tomadorRazaoSocial?: string;
     descricaoServico?: string;
     codigoServico?: string;
+    localPrestacaoPais?: string;
+    localPrestacaoUf?: string;
+    localPrestacaoMunicipio?: string;
     numeroNfse?: string;
     competencia?: string;
     dataEmissao?: string;
@@ -33,6 +36,9 @@ export class NfseEmissionRepository {
     retCsll?: number;
     retIr?: number;
     retInss?: number;
+    tributacaoTotalFederal?: number;
+    tributacaoTotalEstadual?: number;
+    tributacaoTotalMunicipal?: number;
     idempotencyKey?: string;
     status?: NfseEmissionStatus;
     externalId?: string;
@@ -48,6 +54,9 @@ export class NfseEmissionRepository {
       tomadorRazaoSocial: input.tomadorRazaoSocial,
       descricaoServico: input.descricaoServico,
       codigoServico: input.codigoServico,
+      localPrestacaoPais: input.localPrestacaoPais,
+      localPrestacaoUf: input.localPrestacaoUf,
+      localPrestacaoMunicipio: input.localPrestacaoMunicipio,
       numeroNfse: input.numeroNfse,
       competencia: input.competencia,
       dataEmissao: input.dataEmissao,
@@ -61,6 +70,9 @@ export class NfseEmissionRepository {
       retCsll: input.retCsll,
       retIr: input.retIr,
       retInss: input.retInss,
+      tributacaoTotalFederal: input.tributacaoTotalFederal,
+      tributacaoTotalEstadual: input.tributacaoTotalEstadual,
+      tributacaoTotalMunicipal: input.tributacaoTotalMunicipal,
       idempotencyKey: input.idempotencyKey,
       status: input.status ?? NfseEmissionStatus.PENDING,
       externalId: input.externalId,

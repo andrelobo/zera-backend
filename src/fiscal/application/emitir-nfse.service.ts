@@ -129,6 +129,9 @@ export class EmitirNfseService {
         tomadorRazaoSocial: bi.tomadorRazaoSocial,
         descricaoServico: bi.descricaoServico,
         codigoServico: bi.codigoServico,
+        localPrestacaoPais: bi.localPrestacaoPais,
+        localPrestacaoUf: bi.localPrestacaoUf,
+        localPrestacaoMunicipio: bi.localPrestacaoMunicipio,
         numeroNfse: bi.numeroNfse,
         competencia: bi.competencia,
         dataEmissao: bi.dataEmissao,
@@ -142,6 +145,9 @@ export class EmitirNfseService {
         retCsll: bi.retCsll,
         retIr: bi.retIr,
         retInss: bi.retInss,
+        tributacaoTotalFederal: bi.tributacaoTotalFederal,
+        tributacaoTotalEstadual: bi.tributacaoTotalEstadual,
+        tributacaoTotalMunicipal: bi.tributacaoTotalMunicipal,
         idempotencyKey,
         status: NfseEmissionStatus.PENDING,
       });
@@ -213,7 +219,9 @@ export class EmitirNfseService {
     if (cnpj.length !== 14) return input;
 
     const empresa = await this.empresasService.getByCnpj(cnpj);
-    const providerData = (empresa as Record<string, unknown> | null)?.providerData as Record<string, unknown> | undefined;
+    const providerData = (empresa as Record<string, unknown> | null)?.providerData as
+      | Record<string, unknown>
+      | undefined;
     const simplesData = (providerData?.simples as Record<string, unknown> | undefined) ?? undefined;
 
     const optante =
@@ -275,6 +283,9 @@ export class EmitirNfseService {
     tomadorRazaoSocial?: string;
     descricaoServico?: string;
     codigoServico?: string;
+    localPrestacaoPais?: string;
+    localPrestacaoUf?: string;
+    localPrestacaoMunicipio?: string;
     numeroNfse?: string;
     competencia?: string;
     dataEmissao?: string;
@@ -288,6 +299,9 @@ export class EmitirNfseService {
     retCsll?: number;
     retIr?: number;
     retInss?: number;
+    tributacaoTotalFederal?: number;
+    tributacaoTotalEstadual?: number;
+    tributacaoTotalMunicipal?: number;
   } {
     const empresaCnpj = onlyDigits(input.prestador?.cnpj);
     const tomadorCpfCnpj = onlyDigits(input.tomador?.cpfCnpj);
@@ -305,6 +319,13 @@ export class EmitirNfseService {
     const retCsll = normalizeNumber(input.servico?.retencoesFederais?.csll);
     const retIr = normalizeNumber(input.servico?.retencoesFederais?.ir);
     const retInss = normalizeNumber(input.servico?.retencoesFederais?.inss);
+    const tributacaoTotalFederal = normalizeNumber(input.servico?.tributacaoTotal?.federal?.valor);
+    const tributacaoTotalEstadual = normalizeNumber(
+      input.servico?.tributacaoTotal?.estadual?.valor,
+    );
+    const tributacaoTotalMunicipal = normalizeNumber(
+      input.servico?.tributacaoTotal?.municipal?.valor,
+    );
 
     const biSnapshot = {
       referenciaExterna: input.referenciaExterna,
@@ -324,6 +345,11 @@ export class EmitirNfseService {
         inscricaoMunicipal: input.tomador?.inscricaoMunicipal,
         email: input.tomador?.email,
         endereco: input.tomador?.endereco,
+      },
+      localPrestacao: {
+        pais: input.localPrestacao?.pais,
+        uf: input.localPrestacao?.uf,
+        municipio: input.localPrestacao?.municipio,
       },
       servico: {
         codigoNacional: input.servico?.codigoNacional,
@@ -355,6 +381,9 @@ export class EmitirNfseService {
         retCsll,
         retIr,
         retInss,
+        tributacaoTotalFederal,
+        tributacaoTotalEstadual,
+        tributacaoTotalMunicipal,
       },
     };
 
@@ -365,6 +394,9 @@ export class EmitirNfseService {
       tomadorRazaoSocial: input.tomador?.razaoSocial,
       descricaoServico: input.servico?.descricao,
       codigoServico: input.servico?.codigoNacional ?? input.servico?.codigoMunicipal,
+      localPrestacaoPais: input.localPrestacao?.pais,
+      localPrestacaoUf: input.localPrestacao?.uf,
+      localPrestacaoMunicipio: input.localPrestacao?.municipio,
       numeroNfse: input.numeroNfse,
       competencia: input.competencia,
       dataEmissao: input.dataEmissao,
@@ -378,6 +410,9 @@ export class EmitirNfseService {
       retCsll,
       retIr,
       retInss,
+      tributacaoTotalFederal,
+      tributacaoTotalEstadual,
+      tributacaoTotalMunicipal,
     };
   }
 
