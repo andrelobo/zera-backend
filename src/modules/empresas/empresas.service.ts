@@ -136,7 +136,7 @@ export class EmpresasService {
       }
       const patch = this.withEmpresaBiSnapshot(
         overrides,
-        existingWithCert.toObject() as Record<string, unknown>,
+        existingWithCert.toObject() as unknown as Record<string, unknown>,
       );
       const doc = await this.empresaModel.findByIdAndUpdate(existingWithCert._id, patch, {
         new: true,
@@ -155,7 +155,7 @@ export class EmpresasService {
     const mapped = this.mapProviderData(normalized, data);
     const updateData = this.withEmpresaBiSnapshot(
       { ...mapped, ...overrides },
-      existingWithCert.toObject() as Record<string, unknown>,
+      existingWithCert.toObject() as unknown as Record<string, unknown>,
     );
 
     try {

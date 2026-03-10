@@ -41,6 +41,12 @@ export interface EmitirNfseInput {
     };
   };
 
+  localPrestacao?: {
+    pais?: string;
+    uf?: string;
+    municipio?: string;
+  };
+
   servico: {
     codigoMunicipal?: string;
     codigoNacional?: string;
