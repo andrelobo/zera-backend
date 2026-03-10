@@ -22,7 +22,10 @@ type TomadorServicoInput = {
 function normalizeTomadorServicos(input?: TomadorServicoInput[]) {
   if (!Array.isArray(input)) return [];
   const now = new Date();
-  const unique = new Map<string, { codigoServico: string; descricaoServico: string; updatedAt: Date }>();
+  const unique = new Map<
+    string,
+    { codigoServico: string; descricaoServico: string; updatedAt: Date }
+  >();
   for (const item of input) {
     const codigoServico = nonEmpty(item?.codigoServico)?.replace(/\D/g, '').slice(0, 6);
     const descricaoServico = nonEmpty(item?.descricaoServico);
@@ -285,7 +288,10 @@ export class TomadoresService {
             descricaoServico: nonEmpty(item?.descricaoServico),
             updatedAt: item?.updatedAt ? new Date(item.updatedAt) : new Date(0),
           }))
-          .filter((item: any) => item.codigoServico && item.descricaoServico && item.codigoServico !== codigoServico),
+          .filter(
+            (item: any) =>
+              item.codigoServico && item.descricaoServico && item.codigoServico !== codigoServico,
+          ),
       ].slice(0, 20);
       updatePayload.servicos = merged;
     }

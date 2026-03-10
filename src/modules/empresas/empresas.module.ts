@@ -3,7 +3,10 @@ import { MongooseModule } from '@nestjs/mongoose';
 
 import { PlugNotasCnpjApi } from '../../fiscal/infra/plugnotas/cnpj.api';
 import { PlugNotasHttp } from '../../fiscal/infra/plugnotas/plugnotas.http';
-import { NfseEmission, NfseEmissionSchema } from '../../fiscal/infra/mongo/schemas/nfse-emission.schema';
+import {
+  NfseEmission,
+  NfseEmissionSchema,
+} from '../../fiscal/infra/mongo/schemas/nfse-emission.schema';
 import { EmpresasController } from './empresas.controller';
 import { BrasilApiCnpjApi } from './brasilapi-cnpj.api';
 import { CnpjaCnpjApi } from './cnpja-cnpj.api';

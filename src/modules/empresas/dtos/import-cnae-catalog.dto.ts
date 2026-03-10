@@ -1,6 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 
 export class ImportCnaeCatalogItemDto {
   @ApiProperty({ example: '6201501' })

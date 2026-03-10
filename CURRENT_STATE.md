@@ -1,8 +1,24 @@
 # ZERA Backend – Current State
 
-Snapshot operacional do backend em **07/03/2026** (última atualização consolidada).
+Snapshot operacional do backend em **10/03/2026** (ultima atualizacao consolidada).
 
-## 0. Delta crítico de hoje
+## 0. Delta critico de hoje (10/03/2026)
+
+Fonte: `codigo local` + `execucao local`.
+
+Correcoes tecnicas aplicadas para estabilizar build/deploy:
+- `src/fiscal/domain/types/emitir-nfse.types.ts`
+  - adicionado `localPrestacao?` em `EmitirNfseInput` (`pais`, `uf`, `municipio`) para compatibilizar uso no `EmitirNfseService`.
+- `src/modules/empresas/empresas.service.ts`
+  - ajuste de casting de `existingWithCert.toObject()` para `as unknown as Record<string, unknown>` em trechos de merge.
+
+Resultado local:
+- `npm run build` -> passando.
+
+Observacao operacional:
+- erro de build em deploy nao derruba automaticamente a versao ja em producao no Render; a release estavel anterior permanece ativa ate novo deploy valido.
+
+## 1. Delta crítico (07/03/2026)
 
 Diagnóstico validado em produção:
 - `GET /empresas` estava devolvendo, para o prestador Burgus:
@@ -32,13 +48,13 @@ Validação executada:
 - `npm test -- src/modules/empresas/empresas.service.spec.ts`
 - resultado: `15/15` testes passando
 
-## 1. Objetivo do documento
+## 2. Objetivo do documento
 
 Este arquivo resume o **estado atual** para operação, produto e integração frontend.
 
 Para histórico detalhado (decisões, incidentes, cronologia), usar `CONTEXT.md`.
 
-## 2. Estado atual (alto nível)
+## 3. Estado atual (alto nível)
 
 * Backend NestJS + TypeScript em Node 20.
 * Provider fiscal ativo: **PlugNotas**.
@@ -47,16 +63,16 @@ Para histórico detalhado (decisões, incidentes, cronologia), usar `CONTEXT.md`
   * transição para `AUTHORIZED`
   * persistência/consulta de XML e PDF
 
-## 3. Fluxos principais em produção
+## 4. Fluxos principais em produção
 
-### 3.1 Emissão padrão
+### 4.1 Emissão padrão
 
 * Cria emissão com `idIntegracao` (idempotência).
 * Salva status inicial (`PENDING`) e metadados do provider.
 * Polling com backoff consulta status até estado final.
 * Em `AUTHORIZED`, baixa e persiste artifacts (XML/PDF).
 
-### 3.2 Emissão rápida
+### 4.2 Emissão rápida
 
 Endpoint:
 * `POST /nfse/quick`
@@ -69,7 +85,7 @@ Payload mínimo:
 Opcional:
 * `codigoServico` (6 dígitos), com inferência por catálogo LC116.
 
-### 3.3 Cadastro de tomadores (novo)
+### 4.3 Cadastro de tomadores (novo)
 
 Endpoints:
 * `POST /tomadores`
@@ -87,7 +103,7 @@ Autocomplete para emissão no frontend:
 * busca por CPF/CNPJ ou nome
 * `limit` default `10` e máximo `50`
 
-## 4. Segurança e robustez já aplicadas
+## 5. Segurança e robustez já aplicadas
 
 * `JWT_SECRET` obrigatório no boot (fail-fast).
 * ValidationPipe global ativa (`whitelist` + `transform`).
@@ -95,7 +111,7 @@ Autocomplete para emissão no frontend:
 * `FiscalController` protegido por `JwtAuthGuard` e `RolesGuard`.
 * Contrato global de erro padronizado: `{ code, message, correlationId }`.
 
-## 5. Idempotência e artifacts
+## 6. Idempotência e artifacts
 
 * Índice único parcial para idempotência por provider + chave.
 * Tratamento de resposta PlugNotas com `HTTP 400` + `protocol` como aceite em processamento (`PENDING`).
@@ -103,7 +119,7 @@ Autocomplete para emissão no frontend:
   * `POST /nfse/{id}/sync-artifacts`
   * com rate limit por emissão e trilha de auditoria.
 
-## 6. Catálogo de serviços
+## 7. Catálogo de serviços
 
 Fonte única:
 * `servicos_lc116_v2.json` (catálogo LC116/NFS-e Nacional)
@@ -112,14 +128,14 @@ Endpoints:
 * `GET /nfse/servicos/autocomplete?q=&limit=`
 * `GET /nfse/servicos/{codigo}`
 
-## 7. Certificado digital (empresa)
+## 8. Certificado digital (empresa)
 
 * Importação via `POST /empresas/certificado/import` (`.pfx`/`.p12`).
 * Certificado vinculado por CNPJ.
 * Senha protegida com AES-256-GCM.
 * Cadastro de empresa nova/incompleta exige certificado prévio (`CERTIFICADO_REQUIRED`).
 
-## 8. Variáveis críticas de ambiente
+## 9. Variáveis críticas de ambiente
 
 Obrigatórias/recomendadas:
 * `JWT_SECRET`
@@ -137,13 +153,13 @@ Importantes para quick flow:
 * `QUICK_NFSE_REG_AP_TRIB_SN` (opcional override)
 * `QUICK_NFSE_REG_ESP_TRIB` (opcional override)
 
-## 9. Gaps conhecidos
+## 10. Gaps conhecidos
 
 * Pré-requisitos NFSe Nacional foram implementados em modo seguro por flag (`off|warn|enforce`), com default `off`; rollout produtivo ainda depende de ativação gradual.
 * Estratégia recomendada de rollout: `off` (baseline) -> `warn` (observabilidade sem bloqueio) -> `enforce` (bloqueio por pré-requisito validado).
 * Webhook com validação por token compartilhado; assinatura criptográfica ainda não implementada.
 
-## 10. Atualizações recentes relevantes (fev/2026)
+## 11. Atualizações recentes relevantes (fev/2026)
 
 * Regressão DANFSE com rejeição `E0312` foi mitigada no backend com fallback defensivo para `servico.codigoTributacao` no provider PlugNotas.
 * Ordem de fallback aplicada:
@@ -159,14 +175,14 @@ Importantes para quick flow:
   * `POST /nfse/emitir` bloqueia com `PRESTADOR_INCOMPLETO` quando necessário.
   * `POST /nfse/quick` bloqueia com `QUICK_PRESTADOR_INCOMPLETO` quando necessário.
 
-## 11. Referências
+## 12. Referências
 
 * Histórico completo: `CONTEXT.md`
 * Detalhes de produção: `REPORT_PLUGNOTAS_PROD_2026-02-06.md`, `REPORT_PLUGNOTAS_PROD_2026-02-09.md`
 * Endpoints PlugNotas: `endpoints-plug-notas.md`
 * Evidência da regressão/correção: seção `ATUALIZAÇÃO (25/02/2026)` em `CONTEXT.md`
 
-## 12. Atualização operacional (26/02/2026)
+## 13. Atualização operacional (26/02/2026)
 
 * Sincronização de branch concluída: `main` local e `origin/main` alinhados no commit `b0d68cb`.
 * Ajustes de emissão/NFSe e tomadores preservados no remoto (sem perda de alterações locais).
@@ -192,7 +208,7 @@ Importantes para quick flow:
   * `npm run build` ✅
   * `npm run test:e2e` ✅
 
-## 13. Checklist MVP -> BI (operacional)
+## 15. Checklist MVP -> BI (operacional)
 
 * [ ] Contrato canônico de dados definido (empresa/tomador/serviço/tributação/localização/datas).
 * [ ] Origem dos dados registrada (`source` e `updatedAt` por campo crítico).
@@ -205,7 +221,7 @@ Importantes para quick flow:
 * [ ] Monitoramento de qualidade de dados ativo (vazios, divergências, taxa de autocomplete).
 * [ ] Compatibilidade com emissão preservada e validada continuamente.
 
-## 15. Atualização operacional (28/02/2026) – Reforço de testes
+## 16. Atualização operacional (28/02/2026) – Reforço de testes
 
 * Cobertura de controller fiscal ampliada com spec dedicada:
   * `src/modules/fiscal/fiscal.controller.spec.ts`
@@ -219,7 +235,7 @@ Importantes para quick flow:
 
 Estado: backend estável com reforço de segurança de contrato em cadastro/autorização/listagem NFSe.
 
-## 16. Atualização operacional (03/03/2026)
+## 17. Atualização operacional (03/03/2026)
 
 * Ciclo focado em clone visual de telas no `zera-frontend` (prestador/tomador/emissão) concluído sem alteração contratual obrigatória no backend.
 * APIs de suporte usadas pelo frontend permaneceram estáveis:
@@ -229,7 +245,7 @@ Estado: backend estável com reforço de segurança de contrato em cadastro/auto
 * Compatibilidade mantida com payload de emissão contendo `numeroNfse` (quando informado pelo frontend).
 * Sem regressões de contrato reportadas neste ciclo para integração frontend-backend.
 
-## 17. Snapshot canônico (05/03/2026)
+## 18. Snapshot canônico (05/03/2026)
 
 Fonte: `codigo local` + `git log` em `main` (sem alterações locais).
 
