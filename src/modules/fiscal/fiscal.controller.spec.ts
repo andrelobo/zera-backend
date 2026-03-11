@@ -147,6 +147,7 @@ describe('FiscalController', () => {
       seriesCompetencia: [],
       topServicos: [],
       topMunicipiosPrestacao: [],
+      topTomadores: [],
     });
 
     await controller.getBiSummary(

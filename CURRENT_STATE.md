@@ -30,6 +30,7 @@ Melhorias pequenas e aditivas para B.I. aplicadas no backend:
   - `getBiSummary()` passou a expor:
     - `tributacaoTotal` agregado por esfera
     - `topMunicipiosPrestacao`
+    - `topTomadores`
 
 Validacao executada:
 - `npm test -- src/modules/empresas/empresas.service.spec.ts` -> `16/16`

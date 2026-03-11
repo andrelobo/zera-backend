@@ -176,6 +176,13 @@ Pronto para relatório:
 - município/UF do tomador
 - município/UF do prestador
 
+### 3.5 Corte por tomador
+
+Pronto para relatório:
+- top tomadores por faturamento
+- top tomadores por quantidade de emissões
+- concentração por CPF/CNPJ e razão social
+
 ## 4. Campos que ainda dependem do contador
 
 Não tratar como verdade analítica até validação formal:

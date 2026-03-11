@@ -325,6 +325,12 @@ export class NfseEmissionRepository {
       quantidade: number;
       valorServico: number;
     }>;
+    topTomadores: Array<{
+      cpfCnpj: string;
+      razaoSocial: string;
+      quantidade: number;
+      valorServico: number;
+    }>;
   }> {
     const filter: Record<string, any> = {};
     if (input?.provider) filter.provider = input.provider;
@@ -421,6 +427,20 @@ export class NfseEmissionRepository {
             { $sort: { valorServico: -1, quantidade: -1 } },
             { $limit: 10 },
           ],
+          topTomadores: [
+            {
+              $group: {
+                _id: {
+                  cpfCnpj: { $ifNull: ['$tomadorCpfCnpj', 'SEM_DOCUMENTO'] },
+                  razaoSocial: { $ifNull: ['$tomadorRazaoSocial', 'Sem nome'] },
+                },
+                quantidade: { $sum: 1 },
+                valorServico: { $sum: { $ifNull: ['$valorServico', 0] } },
+              },
+            },
+            { $sort: { valorServico: -1, quantidade: -1 } },
+            { $limit: 10 },
+          ],
         },
       },
     ]);
@@ -475,6 +495,12 @@ export class NfseEmissionRepository {
       topMunicipiosPrestacao: (agg?.topMunicipiosPrestacao ?? []).map((item: any) => ({
         municipio: String(item._id?.municipio ?? 'SEM_MUNICIPIO'),
         uf: String(item._id?.uf ?? 'SEM_UF'),
+        quantidade: Number(item.quantidade ?? 0),
+        valorServico: Number(item.valorServico ?? 0),
+      })),
+      topTomadores: (agg?.topTomadores ?? []).map((item: any) => ({
+        cpfCnpj: String(item._id?.cpfCnpj ?? 'SEM_DOCUMENTO'),
+        razaoSocial: String(item._id?.razaoSocial ?? 'Sem nome'),
         quantidade: Number(item.quantidade ?? 0),
         valorServico: Number(item.valorServico ?? 0),
       })),
