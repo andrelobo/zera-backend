@@ -2,6 +2,38 @@
 
 Snapshot operacional do backend em **10/03/2026** (ultima atualizacao consolidada).
 
+## 0. Delta critico de hoje (11/03/2026)
+
+Fonte: `codigo local` + `execucao local`.
+
+Melhorias pequenas e aditivas para B.I. aplicadas no backend:
+
+- `src/modules/empresas/schemas/empresa.schema.ts`
+  - novo campo `simplesSnapshot` em `Empresa`.
+- `src/modules/empresas/empresas.service.ts`
+  - save/update da empresa agora calcula e persiste snapshot tributario do Simples Nacional quando houver base suficiente (`regimeTributario`, `rbt12`, `cnaesLista[].anexo`).
+- `src/fiscal/infra/mongo/schemas/nfse-emission.schema.ts`
+  - emissao passou a ter campos analiticos de 1a classe:
+    - `localPrestacaoPais`
+    - `localPrestacaoUf`
+    - `localPrestacaoMunicipio`
+    - `tributacaoTotalFederal`
+    - `tributacaoTotalEstadual`
+    - `tributacaoTotalMunicipal`
+- `src/fiscal/infra/mongo/repositories/nfse-emission.repository.ts`
+  - `getBiSummary()` passou a expor:
+    - `tributacaoTotal` agregado por esfera
+    - `topMunicipiosPrestacao`
+
+Validacao executada:
+- `npm test -- src/modules/empresas/empresas.service.spec.ts` -> `16/16`
+- `npm test -- src/fiscal/application/emitir-nfse.service.spec.ts` -> `5/5`
+- `npm test -- src/modules/fiscal/fiscal.controller.spec.ts` -> `9/9`
+
+Observacao canônica:
+- `localPrestacao` e `simplesSnapshot` entram como melhoria de persistencia analitica/B.I.;
+- nao foram tratados como requisito fiscal obrigatorio de autorizacao no fluxo atual.
+
 ## 0. Delta critico de hoje (10/03/2026)
 
 Fonte: `codigo local` + `execucao local`.
