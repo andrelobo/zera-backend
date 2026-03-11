@@ -1443,6 +1443,18 @@ export class EmpresasService {
 
     const id = String(raw._id ?? raw.id ?? '');
     const cadastroResumo = this.buildCadastroResumo(raw);
+    const parametroMunicipal = this.normalizeObjectList(
+      pick('parametroMunicipal', 'parametro_municipal'),
+    );
+    const configOperacionais = this.normalizeConfigOperacionais(
+      pick('configOperacionais', 'config_operacionais'),
+    );
+    const cnaesLista = this.normalizeCnaesLista(pick('cnaesLista', 'cnaes_lista'));
+    const totalVinculosMunicipais = (parametroMunicipal ?? []).reduce((acc, item) => {
+      const vinculos = Array.isArray(item.vinculos) ? item.vinculos.length : 0;
+      return acc + vinculos;
+    }, 0);
+
     return this.compactObject({
       ...raw,
       id,
@@ -1464,10 +1476,15 @@ export class EmpresasService {
       percentualCompletude: cadastroResumo.percentualCompletude,
       camposFaltantes: cadastroResumo.camposFaltantes,
       camposFaltantesEmissao: cadastroResumo.camposFaltantesEmissao,
-      parametroMunicipal: this.normalizeObjectList(
-        pick('parametroMunicipal', 'parametro_municipal'),
-      ),
-      configOperacionais: pick('configOperacionais', 'config_operacionais'),
+      parametroMunicipal,
+      configOperacionais,
+      cnaesLista,
+      biCatalogoResumo: {
+        totalCnaes: cnaesLista?.length ?? 0,
+        totalFavoritosMunicipais: parametroMunicipal?.length ?? 0,
+        totalVinculosMunicipais,
+        totalConfigOperacionais: configOperacionais?.length ?? 0,
+      },
     });
   }
 

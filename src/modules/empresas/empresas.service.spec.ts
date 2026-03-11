@@ -593,4 +593,47 @@ describe('EmpresasService', () => {
       { new: true },
     );
   });
+
+  it('exposes biCatalogoResumo with canonical counts on normalized output', async () => {
+    const toObject = () => ({
+      _id: 'empresa-bi',
+      cnpj: '12345678000190',
+      razaoSocial: 'EMPRESA BI LTDA',
+      cnaesLista: [
+        {
+          codigo: '8650003',
+          descricao: 'Atividades de psicologia e psicanálise',
+          isPrincipal: true,
+        },
+        { codigo: '6201500', descricao: 'Desenvolvimento de software', isPrincipal: false },
+      ],
+      parametroMunicipal: [
+        {
+          codigo: '8650003',
+          vinculos: [
+            { ctn: '041601', nbs: '1.2301.98.00' },
+            { ctn: '041501', nbs: '1.2301.13.00' },
+          ],
+        },
+      ],
+      configOperacionais: [
+        { id: 'cfg-1', natureza: 'Consulta', descricao: 'Consulta de psicologia' },
+        { id: 'cfg-2', natureza: 'Grupo', descricao: 'Sessão em grupo' },
+      ],
+    });
+    empresaModel.findOne.mockResolvedValue({ toObject });
+
+    const result = await service.getByCnpjNormalized('12.345.678/0001-90');
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        biCatalogoResumo: {
+          totalCnaes: 2,
+          totalFavoritosMunicipais: 1,
+          totalVinculosMunicipais: 2,
+          totalConfigOperacionais: 2,
+        },
+      }),
+    );
+  });
 });
