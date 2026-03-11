@@ -127,8 +127,14 @@ export class EmitirNfseService {
         empresaCnpj: bi.empresaCnpj,
         tomadorCpfCnpj: bi.tomadorCpfCnpj,
         tomadorRazaoSocial: bi.tomadorRazaoSocial,
+        tomadorInscricaoMunicipal: bi.tomadorInscricaoMunicipal,
+        tomadorEmail: bi.tomadorEmail,
+        tomadorMunicipio: bi.tomadorMunicipio,
+        tomadorUf: bi.tomadorUf,
         descricaoServico: bi.descricaoServico,
         codigoServico: bi.codigoServico,
+        servicoCodigoMunicipal: bi.servicoCodigoMunicipal,
+        servicoCodigoNacional: bi.servicoCodigoNacional,
         localPrestacaoPais: bi.localPrestacaoPais,
         localPrestacaoUf: bi.localPrestacaoUf,
         localPrestacaoMunicipio: bi.localPrestacaoMunicipio,
@@ -281,8 +287,14 @@ export class EmitirNfseService {
     empresaCnpj?: string;
     tomadorCpfCnpj?: string;
     tomadorRazaoSocial?: string;
+    tomadorInscricaoMunicipal?: string;
+    tomadorEmail?: string;
+    tomadorMunicipio?: string;
+    tomadorUf?: string;
     descricaoServico?: string;
     codigoServico?: string;
+    servicoCodigoMunicipal?: string;
+    servicoCodigoNacional?: string;
     localPrestacaoPais?: string;
     localPrestacaoUf?: string;
     localPrestacaoMunicipio?: string;
@@ -392,8 +404,14 @@ export class EmitirNfseService {
       empresaCnpj: empresaCnpj || undefined,
       tomadorCpfCnpj: tomadorCpfCnpj || undefined,
       tomadorRazaoSocial: input.tomador?.razaoSocial,
+      tomadorInscricaoMunicipal: input.tomador?.inscricaoMunicipal,
+      tomadorEmail: input.tomador?.email,
+      tomadorMunicipio: input.tomador?.endereco?.municipio,
+      tomadorUf: input.tomador?.endereco?.uf,
       descricaoServico: input.servico?.descricao,
       codigoServico: input.servico?.codigoNacional ?? input.servico?.codigoMunicipal,
+      servicoCodigoMunicipal: input.servico?.codigoMunicipal,
+      servicoCodigoNacional: input.servico?.codigoNacional,
       localPrestacaoPais: input.localPrestacao?.pais,
       localPrestacaoUf: input.localPrestacao?.uf,
       localPrestacaoMunicipio: input.localPrestacao?.municipio,

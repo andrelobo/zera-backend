@@ -18,8 +18,14 @@ export class NfseEmissionRepository {
     empresaCnpj?: string;
     tomadorCpfCnpj?: string;
     tomadorRazaoSocial?: string;
+    tomadorInscricaoMunicipal?: string;
+    tomadorEmail?: string;
+    tomadorMunicipio?: string;
+    tomadorUf?: string;
     descricaoServico?: string;
     codigoServico?: string;
+    servicoCodigoMunicipal?: string;
+    servicoCodigoNacional?: string;
     localPrestacaoPais?: string;
     localPrestacaoUf?: string;
     localPrestacaoMunicipio?: string;
@@ -52,8 +58,14 @@ export class NfseEmissionRepository {
       empresaCnpj: input.empresaCnpj,
       tomadorCpfCnpj: input.tomadorCpfCnpj,
       tomadorRazaoSocial: input.tomadorRazaoSocial,
+      tomadorInscricaoMunicipal: input.tomadorInscricaoMunicipal,
+      tomadorEmail: input.tomadorEmail,
+      tomadorMunicipio: input.tomadorMunicipio,
+      tomadorUf: input.tomadorUf,
       descricaoServico: input.descricaoServico,
       codigoServico: input.codigoServico,
+      servicoCodigoMunicipal: input.servicoCodigoMunicipal,
+      servicoCodigoNacional: input.servicoCodigoNacional,
       localPrestacaoPais: input.localPrestacaoPais,
       localPrestacaoUf: input.localPrestacaoUf,
       localPrestacaoMunicipio: input.localPrestacaoMunicipio,

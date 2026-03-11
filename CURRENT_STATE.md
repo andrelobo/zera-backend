@@ -17,6 +17,12 @@ Melhorias pequenas e aditivas para B.I. aplicadas no backend:
     - `localPrestacaoPais`
     - `localPrestacaoUf`
     - `localPrestacaoMunicipio`
+    - `tomadorInscricaoMunicipal`
+    - `tomadorEmail`
+    - `tomadorMunicipio`
+    - `tomadorUf`
+    - `servicoCodigoMunicipal`
+    - `servicoCodigoNacional`
     - `tributacaoTotalFederal`
     - `tributacaoTotalEstadual`
     - `tributacaoTotalMunicipal`
@@ -29,6 +35,11 @@ Validacao executada:
 - `npm test -- src/modules/empresas/empresas.service.spec.ts` -> `16/16`
 - `npm test -- src/fiscal/application/emitir-nfse.service.spec.ts` -> `5/5`
 - `npm test -- src/modules/fiscal/fiscal.controller.spec.ts` -> `9/9`
+
+Delta adicional validado depois:
+- `src/fiscal/application/emitir-nfse.service.ts`
+  - emissao agora persiste tambem os 6 campos novos de tomador/servico como 1a classe.
+- `npm test -- src/fiscal/application/emitir-nfse.service.spec.ts` -> `5/5` novamente apos essa ampliacao.
 
 Observacao canônica:
 - `localPrestacao` e `simplesSnapshot` entram como melhoria de persistencia analitica/B.I.;

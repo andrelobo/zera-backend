@@ -102,8 +102,14 @@ Campos canônicos:
 - `empresaCnpj`
 - `tomadorCpfCnpj`
 - `tomadorRazaoSocial`
+- `tomadorInscricaoMunicipal`
+- `tomadorEmail`
+- `tomadorMunicipio`
+- `tomadorUf`
 - `codigoServico`
 - `descricaoServico`
+- `servicoCodigoMunicipal`
+- `servicoCodigoNacional`
 - `numeroNfse`
 - `competencia`
 - `dataEmissao`

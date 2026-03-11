@@ -26,10 +26,28 @@ export class NfseEmission {
   tomadorRazaoSocial?: string;
 
   @Prop()
+  tomadorInscricaoMunicipal?: string;
+
+  @Prop()
+  tomadorEmail?: string;
+
+  @Prop()
+  tomadorMunicipio?: string;
+
+  @Prop()
+  tomadorUf?: string;
+
+  @Prop()
   descricaoServico?: string;
 
   @Prop()
   codigoServico?: string;
+
+  @Prop()
+  servicoCodigoMunicipal?: string;
+
+  @Prop()
+  servicoCodigoNacional?: string;
 
   @Prop()
   localPrestacaoPais?: string;

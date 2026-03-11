@@ -48,6 +48,8 @@ describe('EmitirNfseService idempotency', () => {
       tomador: {
         cpfCnpj: '61020788100',
         razaoSocial: 'Cliente Exemplo',
+        inscricaoMunicipal: '998877',
+        email: 'cliente@example.com',
         endereco: {
           logradouro: 'Rua Exemplo',
           numero: '100',
@@ -58,6 +60,7 @@ describe('EmitirNfseService idempotency', () => {
         },
       },
       servico: {
+        codigoMunicipal: '040101',
         codigoNacional: '171901',
         descricao: 'Servico',
         valor: 100,
@@ -258,6 +261,12 @@ describe('EmitirNfseService idempotency', () => {
 
     expect(repository.create).toHaveBeenCalledWith(
       expect.objectContaining({
+        tomadorInscricaoMunicipal: '998877',
+        tomadorEmail: 'cliente@example.com',
+        tomadorMunicipio: 'Manaus',
+        tomadorUf: 'AM',
+        servicoCodigoMunicipal: '040101',
+        servicoCodigoNacional: '171901',
         localPrestacaoPais: 'Brasil',
         localPrestacaoUf: 'AM',
         localPrestacaoMunicipio: 'Manaus',
