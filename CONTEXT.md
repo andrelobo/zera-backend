@@ -3,6 +3,51 @@
 > Leitura rápida operacional: veja `CURRENT_STATE.md` (snapshot atual).
 > Este documento (`CONTEXT.md`) permanece como histórico completo e linha do tempo.
 
+## ATUALIZACAO RAPIDA (2026-03-11)
+
+Fonte: `codigo local` + `execucao local`.
+
+### Base analítica reforçada sem alterar fluxo fiscal principal
+
+Arquivos principais:
+- `src/modules/empresas/schemas/empresa.schema.ts`
+- `src/modules/empresas/empresas.service.ts`
+- `src/fiscal/infra/mongo/schemas/nfse-emission.schema.ts`
+- `src/fiscal/infra/mongo/repositories/nfse-emission.repository.ts`
+- `src/fiscal/application/emitir-nfse.service.ts`
+- `docs/BI_CONTRATO_MINIMO.md`
+
+Melhorias canônicas desta rodada:
+- `Empresa` passou a persistir `simplesSnapshot`.
+- `normalizeEmpresaOutput()` passou a expor `biCatalogoResumo`.
+- `NfseEmission` passou a persistir, como campos de 1a classe:
+  - `localPrestacaoPais`
+  - `localPrestacaoUf`
+  - `localPrestacaoMunicipio`
+  - `tomadorInscricaoMunicipal`
+  - `tomadorEmail`
+  - `tomadorMunicipio`
+  - `tomadorUf`
+  - `servicoCodigoMunicipal`
+  - `servicoCodigoNacional`
+  - `tributacaoTotalFederal`
+  - `tributacaoTotalEstadual`
+  - `tributacaoTotalMunicipal`
+- `getBiSummary()` passou a expor:
+  - `tributacaoTotal`
+  - `topMunicipiosPrestacao`
+  - `topTomadores`
+
+Regra operacional consolidada:
+- `Emissão` continua sendo o subconjunto mínimo para autorização da nota.
+- `B.I.` passa a consumir uma camada mais ampla e canônica de persistência.
+- `tributacaoTotal*` só deve ser tratada como analítica confiável quando a origem fiscal estiver validada; o backend apenas persiste o que receber de forma explícita.
+
+Validações executadas nesta frente:
+- `npm test -- src/modules/empresas/empresas.service.spec.ts`
+- `npm test -- src/fiscal/application/emitir-nfse.service.spec.ts`
+- `npm test -- src/modules/fiscal/fiscal.controller.spec.ts`
+
 ## ATUALIZACAO RAPIDA (2026-03-07)
 
 Fonte: `codigo local` + `execucao local` + `validacao funcional em producao`.

@@ -31,6 +31,10 @@ Melhorias pequenas e aditivas para B.I. aplicadas no backend:
     - `tributacaoTotal` agregado por esfera
     - `topMunicipiosPrestacao`
     - `topTomadores`
+- `src/modules/empresas/empresas.service.ts`
+  - `normalizeEmpresaOutput()` passou a expor `biCatalogoResumo`.
+- `docs/BI_CONTRATO_MINIMO.md`
+  - contrato mínimo de B.I. formalizado para backend.
 
 Validacao executada:
 - `npm test -- src/modules/empresas/empresas.service.spec.ts` -> `16/16`
