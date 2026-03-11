@@ -290,6 +290,11 @@ export class NfseEmissionRepository {
       ir: number;
       inss: number;
     };
+    tributacaoTotal: {
+      federal: number;
+      estadual: number;
+      municipal: number;
+    };
     seriesCompetencia: Array<{
       competencia: string;
       quantidade: number;
@@ -299,6 +304,12 @@ export class NfseEmissionRepository {
     topServicos: Array<{
       codigoServico: string;
       descricaoServico: string;
+      quantidade: number;
+      valorServico: number;
+    }>;
+    topMunicipiosPrestacao: Array<{
+      municipio: string;
+      uf: string;
       quantidade: number;
       valorServico: number;
     }>;
@@ -347,6 +358,15 @@ export class NfseEmissionRepository {
                 retCsll: { $sum: { $ifNull: ['$retCsll', 0] } },
                 retIr: { $sum: { $ifNull: ['$retIr', 0] } },
                 retInss: { $sum: { $ifNull: ['$retInss', 0] } },
+                tributacaoTotalFederal: {
+                  $sum: { $ifNull: ['$tributacaoTotalFederal', 0] },
+                },
+                tributacaoTotalEstadual: {
+                  $sum: { $ifNull: ['$tributacaoTotalEstadual', 0] },
+                },
+                tributacaoTotalMunicipal: {
+                  $sum: { $ifNull: ['$tributacaoTotalMunicipal', 0] },
+                },
               },
             },
           ],
@@ -375,6 +395,20 @@ export class NfseEmissionRepository {
             { $sort: { valorServico: -1, quantidade: -1 } },
             { $limit: 10 },
           ],
+          topMunicipiosPrestacao: [
+            {
+              $group: {
+                _id: {
+                  municipio: { $ifNull: ['$localPrestacaoMunicipio', 'SEM_MUNICIPIO'] },
+                  uf: { $ifNull: ['$localPrestacaoUf', 'SEM_UF'] },
+                },
+                quantidade: { $sum: 1 },
+                valorServico: { $sum: { $ifNull: ['$valorServico', 0] } },
+              },
+            },
+            { $sort: { valorServico: -1, quantidade: -1 } },
+            { $limit: 10 },
+          ],
         },
       },
     ]);
@@ -386,6 +420,11 @@ export class NfseEmissionRepository {
       csll: Number(totalsRaw.retCsll ?? 0),
       ir: Number(totalsRaw.retIr ?? 0),
       inss: Number(totalsRaw.retInss ?? 0),
+    };
+    const tributacaoTotal = {
+      federal: Number(totalsRaw.tributacaoTotalFederal ?? 0),
+      estadual: Number(totalsRaw.tributacaoTotalEstadual ?? 0),
+      municipal: Number(totalsRaw.tributacaoTotalMunicipal ?? 0),
     };
     const totalEmissoes = Number(totalsRaw.totalEmissoes ?? 0);
     const somaValorServico = Number(totalsRaw.somaValorServico ?? 0);
@@ -408,6 +447,7 @@ export class NfseEmissionRepository {
         ticketMedio: totalEmissoes > 0 ? Number((somaValorServico / totalEmissoes).toFixed(2)) : 0,
       },
       retencoes,
+      tributacaoTotal,
       seriesCompetencia: (agg?.seriesCompetencia ?? []).map((item: any) => ({
         competencia: String(item._id ?? 'SEM_COMPETENCIA'),
         quantidade: Number(item.quantidade ?? 0),
@@ -417,6 +457,12 @@ export class NfseEmissionRepository {
       topServicos: (agg?.topServicos ?? []).map((item: any) => ({
         codigoServico: String(item._id?.codigoServico ?? 'SEM_CODIGO'),
         descricaoServico: String(item._id?.descricaoServico ?? 'Sem descrição'),
+        quantidade: Number(item.quantidade ?? 0),
+        valorServico: Number(item.valorServico ?? 0),
+      })),
+      topMunicipiosPrestacao: (agg?.topMunicipiosPrestacao ?? []).map((item: any) => ({
+        municipio: String(item._id?.municipio ?? 'SEM_MUNICIPIO'),
+        uf: String(item._id?.uf ?? 'SEM_UF'),
         quantidade: Number(item.quantidade ?? 0),
         valorServico: Number(item.valorServico ?? 0),
       })),

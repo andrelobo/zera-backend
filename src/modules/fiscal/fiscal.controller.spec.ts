@@ -143,8 +143,10 @@ describe('FiscalController', () => {
     repo.getBiSummary.mockResolvedValue({
       totals: { totalEmissoes: 0 },
       retencoes: {},
+      tributacaoTotal: {},
       seriesCompetencia: [],
       topServicos: [],
+      topMunicipiosPrestacao: [],
     });
 
     await controller.getBiSummary(
