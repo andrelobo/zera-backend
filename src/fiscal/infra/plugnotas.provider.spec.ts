@@ -1,5 +1,9 @@
 import { PlugNotasProvider } from './plugnotas.provider';
 import { NfseEmissionStatus } from '../domain/types/nfse-emission-status';
+import {
+  goldenEmitirNfseInput,
+  goldenExpectedProviderContract,
+} from '../test-fixtures/emitir-nfse.golden';
 
 describe('PlugNotasProvider', () => {
   const originalCmun = process.env.NFSE_CMUN_IBGE;
@@ -211,5 +215,27 @@ describe('PlugNotasProvider', () => {
     const payload = nfseApi.emitirNfse.mock.calls[0][0];
     expect(payload?.[0]?.servico?.[0]?.iss?.retido).toBe(false);
     expect(payload?.[0]?.servico?.[0]?.iss?.aliquota).toBeUndefined();
+  });
+
+  it('maps golden payload to provider contract (critical fiscal fields)', async () => {
+    const nfseApi = {
+      emitirNfse: jest.fn().mockResolvedValue({ protocol: 'pn-gold-1', situacao: 'PROCESSANDO' }),
+    };
+    const provider = new PlugNotasProvider(nfseApi as any);
+
+    await provider.emitirNfse(structuredClone(goldenEmitirNfseInput) as any);
+
+    const payload = nfseApi.emitirNfse.mock.calls[0][0];
+    const first = payload?.[0];
+    const firstServico = first?.servico?.[0];
+
+    expect(first?.prestador?.cpfCnpj).toBe(goldenExpectedProviderContract.cnpjPrestador);
+    expect(first?.prestador?.inscricaoMunicipal).toBe(
+      goldenExpectedProviderContract.inscricaoMunicipalPrestador,
+    );
+    expect(first?.tomador?.cpfCnpj).toBe(goldenExpectedProviderContract.documentoTomador);
+    expect(firstServico?.codigo).toBe(goldenExpectedProviderContract.codigoServicoNacional);
+    expect(firstServico?.codigoTributacao).toBe(goldenExpectedProviderContract.codigoTributacao);
+    expect(firstServico?.valor?.servico).toBe(goldenExpectedProviderContract.valorServico);
   });
 });
