@@ -3,6 +3,52 @@
 > Leitura rápida operacional: veja `CURRENT_STATE.md` (snapshot atual).
 > Este documento (`CONTEXT.md`) permanece como histórico completo e linha do tempo.
 
+## ATUALIZACAO RAPIDA (2026-03-14)
+
+Fonte: `codigo local` + `execucao local` + validacao em producao.
+
+### Observabilidade adicionada para NFSe
+
+- Endpoint novo:
+  - `GET /nfse/:id/observability`
+- Objetivo:
+  - diagnosticar emissao ponta a ponta sem depender de dashboard.
+- Dados retornados:
+  - `payload`, `biSnapshot`, `providerRequest`, `providerResponse`
+  - estado de polling (`attempts`, `lastPolledAt`, `nextPollAt`, `lastPollError`)
+  - `artifactSyncAudit`
+  - `timeline` de eventos
+
+Arquivos:
+- `src/modules/fiscal/fiscal.controller.ts`
+- `src/modules/fiscal/fiscal.controller.spec.ts`
+
+### Contrato canônico anti-regressão (golden payload)
+
+- Fixture canônica criada:
+  - `src/fiscal/test-fixtures/emitir-nfse.golden.ts`
+- Testes que passaram a depender do contrato:
+  - `src/fiscal/application/emitir-nfse.service.spec.ts`
+  - `src/fiscal/infra/plugnotas.provider.spec.ts`
+
+### Limpeza de artefatos legados
+
+- JSONs manuais/temporários removidos da raiz (`emitir*.json`, `empresa*.json`, `nfse*.json`, `token.json`) para reduzir ruído operacional.
+
+### Evidência operacional importante (produção)
+
+- Erro real de emissão confirmado em `provider-response`:
+  - `PLUGNOTAS_API_KEY not set`
+- Conclusão canônica:
+  - quando este erro aparece, a requisição caiu em backend/instância sem env válida de PlugNotas.
+
+### Performance de status
+
+- Comportamento observado de atraso (~5 min) compatível com polling atual:
+  - `NFSE_POLLING_INTERVAL_MS=300000`
+- Mitigação imediata recomendada:
+  - `NFSE_POLLING_INTERVAL_MS=60000` até entrada de webhook produtivo.
+
 ## ATUALIZACAO RAPIDA (2026-03-11)
 
 Fonte: `codigo local` + `execucao local`.

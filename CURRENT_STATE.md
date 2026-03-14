@@ -2,6 +2,55 @@
 
 Snapshot operacional do backend em **10/03/2026** (ultima atualizacao consolidada).
 
+## 0. Delta critico de hoje (14/03/2026)
+
+Fonte: `codigo local` + `execucao local` + validacao em producao.
+
+### Observabilidade de emissao
+
+- Novo endpoint:
+  - `GET /nfse/:id/observability`
+- Retorna trilha completa da emissao:
+  - `payload` recebido
+  - `biSnapshot`
+  - `providerRequest`
+  - `providerResponse`
+  - `poll` (`attempts`, `lastPolledAt`, `nextPollAt`, `lastPollError`)
+  - `artifactSyncAudit`
+  - `timeline` cronologica dos eventos relevantes
+
+Arquivos:
+- `src/modules/fiscal/fiscal.controller.ts`
+- `src/modules/fiscal/fiscal.controller.spec.ts`
+
+Validacao:
+- `npm run build` -> passando
+- `npm test` -> `12/12` suites, `57/57` testes
+
+### Contrato golden de payload (anti-regressao)
+
+- Fixture canonica adicionada para travar contrato de emissao:
+  - `src/fiscal/test-fixtures/emitir-nfse.golden.ts`
+- Testes de emissao e provider atualizados para consumir a fixture.
+
+### Higiene de repositório
+
+- JSONs legados de debug/manual removidos da raiz (payloads/token/config ad-hoc sem uso runtime).
+
+### Diagnostico operacional (producao)
+
+- Falha de emissao com `500` foi rastreada por `provider-response` como:
+  - `PLUGNOTAS_API_KEY not set`
+- Conclusao:
+  - erro de ambiente/runtime no backend alvo da requisicao, nao regressao de layout/frontend.
+
+### Performance de retorno de status
+
+- Delay de ~5 min observado e explicado por configuracao de polling atual:
+  - `NFSE_POLLING_INTERVAL_MS=300000`
+- Acao curta recomendada:
+  - reduzir para `60000` enquanto webhook nao entra em producao.
+
 ## 0. Delta critico de hoje (11/03/2026)
 
 Fonte: `codigo local` + `execucao local`.
