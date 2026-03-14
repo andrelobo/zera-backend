@@ -71,6 +71,32 @@ function extractIdNota(providerResponse: any): string | null {
   );
 }
 
+type EmissionTimelineItem = {
+  at: string;
+  type: string;
+  status?: string;
+  details?: Record<string, unknown>;
+};
+
+function toIsoDate(value: unknown): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(String(value));
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
+function appendTimeline(
+  list: EmissionTimelineItem[],
+  at: unknown,
+  type: string,
+  status?: string,
+  details?: Record<string, unknown>,
+) {
+  const iso = toIsoDate(at);
+  if (!iso) return;
+  list.push({ at: iso, type, status, details });
+}
+
 @ApiTags('nfse')
 @ApiBearerAuth()
 @Controller('nfse')
@@ -530,6 +556,88 @@ export class FiscalController {
       createdAt: (doc as any).createdAt ?? null,
       updatedAt: (doc as any).updatedAt ?? null,
       error: doc.error ?? null,
+    };
+  }
+
+  @Get(':id/observability')
+  @ApiOperation({ summary: 'Get full observability trace for emission by id' })
+  async getObservability(@Param('id') id: string) {
+    const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null;
+    if (!doc) {
+      throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
+    }
+
+    const createdAt = (doc as any).createdAt ?? null;
+    const updatedAt = (doc as any).updatedAt ?? null;
+    const lastPolledAt = (doc as any).lastPolledAt ?? null;
+    const lastArtifactSyncAt = (doc as any).lastArtifactSyncAt ?? null;
+    const pollAttempts = (doc as any).pollAttempts ?? 0;
+    const lastPollError = (doc as any).lastPollError ?? null;
+
+    const timeline: EmissionTimelineItem[] = [];
+    appendTimeline(timeline, createdAt, 'EMISSION_CREATED', NfseEmissionStatus.PENDING, {
+      provider: doc.provider,
+      referenciaExterna: (doc.payload as any)?.referenciaExterna ?? doc.idempotencyKey ?? null,
+    });
+
+    if (doc.providerRequest) {
+      appendTimeline(timeline, createdAt, 'PROVIDER_REQUEST_PREPARED', doc.status, {
+        hasProviderRequest: true,
+      });
+    }
+
+    if (doc.externalId) {
+      appendTimeline(timeline, updatedAt, 'PROVIDER_EXTERNAL_ID_LINKED', doc.status, {
+        externalId: doc.externalId,
+      });
+    }
+
+    if (lastPolledAt) {
+      appendTimeline(timeline, lastPolledAt, 'PROVIDER_STATUS_POLLED', doc.status, {
+        pollAttempts,
+        lastPollError,
+      });
+    }
+
+    if (lastArtifactSyncAt) {
+      appendTimeline(timeline, lastArtifactSyncAt, 'ARTIFACTS_SYNCED', doc.status, {
+        hasXml: Boolean(doc.xmlBase64),
+        hasPdf: Boolean(doc.pdfBase64),
+      });
+    }
+
+    if (doc.status !== NfseEmissionStatus.PENDING) {
+      appendTimeline(timeline, updatedAt, 'EMISSION_FINAL_STATUS', doc.status, {
+        error: doc.error ?? null,
+      });
+    }
+
+    return {
+      id: doc._id.toString(),
+      provider: doc.provider,
+      status: doc.status,
+      externalId: doc.externalId ?? null,
+      idempotencyKey: doc.idempotencyKey ?? null,
+      numeroNfse: doc.numeroNfse ?? null,
+      createdAt,
+      updatedAt,
+      observability: {
+        payload: doc.payload ?? null,
+        biSnapshot: doc.biSnapshot ?? null,
+        providerRequest: doc.providerRequest ?? null,
+        providerResponse: doc.providerResponse ?? null,
+        error: doc.error ?? null,
+        hasXml: Boolean(doc.xmlBase64),
+        hasPdf: Boolean(doc.pdfBase64),
+        poll: {
+          attempts: pollAttempts,
+          lastPolledAt,
+          nextPollAt: (doc as any).nextPollAt ?? null,
+          lastPollError,
+        },
+        artifactSyncAudit: (doc as any).artifactSyncAudit ?? [],
+        timeline: timeline.sort((a, b) => a.at.localeCompare(b.at)),
+      },
     };
   }
 

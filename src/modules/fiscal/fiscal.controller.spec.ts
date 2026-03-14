@@ -240,4 +240,51 @@ describe('FiscalController', () => {
       response: { code: 'SUBSTITUICAO_STATUS_INVALIDO' },
     });
   });
+
+  it('returns observability trace with timeline and provider I/O', async () => {
+    const createdAt = new Date('2026-03-10T10:00:00.000Z');
+    const updatedAt = new Date('2026-03-10T10:05:00.000Z');
+    const lastPolledAt = new Date('2026-03-10T10:03:00.000Z');
+
+    repo.findById.mockResolvedValue({
+      _id: { toString: () => 'em-obs-1' },
+      provider: 'PLUGNOTAS',
+      status: NfseEmissionStatus.AUTHORIZED,
+      externalId: 'ext-obs-1',
+      idempotencyKey: 'idem-obs-1',
+      numeroNfse: '123',
+      payload: { referenciaExterna: 'idem-obs-1' },
+      biSnapshot: { localPrestacao: { municipio: 'Manaus' } },
+      providerRequest: { payload: [{ idIntegracao: 'idem-obs-1' }] },
+      providerResponse: [{ status: 'AUTORIZADA' }],
+      xmlBase64: 'xml',
+      pdfBase64: 'pdf',
+      pollAttempts: 2,
+      lastPolledAt,
+      lastPollError: null,
+      nextPollAt: null,
+      artifactSyncAudit: [{ outcome: 'ok' }],
+      createdAt,
+      updatedAt,
+    });
+
+    const out = await controller.getObservability('em-obs-1');
+
+    expect(out.id).toBe('em-obs-1');
+    expect(out.observability.providerRequest).toEqual({ payload: [{ idIntegracao: 'idem-obs-1' }] });
+    expect(out.observability.providerResponse).toEqual([{ status: 'AUTORIZADA' }]);
+    expect(out.observability.poll).toEqual({
+      attempts: 2,
+      lastPolledAt,
+      nextPollAt: null,
+      lastPollError: null,
+    });
+    expect(out.observability.timeline.map((item: any) => item.type)).toEqual([
+      'EMISSION_CREATED',
+      'PROVIDER_REQUEST_PREPARED',
+      'PROVIDER_STATUS_POLLED',
+      'PROVIDER_EXTERNAL_ID_LINKED',
+      'EMISSION_FINAL_STATUS',
+    ]);
+  });
 });
