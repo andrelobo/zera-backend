@@ -26,6 +26,12 @@ export interface EmpresaCadastroResumo {
   camposFaltantesEmissao: string[];
 }
 
+export interface EmpresaBiResumo {
+  prontoParaBi: boolean;
+  percentualCompletudeBi: number;
+  camposFaltantesBi: string[];
+}
+
 type SimplesFaixa = {
   faixa: number;
   limiteInferior: number;
@@ -1443,6 +1449,7 @@ export class EmpresasService {
 
     const id = String(raw._id ?? raw.id ?? '');
     const cadastroResumo = this.buildCadastroResumo(raw);
+    const biResumo = this.buildBiResumo(raw);
     const parametroMunicipal = this.normalizeObjectList(
       pick('parametroMunicipal', 'parametro_municipal'),
     );
@@ -1476,6 +1483,9 @@ export class EmpresasService {
       percentualCompletude: cadastroResumo.percentualCompletude,
       camposFaltantes: cadastroResumo.camposFaltantes,
       camposFaltantesEmissao: cadastroResumo.camposFaltantesEmissao,
+      prontoParaBi: biResumo.prontoParaBi,
+      percentualCompletudeBi: biResumo.percentualCompletudeBi,
+      camposFaltantesBi: biResumo.camposFaltantesBi,
       parametroMunicipal,
       configOperacionais,
       cnaesLista,
@@ -1735,6 +1745,114 @@ export class EmpresasService {
       percentualCompletude,
       camposFaltantes,
       camposFaltantesEmissao,
+    };
+  }
+
+  private buildBiResumo(raw: Record<string, unknown>): EmpresaBiResumo {
+    const enderecoRaw = ((raw.endereco as Record<string, unknown> | undefined) ??
+      (raw.endereco_empresa as Record<string, unknown> | undefined) ??
+      ((raw.estabelecimento as Record<string, unknown> | undefined)?.endereco as
+        | Record<string, unknown>
+        | undefined) ??
+      (raw.localizacao as Record<string, unknown> | undefined) ??
+      {}) as Record<string, unknown>;
+    const regimeTributario = raw.regimeTributario ?? raw.regime_tributario;
+    const rbt12 = raw.rbt12;
+    const aliquotaSN = raw.aliquotaSimplesNacional ?? raw.aliquota_simples_nacional;
+    const apuracaoSN = raw.apuracaoSimplesNacional ?? raw.apuracao_simples_nacional;
+    const logradouro = enderecoRaw.logradouro ?? raw.endereco ?? raw.logradouro;
+    const numero = enderecoRaw.numero ?? raw.numero;
+    const bairro = enderecoRaw.bairro ?? raw.bairro;
+    const cidade =
+      enderecoRaw.cidade ??
+      enderecoRaw.municipio ??
+      enderecoRaw.localidade ??
+      raw.cidade ??
+      raw.municipio ??
+      raw.localidade;
+    const uf = enderecoRaw.uf ?? enderecoRaw.estado ?? raw.uf ?? raw.estado;
+    const cep = enderecoRaw.cep ?? raw.cep;
+
+    const parametroMunicipal = Array.isArray(raw.parametroMunicipal)
+      ? raw.parametroMunicipal
+      : Array.isArray(raw.parametro_municipal)
+        ? raw.parametro_municipal
+        : [];
+    const cnaesLista = Array.isArray(raw.cnaesLista)
+      ? raw.cnaesLista
+      : Array.isArray(raw.cnaes_lista)
+        ? raw.cnaes_lista
+        : [];
+    const configOperacionais = Array.isArray(raw.configOperacionais)
+      ? raw.configOperacionais
+      : Array.isArray(raw.config_operacionais)
+        ? raw.config_operacionais
+        : [];
+    const simplesSnapshot = raw.simplesSnapshot as Record<string, unknown> | undefined;
+
+    const requiredForBi: Array<{ field: string; ok: boolean }> = [
+      { field: 'cnpj', ok: this.hasValue(raw.cnpj ?? raw.cpf_cnpj) },
+      { field: 'razaoSocial', ok: this.hasValue(raw.razaoSocial ?? raw.nome_razao_social) },
+      { field: 'nomeFantasia', ok: this.hasValue(raw.nomeFantasia ?? raw.nome_fantasia) },
+      {
+        field: 'inscricaoMunicipal',
+        ok: this.hasValue(raw.inscricaoMunicipal ?? raw.inscricao_municipal),
+      },
+      { field: 'email', ok: this.hasValue(raw.email) },
+      { field: 'whatsapp', ok: this.hasValue(raw.whatsapp ?? raw.fone ?? raw.telefone) },
+      { field: 'endereco.logradouro', ok: this.hasValue(logradouro) },
+      { field: 'endereco.numero', ok: this.hasValue(numero) },
+      { field: 'endereco.bairro', ok: this.hasValue(bairro) },
+      { field: 'endereco.cidade', ok: this.hasValue(cidade) },
+      { field: 'endereco.uf', ok: this.hasValue(uf) },
+      { field: 'endereco.cep', ok: this.hasValue(cep) },
+      { field: 'regimeTributario', ok: this.hasValue(regimeTributario) },
+      { field: 'cnaeFiscal', ok: this.hasValue(raw.cnaeFiscal ?? raw.cnae_fiscal) },
+      {
+        field: 'cnaeFiscalDescricao',
+        ok: this.hasValue(raw.cnaeFiscalDescricao ?? raw.cnae_fiscal_descricao),
+      },
+      { field: 'ctnCodigo', ok: this.hasValue(raw.ctnCodigo ?? raw.ctn_codigo) },
+      { field: 'nbsCodigo', ok: this.hasValue(raw.nbsCodigo ?? raw.nbs_codigo) },
+      { field: 'parametroMunicipal', ok: parametroMunicipal.length > 0 },
+      { field: 'cnaesLista', ok: cnaesLista.length > 0 },
+      { field: 'configOperacionais', ok: configOperacionais.length > 0 },
+      {
+        field: 'certificado.uploadedAt',
+        ok:
+          this.hasValue((raw.certificado as Record<string, unknown> | undefined)?.uploadedAt) ||
+          this.hasValue((raw.certificado as Record<string, unknown> | undefined)?.filename) ||
+          this.hasValue((raw.certificado as Record<string, unknown> | undefined)?.sha256) ||
+          this.hasValue(
+            (raw.certificado_digital as Record<string, unknown> | undefined)?.uploadedAt,
+          ) ||
+          this.hasValue(
+            (raw.certificadoDigital as Record<string, unknown> | undefined)?.uploadedAt,
+          ),
+      },
+    ];
+
+    if (String(regimeTributario ?? '').trim() === 'simples_nacional') {
+      requiredForBi.push(
+        { field: 'rbt12', ok: this.hasValue(rbt12) },
+        { field: 'aliquotaSimplesNacional', ok: this.hasValue(aliquotaSN) },
+        { field: 'apuracaoSimplesNacional', ok: this.hasValue(apuracaoSN) },
+        {
+          field: 'simplesSnapshot',
+          ok: this.isPlainObject(simplesSnapshot) && Object.keys(simplesSnapshot).length > 0,
+        },
+      );
+    }
+
+    const camposFaltantesBi = requiredForBi.filter((item) => !item.ok).map((item) => item.field);
+    const preenchidosBi = requiredForBi.length - camposFaltantesBi.length;
+    const percentualCompletudeBi =
+      requiredForBi.length > 0 ? Math.round((preenchidosBi / requiredForBi.length) * 100) : 0;
+
+    return {
+      prontoParaBi: camposFaltantesBi.length === 0,
+      percentualCompletudeBi,
+      camposFaltantesBi,
     };
   }
 

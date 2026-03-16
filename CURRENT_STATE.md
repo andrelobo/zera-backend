@@ -1,6 +1,50 @@
 # ZERA Backend – Current State
 
-Snapshot operacional do backend em **10/03/2026** (ultima atualizacao consolidada).
+Snapshot operacional do backend em **16/03/2026** (ultima atualizacao consolidada).
+
+## 0. Delta critico de hoje (16/03/2026)
+
+Fonte: `codigo local` + `execucao local`.
+
+### Resumo de prontidao para B.I.
+
+- `src/modules/empresas/empresas.service.ts`
+  - `normalizeEmpresaOutput()` agora expõe:
+    - `prontoParaBi`
+    - `percentualCompletudeBi`
+    - `camposFaltantesBi`
+- a regra de B.I. é separada de:
+  - `statusCadastro`
+  - `prontoParaEmitir`
+
+Cobertura atual de `camposFaltantesBi`:
+- base cadastral:
+  - `cnpj`, `razaoSocial`, `nomeFantasia`
+  - `inscricaoMunicipal`
+  - `email`, `whatsapp`
+  - endereco completo
+- base tributaria:
+  - `regimeTributario`
+  - `cnaeFiscal`
+  - `cnaeFiscalDescricao`
+  - `ctnCodigo`
+  - `nbsCodigo`
+  - `parametroMunicipal`
+  - `cnaesLista`
+  - `configOperacionais`
+- base operacional:
+  - `certificado.uploadedAt`
+- condicionais do Simples:
+  - `rbt12`
+  - `aliquotaSimplesNacional`
+  - `apuracaoSimplesNacional`
+  - `simplesSnapshot`
+
+Validacao:
+- `npm test -- src/modules/empresas/empresas.service.spec.ts` -> `19/19`
+- `npx eslint src/modules/empresas/empresas.service.ts src/modules/empresas/empresas.service.spec.ts`
+  - sem erros
+  - warnings antigos de tipagem continuam
 
 ## 0. Delta critico de hoje (14/03/2026)
 

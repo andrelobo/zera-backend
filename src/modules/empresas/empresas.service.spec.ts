@@ -636,4 +636,123 @@ describe('EmpresasService', () => {
       }),
     );
   });
+
+  it('exposes prontoParaBi when prestador has analytic completeness required for BI', async () => {
+    const toObject = () => ({
+      _id: 'empresa-bi-ok',
+      cnpj: '12345678000190',
+      razaoSocial: 'EMPRESA BI LTDA',
+      nomeFantasia: 'EMPRESA BI',
+      inscricaoMunicipal: '998877',
+      email: 'contato@empresa.bi',
+      whatsapp: '(92) 99999-0000',
+      regimeTributario: 'simples_nacional',
+      cnaeFiscal: '8650003',
+      cnaeFiscalDescricao: 'Atividades de psicologia e psicanálise',
+      ctnCodigo: '041601',
+      nbsCodigo: '1.2301.98.00',
+      rbt12: 180000,
+      aliquotaSimplesNacional: '6,00',
+      apuracaoSimplesNacional: 'MENSAL',
+      simplesSnapshot: {
+        anexo: 'III',
+        faixa: 1,
+        aliquotaNominal: 0.06,
+        parcelaDeduzir: 0,
+        aliquotaEfetiva: 0.06,
+        issReferencia: 0.0201,
+        rbt12: 180000,
+        valido: true,
+      },
+      certificado: {
+        filename: 'certificado.pfx',
+        uploadedAt: new Date().toISOString(),
+      },
+      endereco: {
+        logradouro: 'RUA A',
+        numero: '100',
+        bairro: 'CENTRO',
+        cidade: 'MANAUS',
+        uf: 'AM',
+        cep: '69000000',
+      },
+      cnaesLista: [
+        {
+          codigo: '8650003',
+          descricao: 'Atividades de psicologia e psicanálise',
+          isPrincipal: true,
+          anexo: 'III',
+        },
+      ],
+      parametroMunicipal: [
+        {
+          codigo: '8650003',
+          vinculos: [{ ctn: '041601', nbs: '1.2301.98.00' }],
+        },
+      ],
+      configOperacionais: [
+        { id: 'cfg-1', natureza: 'Consulta', descricao: 'Consulta de psicologia' },
+      ],
+    });
+    empresaModel.findOne.mockResolvedValue({ toObject });
+
+    const result = await service.getByCnpjNormalized('12.345.678/0001-90');
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        prontoParaBi: true,
+        percentualCompletudeBi: 100,
+        camposFaltantesBi: [],
+      }),
+    );
+  });
+
+  it('lists camposFaltantesBi for simples prestador with incomplete analytic cadastro', async () => {
+    const toObject = () => ({
+      _id: 'empresa-bi-pendente',
+      cnpj: '12345678000190',
+      razaoSocial: 'EMPRESA BI LTDA',
+      inscricaoMunicipal: '998877',
+      regimeTributario: 'simples_nacional',
+      cnaeFiscal: '8650003',
+      cnaeFiscalDescricao: 'Atividades de psicologia e psicanálise',
+      endereco: {
+        logradouro: 'RUA A',
+        numero: '100',
+        bairro: 'CENTRO',
+        cidade: 'MANAUS',
+        uf: 'AM',
+        cep: '69000000',
+      },
+      certificado: {
+        filename: 'certificado.pfx',
+      },
+      cnaesLista: [],
+      parametroMunicipal: [],
+      configOperacionais: [],
+    });
+    empresaModel.findOne.mockResolvedValue({ toObject });
+
+    const result = await service.getByCnpjNormalized('12.345.678/0001-90');
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        prontoParaBi: false,
+        camposFaltantesBi: expect.arrayContaining([
+          'nomeFantasia',
+          'email',
+          'whatsapp',
+          'ctnCodigo',
+          'nbsCodigo',
+          'parametroMunicipal',
+          'cnaesLista',
+          'configOperacionais',
+          'rbt12',
+          'aliquotaSimplesNacional',
+          'apuracaoSimplesNacional',
+          'simplesSnapshot',
+        ]),
+      }),
+    );
+  });
 });

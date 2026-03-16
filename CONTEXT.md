@@ -3,6 +3,44 @@
 > Leitura rápida operacional: veja `CURRENT_STATE.md` (snapshot atual).
 > Este documento (`CONTEXT.md`) permanece como histórico completo e linha do tempo.
 
+## ATUALIZACAO RAPIDA (2026-03-16)
+
+Fonte: `codigo local` + `execucao local`.
+
+### Prontidao analitica do prestador (B.I.)
+
+- `EmpresasService.normalizeEmpresaOutput()` agora expõe tambem:
+  - `prontoParaBi`
+  - `percentualCompletudeBi`
+  - `camposFaltantesBi`
+- Objetivo:
+  - separar explicitamente:
+    - `statusCadastro` / `prontoParaEmitir`
+    - completude analitica para B.I.
+
+Campos base considerados em `camposFaltantesBi`:
+- identificacao:
+  - `cnpj`, `razaoSocial`, `nomeFantasia`
+- inscricoes/contato:
+  - `inscricaoMunicipal`, `email`, `whatsapp`
+- endereco:
+  - `endereco.logradouro`, `endereco.numero`, `endereco.bairro`, `endereco.cidade`, `endereco.uf`, `endereco.cep`
+- tributario:
+  - `regimeTributario`, `cnaeFiscal`, `cnaeFiscalDescricao`, `ctnCodigo`, `nbsCodigo`
+- catalogo:
+  - `parametroMunicipal`, `cnaesLista`, `configOperacionais`
+- operacional:
+  - `certificado.uploadedAt`
+
+Campos condicionais quando `regimeTributario = simples_nacional`:
+- `rbt12`
+- `aliquotaSimplesNacional`
+- `apuracaoSimplesNacional`
+- `simplesSnapshot`
+
+Validacao executada:
+- `npm test -- src/modules/empresas/empresas.service.spec.ts` -> `19/19`
+
 ## ATUALIZACAO RAPIDA (2026-03-14)
 
 Fonte: `codigo local` + `execucao local` + validacao em producao.
