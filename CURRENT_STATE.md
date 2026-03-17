@@ -6,6 +6,40 @@ Snapshot operacional do backend em **17/03/2026** (ultima atualizacao consolidad
 
 Fonte: `codigo local` + `execucao local`.
 
+### Webhook vs polling agora distinguiveis na observabilidade
+
+- `NfseEmission` agora registra tambem:
+  - `lastWebhookAt`
+  - `lastUpdateSource`
+- objetivo:
+  - diferenciar explicitamente se a ultima mudanca de status veio de:
+    - `webhook`
+    - `polling`
+
+Arquivos:
+- `src/fiscal/infra/mongo/schemas/nfse-emission.schema.ts`
+- `src/fiscal/infra/mongo/repositories/nfse-emission.repository.ts`
+- `src/fiscal/application/poll-nfse-status.service.ts`
+- `src/modules/webhooks/webhooks.service.ts`
+- `src/modules/fiscal/fiscal.controller.ts`
+- `src/modules/fiscal/fiscal.controller.spec.ts`
+
+Comportamento confirmado:
+- webhook grava:
+  - `lastWebhookAt`
+  - `lastUpdateSource = "webhook"`
+- polling grava:
+  - `lastUpdateSource = "polling"`
+- `GET /nfse/:id/observability` agora expõe:
+  - `observability.webhook.lastWebhookAt`
+  - `observability.webhook.lastUpdateSource`
+  - evento `WEBHOOK_RECEIVED` na timeline quando aplicavel
+
+Validacao executada:
+- `npm test -- src/modules/webhooks/webhooks.service.spec.ts src/modules/fiscal/fiscal.controller.spec.ts src/fiscal/application/emitir-nfse.service.spec.ts`
+  - `3/3` suites
+  - `19/19` testes passando
+
 ### Webhook fiscal auditado e coberto por teste
 
 - O modulo de webhook fiscal ja existia no backend e foi auditado:

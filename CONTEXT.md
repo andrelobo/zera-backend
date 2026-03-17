@@ -7,6 +7,41 @@
 
 Fonte: `codigo local` + `execucao local`.
 
+### Webhook vs polling agora ficam distinguiveis
+
+- Foi aplicado um endurecimento minimo de observabilidade para parar a ambiguidade entre:
+  - atualizacao de status por webhook
+  - atualizacao de status por polling
+
+Arquivos:
+- `src/fiscal/infra/mongo/schemas/nfse-emission.schema.ts`
+- `src/fiscal/infra/mongo/repositories/nfse-emission.repository.ts`
+- `src/fiscal/application/poll-nfse-status.service.ts`
+- `src/modules/webhooks/webhooks.service.ts`
+- `src/modules/fiscal/fiscal.controller.ts`
+
+Campos novos na emissao:
+- `lastWebhookAt`
+- `lastUpdateSource`
+
+Semantica:
+- webhook:
+  - `lastWebhookAt = now`
+  - `lastUpdateSource = "webhook"`
+- polling:
+  - `lastUpdateSource = "polling"`
+
+Observability:
+- `GET /nfse/:id/observability` agora retorna tambem:
+  - `observability.webhook.lastWebhookAt`
+  - `observability.webhook.lastUpdateSource`
+- timeline agora pode incluir:
+  - `WEBHOOK_RECEIVED`
+
+Validacao executada:
+- `npm test -- src/modules/webhooks/webhooks.service.spec.ts src/modules/fiscal/fiscal.controller.spec.ts src/fiscal/application/emitir-nfse.service.spec.ts`
+- resultado: `19/19` testes
+
 ### Webhook fiscal: auditoria e cobertura minima fechadas
 
 - O backend ja possuia modulo de webhook fiscal ativo:
