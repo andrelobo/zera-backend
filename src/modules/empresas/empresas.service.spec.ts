@@ -7,6 +7,15 @@ type FindChain = {
   lean: jest.Mock;
 };
 
+type SelectChain<T> = {
+  select: jest.Mock<Promise<T>, [string?]>;
+};
+
+type SortLeanChain<T> = {
+  sort: jest.Mock<SortLeanChain<T>, [Record<string, unknown>]>;
+  lean: jest.Mock<Promise<T>, []>;
+};
+
 const buildFindChain = (docs: Record<string, unknown>[]): FindChain => {
   const chain: Partial<FindChain> = {};
   chain.sort = jest.fn().mockReturnValue(chain);
@@ -14,6 +23,17 @@ const buildFindChain = (docs: Record<string, unknown>[]): FindChain => {
   chain.limit = jest.fn().mockReturnValue(chain);
   chain.lean = jest.fn().mockResolvedValue(docs);
   return chain as FindChain;
+};
+
+const buildSelectChain = <T>(value: T): SelectChain<T> => ({
+  select: jest.fn().mockResolvedValue(value),
+});
+
+const buildSortLeanChain = <T>(value: T): SortLeanChain<T> => {
+  const chain: Partial<SortLeanChain<T>> = {};
+  chain.sort = jest.fn().mockReturnValue(chain);
+  chain.lean = jest.fn().mockResolvedValue(value);
+  return chain as SortLeanChain<T>;
 };
 
 describe('EmpresasService', () => {
@@ -38,6 +58,8 @@ describe('EmpresasService', () => {
     findOne: jest.fn(),
     findById: jest.fn(),
     findByIdAndUpdate: jest.fn(),
+    updateOne: jest.fn(),
+    findOneAndUpdate: jest.fn(),
   };
 
   const cnaeCatalogoModel = {
@@ -54,6 +76,7 @@ describe('EmpresasService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.JWT_SECRET = 'test-secret';
     service = new EmpresasService(
       empresaModel as any,
       cnaeCatalogoModel as any,
@@ -62,6 +85,177 @@ describe('EmpresasService', () => {
       brasilApiCnpjApi as any,
       receitaWsCnpjApi as any,
       plugNotasCnpjApi as any,
+    );
+  });
+
+  it('requires imported certificate before creating a new empresa from CNPJ', async () => {
+    empresaModel.findOne.mockReturnValue(buildSelectChain(null));
+
+    await expect(service.createFromCnpj('43.521.115/0001-34')).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'CERTIFICADO_REQUIRED',
+      }),
+    });
+
+    expect(cnpjaCnpjApi.consultarCnpj).not.toHaveBeenCalled();
+  });
+
+  it('creates a new empresa from provider data when certificate already exists in banco', async () => {
+    empresaModel.findOne.mockReturnValue(
+      buildSelectChain({
+        _id: 'empresa-nova',
+        cnpj: '43521115000134',
+        certificado: {
+          pfxBase64: 'base64-cert',
+        },
+        toObject: () => ({
+          _id: 'empresa-nova',
+          cnpj: '43521115000134',
+          certificado: {
+            pfxBase64: 'base64-cert',
+            filename: 'empresa.pfx',
+          },
+        }),
+      }),
+    );
+    cnpjaCnpjApi.consultarCnpj.mockResolvedValue({
+      taxId: '43521115000134',
+      company: {
+        name: 'BURGUS LTDA',
+        simples: { optant: true, since: '2021-09-15' },
+      },
+      alias: 'ECONTABILIS LTDA',
+      address: {
+        street: 'RUA SALDANHA MARINHO',
+        number: '606',
+        district: 'CENTRO',
+        city: 'Manaus',
+        state: 'AM',
+        zip: '69010040',
+      },
+      registrations: [{ number: '51754301', type: { text: 'IM Municipal' } }],
+    });
+    empresaModel.findByIdAndUpdate.mockResolvedValue({
+      toObject: () => ({
+        _id: 'empresa-nova',
+        cnpj: '43521115000134',
+        razaoSocial: 'BURGUS LTDA',
+        nomeFantasia: 'ECONTABILIS LTDA',
+        inscricaoMunicipal: '51754301',
+        certificado: {
+          filename: 'empresa.pfx',
+          uploadedAt: new Date().toISOString(),
+        },
+      }),
+    });
+
+    const result = await service.createFromCnpj('43.521.115/0001-34');
+
+    expect(cnpjaCnpjApi.consultarCnpj).toHaveBeenCalledWith('43521115000134');
+    expect(empresaModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      'empresa-nova',
+      expect.objectContaining({
+        razaoSocial: 'BURGUS LTDA',
+        nomeFantasia: 'ECONTABILIS LTDA',
+        inscricaoMunicipal: '51754301',
+      }),
+      { new: true },
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        cnpj: '43521115000134',
+        razaoSocial: 'BURGUS LTDA',
+      }),
+    );
+  });
+
+  it('imports certificate metadata and encrypted secrets into banco', async () => {
+    empresaModel.updateOne.mockResolvedValue({ acknowledged: true });
+    const file = {
+      originalname: 'certificado.pfx',
+      mimetype: 'application/x-pkcs12',
+      size: 4,
+      buffer: Buffer.from('ABCD'),
+    };
+
+    const result = await service.importCertificado('43.521.115/0001-34', '123456', file as any);
+
+    expect(empresaModel.updateOne).toHaveBeenCalledWith(
+      { cnpj: '43521115000134' },
+      expect.objectContaining({
+        $set: expect.objectContaining({
+          certificado: expect.objectContaining({
+            filename: 'certificado.pfx',
+            pfxBase64: Buffer.from('ABCD').toString('base64'),
+            passwordEncrypted: expect.stringMatching(/^v1:/),
+          }),
+        }),
+        $setOnInsert: { cnpj: '43521115000134' },
+      }),
+      { upsert: true },
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        cnpj: '43521115000134',
+        certificado: expect.objectContaining({
+          filename: 'certificado.pfx',
+          sha256: expect.any(String),
+        }),
+      }),
+    );
+  });
+
+  it('diagnoses banco certificate and latest provider certificate relation', async () => {
+    empresaModel.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue({
+          _id: 'empresa-diag',
+          cnpj: '43521115000134',
+          razaoSocial: 'BURGUS LTDA',
+          certificado: {
+            filename: 'certificado.pfx',
+            uploadedAt: new Date('2026-03-17T12:00:00.000Z'),
+            sha256: 'abc123',
+            size: 999,
+            pfxBase64: 'base64-cert',
+            passwordEncrypted: 'v1:encrypted',
+          },
+        }),
+      }),
+    } as any);
+    nfseEmissionModel.findOne.mockReturnValue(
+      buildSortLeanChain({
+        _id: 'emissao-1',
+        provider: 'PLUGNOTAS',
+        status: 'AUTHORIZED',
+        externalId: 'ext-1',
+        createdAt: new Date('2026-03-17T12:30:00.000Z'),
+        providerResponse: {
+          prestador: {
+            certificadoId: 'plug-cert-1',
+          },
+        },
+        providerRequest: {
+          payload: [{ prestador: { cpfCnpj: '43521115000134' } }],
+        },
+      }),
+    );
+
+    const result = await service.diagnosticarCertificadoByCnpj('43.521.115/0001-34');
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        found: true,
+        certificadoBanco: expect.objectContaining({
+          filename: 'certificado.pfx',
+          hasPfxBase64: true,
+          hasPasswordEncrypted: true,
+        }),
+        ultimaEmissao: expect.objectContaining({
+          providerCertificadoId: 'plug-cert-1',
+          providerRequestPrestadorCnpj: '43521115000134',
+        }),
+      }),
     );
   });
 
