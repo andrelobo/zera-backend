@@ -109,6 +109,8 @@ export class NfseEmissionRepository {
       pollAttempts: number;
       lastPollError: string | null;
       lastPolledAt: Date | null;
+      lastWebhookAt: Date | null;
+      lastUpdateSource: string | null;
       nextPollAt: Date | null;
     }>,
   ): Promise<void> {
@@ -123,6 +125,8 @@ export class NfseEmissionRepository {
     if (patch.pollAttempts !== undefined) update.pollAttempts = patch.pollAttempts;
     if (patch.lastPollError !== undefined) update.lastPollError = patch.lastPollError;
     if (patch.lastPolledAt !== undefined) update.lastPolledAt = patch.lastPolledAt;
+    if (patch.lastWebhookAt !== undefined) update.lastWebhookAt = patch.lastWebhookAt;
+    if (patch.lastUpdateSource !== undefined) update.lastUpdateSource = patch.lastUpdateSource;
     if (patch.nextPollAt !== undefined) update.nextPollAt = patch.nextPollAt;
     if (patch.status !== undefined) update.status = patch.status;
 
@@ -150,6 +154,8 @@ export class NfseEmissionRepository {
     provider?: string;
     xmlBase64?: string;
     pdfBase64?: string;
+    lastWebhookAt?: Date;
+    lastUpdateSource?: string;
   }): Promise<void> {
     const filter: Record<string, any> = {
       externalId: input.externalId,
@@ -169,6 +175,8 @@ export class NfseEmissionRepository {
 
     if (input.xmlBase64 !== undefined) update.xmlBase64 = input.xmlBase64;
     if (input.pdfBase64 !== undefined) update.pdfBase64 = input.pdfBase64;
+    if (input.lastWebhookAt !== undefined) update.lastWebhookAt = input.lastWebhookAt;
+    if (input.lastUpdateSource !== undefined) update.lastUpdateSource = input.lastUpdateSource;
 
     if (input.status !== NfseEmissionStatus.PENDING) {
       update.nextPollAt = null;
@@ -198,6 +206,7 @@ export class NfseEmissionRepository {
       $set: {
         lastPollError: input.message,
         lastPolledAt: new Date(),
+        lastUpdateSource: 'polling',
         nextPollAt: input.nextPollAt,
       },
     });

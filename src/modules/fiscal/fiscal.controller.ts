@@ -570,6 +570,8 @@ export class FiscalController {
     const createdAt = (doc as any).createdAt ?? null;
     const updatedAt = (doc as any).updatedAt ?? null;
     const lastPolledAt = (doc as any).lastPolledAt ?? null;
+    const lastWebhookAt = (doc as any).lastWebhookAt ?? null;
+    const lastUpdateSource = (doc as any).lastUpdateSource ?? null;
     const lastArtifactSyncAt = (doc as any).lastArtifactSyncAt ?? null;
     const pollAttempts = (doc as any).pollAttempts ?? 0;
     const lastPollError = (doc as any).lastPollError ?? null;
@@ -596,6 +598,12 @@ export class FiscalController {
       appendTimeline(timeline, lastPolledAt, 'PROVIDER_STATUS_POLLED', doc.status, {
         pollAttempts,
         lastPollError,
+      });
+    }
+
+    if (lastWebhookAt) {
+      appendTimeline(timeline, lastWebhookAt, 'WEBHOOK_RECEIVED', doc.status, {
+        updateSource: lastUpdateSource,
       });
     }
 
@@ -634,6 +642,10 @@ export class FiscalController {
           lastPolledAt,
           nextPollAt: (doc as any).nextPollAt ?? null,
           lastPollError,
+        },
+        webhook: {
+          lastWebhookAt,
+          lastUpdateSource,
         },
         artifactSyncAudit: (doc as any).artifactSyncAudit ?? [],
         timeline: timeline.sort((a, b) => a.at.localeCompare(b.at)),

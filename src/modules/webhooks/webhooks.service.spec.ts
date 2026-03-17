@@ -34,6 +34,8 @@ describe('WebhooksService', () => {
       status: NfseEmissionStatus.AUTHORIZED,
       providerResponse: payload,
       provider: 'PLUGNOTAS',
+      lastWebhookAt: expect.any(Date),
+      lastUpdateSource: 'webhook',
     });
   });
 
@@ -50,6 +52,8 @@ describe('WebhooksService', () => {
       status: NfseEmissionStatus.REJECTED,
       providerResponse: payload,
       provider: 'PLUGNOTAS',
+      lastWebhookAt: expect.any(Date),
+      lastUpdateSource: 'webhook',
     });
   });
 
@@ -66,6 +70,8 @@ describe('WebhooksService', () => {
       status: NfseEmissionStatus.PENDING,
       providerResponse: payload,
       provider: 'PLUGNOTAS',
+      lastWebhookAt: expect.any(Date),
+      lastUpdateSource: 'webhook',
     });
   });
 

@@ -245,6 +245,7 @@ describe('FiscalController', () => {
     const createdAt = new Date('2026-03-10T10:00:00.000Z');
     const updatedAt = new Date('2026-03-10T10:05:00.000Z');
     const lastPolledAt = new Date('2026-03-10T10:03:00.000Z');
+    const lastWebhookAt = new Date('2026-03-10T10:04:00.000Z');
 
     repo.findById.mockResolvedValue({
       _id: { toString: () => 'em-obs-1' },
@@ -261,6 +262,8 @@ describe('FiscalController', () => {
       pdfBase64: 'pdf',
       pollAttempts: 2,
       lastPolledAt,
+      lastWebhookAt,
+      lastUpdateSource: 'webhook',
       lastPollError: null,
       nextPollAt: null,
       artifactSyncAudit: [{ outcome: 'ok' }],
@@ -279,10 +282,15 @@ describe('FiscalController', () => {
       nextPollAt: null,
       lastPollError: null,
     });
+    expect(out.observability.webhook).toEqual({
+      lastWebhookAt,
+      lastUpdateSource: 'webhook',
+    });
     expect(out.observability.timeline.map((item: any) => item.type)).toEqual([
       'EMISSION_CREATED',
       'PROVIDER_REQUEST_PREPARED',
       'PROVIDER_STATUS_POLLED',
+      'WEBHOOK_RECEIVED',
       'PROVIDER_EXTERNAL_ID_LINKED',
       'EMISSION_FINAL_STATUS',
     ]);

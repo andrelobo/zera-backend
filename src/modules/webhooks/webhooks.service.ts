@@ -50,6 +50,8 @@ export class WebhooksService {
       status: status ?? NfseEmissionStatus.PENDING,
       providerResponse: payload,
       provider: 'PLUGNOTAS',
+      lastWebhookAt: new Date(),
+      lastUpdateSource: 'webhook',
     });
 
     this.logger.log('Webhook fiscal processado', {

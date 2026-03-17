@@ -136,6 +136,12 @@ export class NfseEmission {
   @Prop()
   lastPolledAt?: Date;
 
+  @Prop()
+  lastWebhookAt?: Date;
+
+  @Prop()
+  lastUpdateSource?: string;
+
   @Prop({ index: true })
   nextPollAt?: Date;
 
