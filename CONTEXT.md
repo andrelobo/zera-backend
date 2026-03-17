@@ -3,6 +3,44 @@
 > Leitura rápida operacional: veja `CURRENT_STATE.md` (snapshot atual).
 > Este documento (`CONTEXT.md`) permanece como histórico completo e linha do tempo.
 
+## ATUALIZACAO RAPIDA (2026-03-17)
+
+Fonte: `codigo local` + `execucao local`.
+
+### Webhook fiscal: auditoria e cobertura minima fechadas
+
+- O backend ja possuia modulo de webhook fiscal ativo:
+  - `POST /webhooks/fiscal`
+- A rodada de hoje nao mudou o fluxo principal de emissao.
+- O objetivo foi endurecer confianca do modulo existente.
+
+Arquivos auditados:
+- `src/modules/webhooks/webhooks.controller.ts`
+- `src/modules/webhooks/handlers/webhook.handler.ts`
+- `src/modules/webhooks/webhooks.service.ts`
+
+Comportamento confirmado:
+- valida segredo compartilhado por header quando configurado
+- aceita payload bruto do provider
+- extrai `externalId` de diferentes formatos do payload
+- converte status PlugNotas para status de dominio
+- atualiza emissao por `externalId`
+- mantem polling como fallback; webhook nao substitui a malha atual
+
+Cobertura adicionada:
+- `src/modules/webhooks/webhooks.controller.spec.ts`
+- `src/modules/webhooks/handlers/webhook.handler.spec.ts`
+- `src/modules/webhooks/webhooks.service.spec.ts`
+
+Validacao executada em conjunto com emissao:
+- `npm test -- src/modules/webhooks/webhooks.service.spec.ts src/modules/webhooks/handlers/webhook.handler.spec.ts src/modules/webhooks/webhooks.controller.spec.ts src/fiscal/application/emitir-nfse.service.spec.ts`
+- resultado: `13/13` testes
+
+Leitura operacional:
+- vale ativar webhook como fonte primaria de status **somente** mantendo polling ligado;
+- a base existente ja esta boa para um `webhook v1` conservador;
+- ainda e recomendado homologar com payload real/representativo da PlugNotas antes de depender dele em producao.
+
 ## ATUALIZACAO RAPIDA (2026-03-16)
 
 Fonte: `codigo local` + `execucao local`.

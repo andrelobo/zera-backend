@@ -1,6 +1,51 @@
 # ZERA Backend – Current State
 
-Snapshot operacional do backend em **16/03/2026** (ultima atualizacao consolidada).
+Snapshot operacional do backend em **17/03/2026** (ultima atualizacao consolidada).
+
+## 0. Delta critico de hoje (17/03/2026)
+
+Fonte: `codigo local` + `execucao local`.
+
+### Webhook fiscal auditado e coberto por teste
+
+- O modulo de webhook fiscal ja existia no backend e foi auditado:
+  - `src/modules/webhooks/webhooks.controller.ts`
+  - `src/modules/webhooks/handlers/webhook.handler.ts`
+  - `src/modules/webhooks/webhooks.service.ts`
+- Endpoint atual:
+  - `POST /webhooks/fiscal`
+- Regras confirmadas:
+  - aceita payload bruto do provider
+  - valida `WEBHOOK_SHARED_SECRET` quando configurado
+  - extrai `externalId` do payload
+  - mapeia status PlugNotas para status de dominio
+  - atualiza emissao por `externalId`
+  - mantem polling como fallback; nao substitui o fluxo principal de emissao
+
+Cobertura adicionada:
+- `src/modules/webhooks/webhooks.controller.spec.ts`
+- `src/modules/webhooks/handlers/webhook.handler.spec.ts`
+- `src/modules/webhooks/webhooks.service.spec.ts`
+
+Cenarios validados:
+- segredo ausente
+- segredo invalido
+- segredo valido
+- payload autorizado
+- payload rejeitado
+- payload nested com `documents[0].idNota`
+- payload sem `externalId`
+- status desconhecido preservado como `PENDING`
+
+Validacao executada:
+- `npm test -- src/modules/webhooks/webhooks.service.spec.ts src/modules/webhooks/handlers/webhook.handler.spec.ts src/modules/webhooks/webhooks.controller.spec.ts src/fiscal/application/emitir-nfse.service.spec.ts`
+  - `4/4` suites
+  - `13/13` testes passando
+
+Observacao operacional:
+- o webhook hoje entra como **camada aditiva** de atualizacao de status;
+- polling continua sendo a rede de seguranca;
+- nao houve mudanca no fluxo principal de emissao nesta rodada.
 
 ## 0. Delta critico de hoje (16/03/2026)
 
