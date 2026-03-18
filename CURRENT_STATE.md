@@ -2,6 +2,24 @@
 
 Snapshot operacional do backend em **17/03/2026** (ultima atualizacao consolidada).
 
+## 0. Resumo curto de rollout (17/03/2026)
+
+Estado atual:
+- **~85% concluido**
+- implementacao de webhook: **pronta e testada**
+- pendente para fechamento: **homologacao operacional em producao + ajuste final de polling**
+
+Pendencias objetivas para encerrar:
+1. validar callback produtivo do provedor em `POST /webhooks/fiscal`
+2. confirmar segredo compartilhado em runtime (`WEBHOOK_SHARED_SECRET`)
+3. homologar com payload real PlugNotas
+4. validar em `GET /nfse/:id/observability`:
+   - timeline com `WEBHOOK_RECEIVED`
+   - `lastUpdateSource = webhook`
+5. recalibrar polling apos homologacao:
+   - curto durante rollout
+   - fallback permanente
+
 ## 0. Delta critico de hoje (17/03/2026)
 
 Fonte: `codigo local` + `execucao local`.

@@ -3,6 +3,33 @@
 > Leitura rápida operacional: veja `CURRENT_STATE.md` (snapshot atual).
 > Este documento (`CONTEXT.md`) permanece como histórico completo e linha do tempo.
 
+## ATUALIZACAO RAPIDA (2026-03-17) - STATUS DE ROLLOUT WEBHOOK
+
+Fonte: `codigo local` + `docs operacionais`.
+
+Resumo executivo:
+- etapa atual estimada: **~85% concluida**
+- implementacao tecnica do webhook: **pronta e testada**
+- pendencia para fechar producao: **homologacao operacional + ajuste final de polling**
+
+O que ja esta pronto:
+- endpoint `POST /webhooks/fiscal` ativo
+- parser de `externalId` e status cobrindo formatos nested
+- atualizacao de emissao por webhook
+- observabilidade distinguindo origem (`webhook` vs `polling`)
+- testes automatizados de controller/handler/service
+
+O que falta para concluir rollout de producao:
+1. confirmar configuracao de callback do provedor para `/webhooks/fiscal`
+2. validar segredo compartilhado em runtime (`WEBHOOK_SHARED_SECRET` + header)
+3. homologar com payload real/representativo da PlugNotas em ambiente produtivo
+4. confirmar em `GET /nfse/:id/observability`:
+   - evento `WEBHOOK_RECEIVED`
+   - `observability.webhook.lastUpdateSource = "webhook"`
+5. ajustar polling final:
+   - manter curto (`60000`) enquanto valida webhook
+   - depois calibrar para reduzir dependencia sem perder fallback
+
 ## ATUALIZACAO RAPIDA (2026-03-17)
 
 Fonte: `codigo local` + `execucao local`.
