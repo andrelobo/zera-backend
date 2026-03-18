@@ -1,6 +1,128 @@
 # ZERA Backend – Current State
 
-Snapshot operacional do backend em **17/03/2026** (ultima atualizacao consolidada).
+Snapshot operacional do backend em **18/03/2026** (ultima atualizacao consolidada).
+
+## 0. Atualizacao rapida (18/03/2026) - consolidado do dia
+
+Fonte: `codigo local` + `validacao local` + `evidencia operacional reportada`.
+
+Frentes realmente mexidas hoje:
+- **infra/percepcao de velocidade**
+- **ajustes visuais no front**
+- **experiencia da DANFSe**
+- **reorganizacao da rota Gestor AI**
+- **otimizacoes conservadoras de carregamento**
+- **estabilizacao do cadastro de prestador**
+- **documentacao de contexto operacional**
+
+### Infra + velocidade percebida
+
+- upgrade para plano pago da Render associado a **melhora perceptivel de performance**
+- leitura consolidada:
+  - parte importante da lentidao vinha de **infraestrutura/ambiente**
+  - nao ha evidencia atual de regressao recente como causa principal da lentidao geral
+- no front, tambem entraram melhorias conservadoras para reduzir sensacao de travamento:
+  - lazy loading de rotas pesadas
+  - reaproveitamento de snapshot/cache recente do dashboard
+  - corte de processamento repetido no dashboard
+  - limpeza de peso morto no bundle
+
+Resultado pratico:
+1. o app ficou visivelmente mais rapido para abrir e navegar
+2. a primeira tela apos login tende a responder melhor
+3. o ganho de velocidade passou a vir de duas frentes:
+   - infra melhor
+   - front menos custoso
+
+### Ajustes visuais entregues no front
+
+- alinhamentos pontuais e de baixo risco no cadastro/regime:
+  - `Cnae Anexo`
+  - `Apuracao SNe.`
+  - tabela/anexo e labels correlatos
+- experiencia de DANFSe reorganizada:
+  - acoes rapidas na listagem
+  - acoes principais no topo da tela detalhada
+  - contraste/hover dos botoes ajustados
+  - downloads locais concentrados no topo
+- lista de tomadores recebeu o mesmo padrao visual de botoes
+
+Regra operacional mantida:
+- **nao mexer em regras fiscais**
+- **nao mexer em payload**
+- **nao mexer em integracao backend**
+
+### Gestor AI
+
+- a tabela passou a representar **tomadores com os valores das notas emitidas para eles**
+- leitura por linha:
+  - tomador
+  - quantidade de notas
+  - valores das notas
+  - total emitido
+  - ticket medio
+  - percentual do faturamento
+- houve regressao percebida mostrando "Nenhuma nota fiscal emitida ainda"
+- causa mais provavel identificada:
+  - filtro excessivamente rigido em `useDashboardData`, aceitando apenas itens com `provider === "PLUGNOTAS"`
+- ajuste aplicado:
+  - manter preferencia por itens `PLUGNOTAS`
+  - mas cair para a lista completa quando esse filtro zerar tudo
+
+Resultado pratico:
+1. o Gestor AI volta a enxergar notas legadas/sem `provider` explicito
+2. a rota preserva a visao por tomador sem sumir com o dataset inteiro
+3. a intencao de performance continua, mas sem sacrificar leitura de negocio
+
+### Cadastro de prestador - estabilizacao do comportamento
+
+- parte do trabalho saiu da trilha de performance pura e entrou em **estabilizacao de UX/comportamento do cadastro**
+- problemas tratados:
+  - `whatsapp` brigando com digitacao por mascaramento no `onChange`
+  - `localidade / uf` parseando cedo demais com `trim`
+  - `email` dependente do comportamento nativo do browser
+  - `numero` do endereco aceitando caracteres indevidos
+  - campos de identificacao do Portal Nacional ajustados para aceitarem preenchimento manual e permanecerem opcionais
+
+Resultado pratico:
+1. `whatsapp` passou a ficar cru durante digitacao e a formatar so no `blur`
+2. `localidade / uf` passou a aceitar texto livre durante digitacao e so separar `cidade/uf` ao sair do campo
+3. o cadastro ficou menos sujeito a cursor pulando, espaco sumindo e input brigando com o usuario
+4. nenhum desses ajustes mexeu em regra de negocio do backend
+
+### Webhook fiscal continua como foco backend
+
+- em paralelo a essas frentes de UX/performance, o projeto segue em **inicio de rollout/implementacao de webhooks fiscais**
+- leitura atual:
+  - backend com base tecnica de webhook pronta
+  - polling ainda como fallback
+  - principal pendencia continua sendo homologacao operacional fim a fim em producao
+
+Validacao executada nesta frente de hoje:
+- `src/hooks/useDashboardData.test.ts`
+- `src/components/prestador/prestador-cards.test.tsx`
+- `src/pages/empresa-form.save-reload.test.ts`
+- `npm run build`
+
+## 0. Atualizacao rapida (18/03/2026) - infra mais rapida + rollout inicial de webhook
+
+Fonte: `evidencia operacional reportada`.
+
+Leitura consolidada de hoje:
+- upgrade para plano pago da Render associado a **melhora perceptivel de performance**
+- leitura atual: parte relevante da lentidao percebida vinha de **infra/ambiente**, nao de regressao funcional recente
+- em paralelo, o projeto ja entrou na fase de **inicio de rollout/implementacao de webhooks fiscais**
+
+Implicacao pratica:
+1. performance geral do app melhorou com a nova camada de infraestrutura
+2. o foco de fechamento continua sendo a homologacao operacional do webhook em producao
+3. atraso de atualizacao de status da NFSe ainda deve ser acompanhado junto com:
+   - webhook produtivo
+   - calibragem final do polling
+4. a leitura mais provavel agora e:
+   - infraestrutura estabilizada/melhorada
+   - backend com base tecnica de webhook pronta
+   - pendencia principal concentrada na validacao operacional fim a fim
 
 ## 0. Resumo curto de rollout (17/03/2026)
 

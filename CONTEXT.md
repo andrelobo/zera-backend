@@ -3,6 +3,87 @@
 > Leitura rápida operacional: veja `CURRENT_STATE.md` (snapshot atual).
 > Este documento (`CONTEXT.md`) permanece como histórico completo e linha do tempo.
 
+## ATUALIZACAO RAPIDA (2026-03-18) - CONSOLIDADO DO DIA
+
+Fonte: `codigo local` + `validacao local` + `evidencia operacional reportada`.
+
+Resumo executivo:
+- houve **ganho perceptivel de velocidade** apos melhoria de infraestrutura na Render
+- o front tambem recebeu uma rodada relevante de:
+  - organizacao visual
+  - melhoria de UX da DANFSe
+  - ajustes conservadores de performance
+  - estabilizacao do cadastro de prestador
+- em paralelo, o produto entrou na fase de **inicio de implementacao/rollout de webhooks fiscais**
+
+Leitura consolidada de estado:
+1. a resposta geral melhor do app passou a ser explicada por duas frentes:
+   - infraestrutura melhor
+   - front menos pesado e mais previsivel
+2. o foco backend continua sendo fechar a homologacao operacional do webhook fiscal em producao
+3. o foco frontend do dia foi melhorar experiencia percebida sem tocar em regra fiscal
+4. a palavra de ordem da rodada foi:
+   - **sem regressao**
+   - **sem quebrar integracao**
+   - **sem mexer no motor fiscal**
+
+### Ajustes visuais e de UX entregues
+
+- alinhamentos pontuais no cadastro/regime tributario
+- experiencia da DANFSe reorganizada:
+  - acoes rapidas na listagem
+  - acoes principais no topo da tela detalhada
+  - contraste/hover dos botoes melhorado
+  - downloads locais movidos para a area principal do detalhe
+- lista de tomadores padronizada visualmente
+- rota `Gestor AI` reorganizada para mostrar carteira de tomadores com os valores das notas emitidas para cada um
+
+### Performance do front
+
+- lazy loading de rotas pesadas
+- cache/snapshot recente para melhorar a primeira abertura do dashboard
+- reducao de processamento redundante no dashboard
+- limpeza de peso morto no bundle
+
+Leitura operacional:
+- ainda ha espaco para evolucao de performance comparando com apps maduros de mercado
+- mas o ganho de velocidade ja e percebido sem troca de regra fiscal
+
+### Cadastro de prestador - problemas comportamentais tratados
+
+- `whatsapp` parou de ser remascarado no `onChange` do cadastro principal
+- `localidade / uf` deixou de parsear com `trim` a cada tecla e passou a separar `cidade/uf` so no `blur`
+- `email` deixou de depender de comportamento invasivo do navegador no input
+- `numero` do endereco passou a ser mais restrito na digitacao
+- campos `NFS-e Nº`, `DPS Nº` e `Serie DPS Nº` foram mantidos como preenchimento manual opcional para persistencia/B.I.
+
+Regra consolidada dessa rodada:
+- nao houve mudanca de payload fiscal canônico
+- nao houve mudanca de regra de emissao
+- nao houve mudanca de integracao backend por causa desses ajustes
+
+### Gestor AI - regressao identificada e corrigida
+
+- problema observado:
+  - tela mostrando "Nenhuma nota fiscal emitida ainda"
+- causa mais provavel:
+  - filtro tecnico excessivamente rigido no hook compartilhado do dashboard
+- correcao aplicada:
+  - preferir itens `PLUGNOTAS`
+  - mas fazer fallback para lista completa quando esse recorte zerar tudo
+
+Leitura de negocio:
+- o `Gestor AI` nao pode sacrificar leitura operacional so para ganhar performance
+- a prioridade correta ali e preservar a visao por tomador sem perder notas legadas
+
+### Webhook fiscal
+
+- o webhook segue como frente mais relevante do backend para reduzir dependencia do polling
+- quadro consolidado:
+  - infra melhor
+  - webhook iniciado e tecnicamente pronto na base atual
+  - validacao operacional ainda pendente
+
 ## ATUALIZACAO RAPIDA (2026-03-17) - STATUS DE ROLLOUT WEBHOOK
 
 Fonte: `codigo local` + `docs operacionais`.
