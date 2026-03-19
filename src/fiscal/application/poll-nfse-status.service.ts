@@ -25,6 +25,19 @@ function isTransientError(e: any) {
   return false;
 }
 
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (
+    error &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof (error as { message?: unknown }).message === 'string'
+  ) {
+    return (error as { message: string }).message;
+  }
+  return String(error);
+}
+
 function extractArtifactId(providerResponse: any, fallbackExternalId: string): string {
   const normalized = Array.isArray(providerResponse) ? providerResponse[0] : providerResponse;
   const firstDocument = Array.isArray(normalized?.documents)
@@ -114,7 +127,7 @@ export class PollNfseStatusService {
           lastUpdateSource: 'polling',
         });
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
+        const msg = extractErrorMessage(e);
 
         if (isTransientError(e)) {
           const attempts = (emission.pollAttempts ?? 0) + 1;
@@ -158,6 +171,7 @@ export class PollNfseStatusService {
           error: msg,
           provider: this.provider.providerName,
           lastPolledAt: new Date(),
+          lastUpdateSource: 'polling',
         });
       }
     }
