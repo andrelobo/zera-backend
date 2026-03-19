@@ -22,6 +22,34 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+## ATUALIZACAO RAPIDA (2026-03-19) - ENDURECIMENTO CONSERVADOR DO WEBHOOK
+
+Fonte: `codigo local` + `testes automatizados locais`.
+
+Resumo executivo:
+- foi aplicado um endurecimento de baixo risco no webhook fiscal
+- objetivo:
+  - melhorar observabilidade
+  - evitar falso positivo silencioso
+  - preservar o fluxo principal sem regressao
+
+O que mudou:
+- o handler passou a aceitar leitura robusta do header de segredo tambem quando o runtime entregar o valor em formato de array
+- o service passou a distinguir:
+  - webhook processado com emissao elegivel encontrada
+  - webhook recebido sem emissao elegivel para atualizar
+- o repositorio passou a devolver `matchedCount` e `modifiedCount` no update por `externalId`
+
+Leitura operacional:
+- nao houve mudanca de contrato do endpoint
+- nao houve substituicao do polling
+- nao houve mudanca de regra fiscal
+- o ganho principal foi parar de tratar como "sucesso opaco" um webhook que chega mas nao encontra nada para atualizar
+
+Validacao executada:
+- `yarn test src/modules/webhooks/webhooks.service.spec.ts src/modules/webhooks/handlers/webhook.handler.spec.ts`
+- resultado: `9 passed, 9 total`
+
 ## ATUALIZACAO RAPIDA (2026-03-18) - CONSOLIDADO DO DIA
 
 Fonte: `codigo local` + `validacao local` + `evidencia operacional reportada`.

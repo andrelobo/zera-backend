@@ -23,11 +23,17 @@ describe('WebhookHandler', () => {
   });
 
   it('forwards payload when no shared secret is configured', async () => {
-    webhooksService.handleFiscalWebhook.mockResolvedValue({ ok: true });
+    webhooksService.handleFiscalWebhook.mockResolvedValue({
+      ok: true,
+      matchedCount: 1,
+      modifiedCount: 1,
+    });
 
     await expect(handler.handle({ externalId: 'ext-1' }, {})).resolves.toEqual({
       received: true,
       ok: true,
+      matchedCount: 1,
+      modifiedCount: 1,
     });
 
     expect(webhooksService.handleFiscalWebhook).toHaveBeenCalledWith({ externalId: 'ext-1' });
@@ -47,18 +53,45 @@ describe('WebhookHandler', () => {
   it('accepts webhook when shared secret header is valid', async () => {
     process.env.WEBHOOK_SHARED_SECRET = 'segredo';
     process.env.WEBHOOK_SHARED_SECRET_HEADER = 'x-custom-token';
-    webhooksService.handleFiscalWebhook.mockResolvedValue({ ok: true });
+    webhooksService.handleFiscalWebhook.mockResolvedValue({
+      ok: true,
+      matchedCount: 1,
+      modifiedCount: 1,
+    });
 
     await expect(
       handler.handle({ externalId: 'ext-2', status: 'AUTORIZADO' }, { 'x-custom-token': 'segredo' }),
     ).resolves.toEqual({
       received: true,
       ok: true,
+      matchedCount: 1,
+      modifiedCount: 1,
     });
 
     expect(webhooksService.handleFiscalWebhook).toHaveBeenCalledWith({
       externalId: 'ext-2',
       status: 'AUTORIZADO',
+    });
+  });
+
+  it('accepts webhook when shared secret header arrives as array', async () => {
+    process.env.WEBHOOK_SHARED_SECRET = 'segredo';
+    webhooksService.handleFiscalWebhook.mockResolvedValue({
+      ok: true,
+      matchedCount: 1,
+      modifiedCount: 1,
+    });
+
+    await expect(
+      handler.handle(
+        { externalId: 'ext-3', status: 'AUTORIZADO' },
+        { 'x-webhook-token': ['segredo'] },
+      ),
+    ).resolves.toEqual({
+      received: true,
+      ok: true,
+      matchedCount: 1,
+      modifiedCount: 1,
     });
   });
 });

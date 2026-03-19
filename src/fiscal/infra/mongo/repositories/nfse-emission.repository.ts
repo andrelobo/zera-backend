@@ -156,7 +156,7 @@ export class NfseEmissionRepository {
     pdfBase64?: string;
     lastWebhookAt?: Date;
     lastUpdateSource?: string;
-  }): Promise<void> {
+  }): Promise<{ matchedCount: number; modifiedCount: number }> {
     const filter: Record<string, any> = {
       externalId: input.externalId,
       $or: [{ status: NfseEmissionStatus.PENDING }, { status: input.status }],
@@ -183,7 +183,12 @@ export class NfseEmissionRepository {
       update.lastPollError = null;
     }
 
-    await this.model.updateOne(filter, update);
+    const result = await this.model.updateOne(filter, update);
+
+    return {
+      matchedCount: result.matchedCount ?? 0,
+      modifiedCount: result.modifiedCount ?? 0,
+    };
   }
 
   async markPollingTransientFailure(input: {

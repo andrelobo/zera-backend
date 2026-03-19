@@ -21,13 +21,19 @@ describe('WebhooksService', () => {
   });
 
   it('updates emission as authorized when payload contains concluded status', async () => {
+    emissions.updateByExternalId.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+
     const payload = {
       externalId: 'ext-1',
       status: 'AUTORIZADO',
       idNota: 'nota-1',
     };
 
-    await expect(service.handleFiscalWebhook(payload)).resolves.toEqual({ ok: true });
+    await expect(service.handleFiscalWebhook(payload)).resolves.toEqual({
+      ok: true,
+      matchedCount: 1,
+      modifiedCount: 1,
+    });
 
     expect(emissions.updateByExternalId).toHaveBeenCalledWith({
       externalId: 'ext-1',
@@ -40,6 +46,8 @@ describe('WebhooksService', () => {
   });
 
   it('extracts externalId from nested documents payload', async () => {
+    emissions.updateByExternalId.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+
     const payload = {
       retorno: { situacao: 'REJEITADA' },
       documents: [{ idNota: 'nota-doc-1' }],
@@ -58,6 +66,8 @@ describe('WebhooksService', () => {
   });
 
   it('keeps pending when payload status is unknown', async () => {
+    emissions.updateByExternalId.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+
     const payload = {
       externalId: 'ext-pending',
       status: 'PROCESSANDO',
@@ -86,5 +96,19 @@ describe('WebhooksService', () => {
     });
 
     expect(emissions.updateByExternalId).not.toHaveBeenCalled();
+  });
+
+  it('returns not eligible when no emission matches the webhook update', async () => {
+    emissions.updateByExternalId.mockResolvedValue({ matchedCount: 0, modifiedCount: 0 });
+
+    const payload = {
+      externalId: 'ext-missing',
+      status: 'AUTORIZADO',
+    };
+
+    await expect(service.handleFiscalWebhook(payload)).resolves.toEqual({
+      ok: false,
+      reason: 'emission_not_found_or_not_eligible',
+    });
   });
 });

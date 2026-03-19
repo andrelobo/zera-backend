@@ -14,9 +14,10 @@ export class WebhookHandler {
     const headerName = (
       process.env.WEBHOOK_SHARED_SECRET_HEADER ?? 'x-webhook-token'
     ).toLowerCase();
-    const received = headers?.[headerName];
+    const rawReceived = headers?.[headerName];
+    const received = Array.isArray(rawReceived) ? rawReceived[0] : rawReceived;
 
-    if (!received || received !== secret) {
+    if (typeof received !== 'string' || received.trim() !== secret) {
       throw new UnauthorizedException('Invalid webhook token');
     }
   }

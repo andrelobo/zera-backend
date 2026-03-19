@@ -45,7 +45,7 @@ export class WebhooksService {
       return { ok: false, reason: 'externalId_not_found' };
     }
 
-    await this.emissions.updateByExternalId({
+    const updateResult = await this.emissions.updateByExternalId({
       externalId,
       status: status ?? NfseEmissionStatus.PENDING,
       providerResponse: payload,
@@ -54,11 +54,23 @@ export class WebhooksService {
       lastUpdateSource: 'webhook',
     });
 
+    if (!updateResult.matchedCount) {
+      this.logger.warn('Webhook fiscal sem emissao elegivel para atualizar', {
+        externalId,
+        status: status ?? NfseEmissionStatus.PENDING,
+      });
+      return { ok: false, reason: 'emission_not_found_or_not_eligible' };
+    }
+
     this.logger.log('Webhook fiscal processado', {
       externalId,
       status: status ?? NfseEmissionStatus.PENDING,
     });
 
-    return { ok: true };
+    return {
+      ok: true,
+      matchedCount: updateResult.matchedCount,
+      modifiedCount: updateResult.modifiedCount,
+    };
   }
 }
