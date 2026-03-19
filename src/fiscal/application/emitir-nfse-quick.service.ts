@@ -53,9 +53,19 @@ export class EmitirNfseQuickService {
     valor: number;
     codigoServico?: string;
   }) {
+    this.assertValorValido(input.valor);
     const empresa = await this.resolveEmpresa(input.cnpj);
     const payload = this.buildPayload(empresa, input);
     return this.emitirNfseService.execute(payload);
+  }
+
+  private assertValorValido(valor: number) {
+    if (!Number.isFinite(valor) || valor <= 0) {
+      throw new BadRequestException({
+        code: 'QUICK_VALOR_INVALIDO',
+        message: 'valor deve ser um numero maior que zero',
+      });
+    }
   }
 
   private async resolveEmpresa(cnpjInput: string) {

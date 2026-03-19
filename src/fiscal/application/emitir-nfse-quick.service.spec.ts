@@ -88,4 +88,48 @@ describe('EmitirNfseQuickService', () => {
     const payload = emitirNfseService.execute.mock.calls[0][0];
     expect(payload.prestador.regimeTributarioSn).toBeUndefined();
   });
+
+  it('rejects quick emission when valor is zero or negative', async () => {
+    const service = new EmitirNfseQuickService(
+      emitirNfseService as any,
+      empresasService as any,
+      servicoCatalog as any,
+    );
+
+    await expect(
+      service.execute({
+        cnpj: '43.521.115/0001-34',
+        cpfTomador: '61020788100',
+        valor: 0,
+      }),
+    ).rejects.toMatchObject({
+      response: {
+        code: 'QUICK_VALOR_INVALIDO',
+      },
+    });
+
+    expect(emitirNfseService.execute).not.toHaveBeenCalled();
+  });
+
+  it('rejects quick emission when valor is not finite', async () => {
+    const service = new EmitirNfseQuickService(
+      emitirNfseService as any,
+      empresasService as any,
+      servicoCatalog as any,
+    );
+
+    await expect(
+      service.execute({
+        cnpj: '43.521.115/0001-34',
+        cpfTomador: '61020788100',
+        valor: Number.NaN,
+      }),
+    ).rejects.toMatchObject({
+      response: {
+        code: 'QUICK_VALOR_INVALIDO',
+      },
+    });
+
+    expect(emitirNfseService.execute).not.toHaveBeenCalled();
+  });
 });
