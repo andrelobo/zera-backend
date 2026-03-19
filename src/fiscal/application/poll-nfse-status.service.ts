@@ -78,6 +78,7 @@ export class PollNfseStatusService {
             status,
             providerResponse,
             provider: this.provider.providerName,
+            lastPolledAt: new Date(),
             lastUpdateSource: 'polling',
           });
           continue;
@@ -97,6 +98,7 @@ export class PollNfseStatusService {
             provider: this.provider.providerName,
             xmlBase64: toBase64(xml),
             pdfBase64: toBase64(pdf),
+            lastPolledAt: new Date(),
             lastUpdateSource: 'polling',
           });
 
@@ -108,6 +110,7 @@ export class PollNfseStatusService {
           status,
           providerResponse,
           provider: this.provider.providerName,
+          lastPolledAt: new Date(),
           lastUpdateSource: 'polling',
         });
       } catch (e) {
@@ -125,6 +128,7 @@ export class PollNfseStatusService {
               status: NfseEmissionStatus.ERROR,
               error: msg,
               provider: this.provider.providerName,
+              lastPolledAt: new Date(),
               lastUpdateSource: 'polling',
             });
             continue;
@@ -153,6 +157,7 @@ export class PollNfseStatusService {
           status: NfseEmissionStatus.ERROR,
           error: msg,
           provider: this.provider.providerName,
+          lastPolledAt: new Date(),
         });
       }
     }

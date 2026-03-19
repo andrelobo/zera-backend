@@ -154,6 +154,7 @@ export class NfseEmissionRepository {
     provider?: string;
     xmlBase64?: string;
     pdfBase64?: string;
+    lastPolledAt?: Date;
     lastWebhookAt?: Date;
     lastUpdateSource?: string;
   }): Promise<{ matchedCount: number; modifiedCount: number }> {
@@ -170,11 +171,11 @@ export class NfseEmissionRepository {
       status: input.status,
       providerResponse: input.providerResponse,
       error: input.error,
-      lastPolledAt: new Date(),
     };
 
     if (input.xmlBase64 !== undefined) update.xmlBase64 = input.xmlBase64;
     if (input.pdfBase64 !== undefined) update.pdfBase64 = input.pdfBase64;
+    if (input.lastPolledAt !== undefined) update.lastPolledAt = input.lastPolledAt;
     if (input.lastWebhookAt !== undefined) update.lastWebhookAt = input.lastWebhookAt;
     if (input.lastUpdateSource !== undefined) update.lastUpdateSource = input.lastUpdateSource;
 

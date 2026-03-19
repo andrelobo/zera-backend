@@ -33,6 +33,13 @@ describe('PollNfseStatusService', () => {
 
     expect(provider.baixarXmlNfse).toHaveBeenCalledWith('id-nota-999');
     expect(provider.baixarPdfNfse).toHaveBeenCalledWith('id-nota-999');
-    expect(repo.updateByExternalId).toHaveBeenCalled();
+    expect(repo.updateByExternalId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        externalId: 'protocol-123',
+        status: NfseEmissionStatus.AUTHORIZED,
+        lastPolledAt: expect.any(Date),
+        lastUpdateSource: 'polling',
+      }),
+    );
   });
 });
