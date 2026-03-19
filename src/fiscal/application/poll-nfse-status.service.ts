@@ -65,6 +65,20 @@ export class PollNfseStatusService {
     private readonly provider: FiscalProvider,
   ) {}
 
+  private async updateEmissionFromPolling(
+    input: Parameters<NfseEmissionRepository['updateByExternalId']>[0],
+  ) {
+    const result = await this.repo.updateByExternalId(input);
+
+    if (!result.matchedCount) {
+      this.logger.warn(
+        `Polling skipped externalId=${input.externalId}: emission not found or not eligible`,
+      );
+    }
+
+    return result;
+  }
+
   async runOnce(input?: { limit?: number; olderThanMs?: number }) {
     const pending = await this.repo.findPending({
       provider: this.provider.providerName,
@@ -86,7 +100,7 @@ export class PollNfseStatusService {
         const { status, providerResponse } = await this.provider.consultarNfse(emission.externalId);
 
         if (status === NfseEmissionStatus.PENDING) {
-          await this.repo.updateByExternalId({
+          await this.updateEmissionFromPolling({
             externalId: emission.externalId,
             status,
             providerResponse,
@@ -104,7 +118,7 @@ export class PollNfseStatusService {
             this.provider.baixarPdfNfse(artifactId),
           ]);
 
-          await this.repo.updateByExternalId({
+          await this.updateEmissionFromPolling({
             externalId: emission.externalId,
             status,
             providerResponse,
@@ -118,7 +132,7 @@ export class PollNfseStatusService {
           continue;
         }
 
-        await this.repo.updateByExternalId({
+        await this.updateEmissionFromPolling({
           externalId: emission.externalId,
           status,
           providerResponse,
@@ -136,7 +150,7 @@ export class PollNfseStatusService {
             this.logger.error(
               `Polling max attempts reached externalId=${emission.externalId}: ${msg}`,
             );
-            await this.repo.updateByExternalId({
+            await this.updateEmissionFromPolling({
               externalId: emission.externalId,
               status: NfseEmissionStatus.ERROR,
               error: msg,
@@ -165,7 +179,7 @@ export class PollNfseStatusService {
 
         this.logger.error(`Polling fatal error externalId=${emission.externalId}: ${msg}`);
 
-        await this.repo.updateByExternalId({
+        await this.updateEmissionFromPolling({
           externalId: emission.externalId,
           status: NfseEmissionStatus.ERROR,
           error: msg,

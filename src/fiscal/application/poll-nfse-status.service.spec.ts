@@ -1,7 +1,12 @@
 import { PollNfseStatusService } from './poll-nfse-status.service';
 import { NfseEmissionStatus } from '../domain/types/nfse-emission-status';
+import { Logger } from '@nestjs/common';
 
 describe('PollNfseStatusService', () => {
+  beforeEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('downloads XML/PDF using idNota from provider response when authorized', async () => {
     const repo = {
       findPending: jest.fn().mockResolvedValue([
@@ -77,5 +82,42 @@ describe('PollNfseStatusService', () => {
       }),
     );
     expect(repo.markPollingTransientFailure).not.toHaveBeenCalled();
+  });
+
+  it('logs when polling cannot update an emission because it is no longer eligible', async () => {
+    const repo = {
+      findPending: jest.fn().mockResolvedValue([
+        {
+          externalId: 'protocol-no-match-1',
+          pollAttempts: 0,
+        },
+      ]),
+      updateByExternalId: jest.fn().mockResolvedValue({ matchedCount: 0, modifiedCount: 0 }),
+      markPollingTransientFailure: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const provider = {
+      providerName: 'PLUGNOTAS',
+      consultarNfse: jest.fn().mockResolvedValue({
+        status: NfseEmissionStatus.PENDING,
+        providerResponse: { status: 'PROCESSANDO' },
+      }),
+    };
+
+    const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const service = new PollNfseStatusService(repo as any, provider as any);
+
+    await service.runOnce();
+
+    expect(repo.updateByExternalId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        externalId: 'protocol-no-match-1',
+        status: NfseEmissionStatus.PENDING,
+        lastUpdateSource: 'polling',
+      }),
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Polling skipped externalId=protocol-no-match-1: emission not found or not eligible',
+    );
   });
 });
