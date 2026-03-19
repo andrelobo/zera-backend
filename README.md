@@ -19,6 +19,19 @@ O objetivo do projeto é **abstrair totalmente a complexidade fiscal**, permitin
 
 ---
 
+## 🚨 Premissa Canônica
+
+Este backend deve ser tratado como **sistema já em produção**.
+
+Implicações práticas:
+- qualquer mudança precisa assumir **usuários reais** e **emissões reais**
+- `homologação`, `rollout` e `ajustes` descritos no contexto significam evolução controlada de frentes específicas, e não ausência de operação produtiva
+- a prioridade padrão é **evitar regressão operacional/fiscal**
+
+➡️ Antes de sugerir alterações, parta da premissa: **o core do ZERA já roda em PROD**.
+
+---
+
 ## 🧱 Estado Atual do Projeto
 
 Este repositório já contempla o **MVP fiscal com PlugNotas** e módulos básicos de autenticação/usuários.

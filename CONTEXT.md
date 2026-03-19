@@ -3,6 +3,25 @@
 > Leitura rápida operacional: veja `CURRENT_STATE.md` (snapshot atual).
 > Este documento (`CONTEXT.md`) permanece como histórico completo e linha do tempo.
 
+## PREMISSA CANONICA DE OPERACAO
+
+- o ZERA backend deve ser tratado como **sistema em producao**
+- qualquer analise, review, refactor ou nova feature deve partir da premissa de:
+  - usuarios reais
+  - emissoes reais
+  - risco real de regressao operacional/fiscal
+- quando houver duvida entre "parece ambiente de teste" vs "ja esta rodando", a leitura canonica correta para este repositorio e:
+  - **ja esta em PROD**
+- por isso, a prioridade padrao e:
+  - preservar emissao
+  - preservar integracoes
+  - preservar observabilidade
+  - evitar regressao
+
+Regra de interpretacao deste documento:
+- melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
+- homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
+
 ## ATUALIZACAO RAPIDA (2026-03-18) - CONSOLIDADO DO DIA
 
 Fonte: `codigo local` + `validacao local` + `evidencia operacional reportada`.
