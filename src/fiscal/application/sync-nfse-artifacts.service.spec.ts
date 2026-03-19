@@ -78,7 +78,14 @@ describe('SyncNfseArtifactsService', () => {
 
     expect(provider.baixarXmlNfse).toHaveBeenCalledWith('id-nota-3');
     expect(provider.baixarPdfNfse).toHaveBeenCalledWith('id-nota-3');
-    expect(repo.saveArtifactsById).toHaveBeenCalled();
+    expect(repo.saveArtifactsById).toHaveBeenCalledWith({
+      id: 'em-3',
+      status: NfseEmissionStatus.AUTHORIZED,
+      providerResponse: { idNota: 'id-nota-3' },
+      xmlBase64: 'AQID',
+      pdfBase64: 'BAUG',
+      error: null,
+    });
     expect(result.synced).toBe(true);
     expect(result.reason).toBe('ok');
   });

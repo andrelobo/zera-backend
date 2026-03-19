@@ -592,7 +592,6 @@ export class NfseEmissionRepository {
       xmlBase64: input.xmlBase64,
       pdfBase64: input.pdfBase64,
       error: input.error ?? null,
-      lastPolledAt: new Date(),
     };
     if (input.status) update.status = input.status;
     await this.model.updateOne({ _id: input.id }, update);
