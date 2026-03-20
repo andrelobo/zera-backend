@@ -295,4 +295,28 @@ describe('FiscalController', () => {
       'EMISSION_FINAL_STATUS',
     ]);
   });
+
+  it('returns local artifacts availability for an emission', async () => {
+    const updatedAt = new Date('2026-03-10T10:05:00.000Z');
+
+    repo.findById.mockResolvedValue({
+      _id: { toString: () => 'em-art-1' },
+      externalId: 'ext-art-1',
+      status: NfseEmissionStatus.AUTHORIZED,
+      xmlBase64: 'xml',
+      pdfBase64: null,
+      updatedAt,
+    });
+
+    const out = await controller.getArtifacts('em-art-1');
+
+    expect(out).toEqual({
+      id: 'em-art-1',
+      externalId: 'ext-art-1',
+      hasXml: true,
+      hasPdf: false,
+      status: NfseEmissionStatus.AUTHORIZED,
+      updatedAt,
+    });
+  });
 });
