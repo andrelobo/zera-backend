@@ -50,6 +50,24 @@ Validacao executada:
 - `yarn test src/modules/webhooks/webhooks.service.spec.ts src/modules/webhooks/handlers/webhook.handler.spec.ts`
 - resultado: `9 passed, 9 total`
 
+Complemento consolidado da mesma rodada:
+- `polling` passou a registrar de forma mais fiel a origem operacional dos updates:
+  - `lastPolledAt` agora fica restrito a eventos realmente originados por polling
+  - erros fatais de polling agora preservam `lastUpdateSource = "polling"`
+  - quando o polling nao consegue mais atualizar uma emissao por falta de match elegivel, isso passa a gerar sinal explicito de observabilidade
+- `sync-artifacts` manual deixou de contaminar `lastPolledAt`, preservando a leitura correta entre:
+  - polling automatico
+  - webhook
+  - recovery manual
+- `PollNfseStatusService` passou a extrair corretamente `error.message` quando o provider devolve erro estruturado, evitando persistencia/log como `[object Object]`
+- `EmitirNfseQuickService` passou a rejeitar `valor <= 0` e `NaN` antes de montar payload para emissao rapida
+
+Leitura operacional complementar:
+- esta rodada nao mudou regra fiscal
+- esta rodada nao trocou contrato do endpoint de webhook
+- esta rodada nao promoveu webhook a fonte unica de status
+- o efeito principal foi aumentar confiabilidade de observabilidade e endurecer validacoes de entrada em pontos sensiveis de producao
+
 ## ATUALIZACAO RAPIDA (2026-03-18) - CONSOLIDADO DO DIA
 
 Fonte: `codigo local` + `validacao local` + `evidencia operacional reportada`.

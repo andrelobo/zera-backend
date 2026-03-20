@@ -44,4 +44,25 @@ describe('WebhooksController', () => {
 
     expect(handler.handle).toHaveBeenCalledWith(payload, headers);
   });
+
+  it('forwards array payloads without reshaping them', async () => {
+    handler.handle.mockResolvedValue({
+      received: true,
+      ok: true,
+      matchedCount: 1,
+      modifiedCount: 1,
+    });
+
+    const payload = [{ externalId: 'ext-array-1', status: 'AUTORIZADO' }];
+    const headers = { 'x-webhook-token': 'segredo' };
+
+    await expect(controller.receive(payload, headers)).resolves.toEqual({
+      received: true,
+      ok: true,
+      matchedCount: 1,
+      modifiedCount: 1,
+    });
+
+    expect(handler.handle).toHaveBeenCalledWith(payload, headers);
+  });
 });
