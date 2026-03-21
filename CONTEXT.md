@@ -22,6 +22,33 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+## ATUALIZACAO RAPIDA (2026-03-21) - portal nacional espelhado pela emissao e webhook ainda em homologacao
+
+Fonte: `codigo local` + `testes automatizados locais`.
+
+Resumo executivo:
+- o cadastro de prestador passou a refletir melhor os identificadores do Portal Nacional sem transformar esses campos em regra de negocio
+- o webhook continua como frente principal do backend, mas **ainda nao** virou fonte primaria unica de status
+
+Prestador / Portal Nacional:
+- `NFS-e Nº`, `DPS Nº` e `Serie DPS Nº` devem ser lidos como reflexo da ultima emissao autorizada
+- a origem correta desses dados e o retorno do provider:
+  - `retorno.numeroNfse`
+  - `dps.numero`
+  - `dps.serie`
+- backend e frontend foram alinhados para parar de confiar como fonte primaria nos valores antigos salvos no cadastro da empresa
+
+Webhook / polling:
+- o webhook segue como camada aditiva e preferencial em evolucao
+- `polling` continua como fallback obrigatorio neste momento
+- leitura operacional correta em 2026-03-21:
+  - webhook tecnicamente pronto e mais endurecido
+  - homologacao operacional real ainda pendente
+  - **nao** tratar webhook como malha principal unica ate haver evidencia real em producao
+
+Regra consolidada:
+- sem desligar polling antes de producao provar callback real, match por `externalId`, segredo valido e atualizacao confirmada em observabilidade
+
 ## ATUALIZACAO RAPIDA (2026-03-19) - ENDURECIMENTO CONSERVADOR DO WEBHOOK
 
 Fonte: `codigo local` + `testes automatizados locais`.

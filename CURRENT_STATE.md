@@ -1,6 +1,34 @@
 # ZERA Backend – Current State
 
-Snapshot operacional do backend em **18/03/2026** (ultima atualizacao consolidada).
+Snapshot operacional do backend em **21/03/2026** (ultima atualizacao consolidada).
+
+## 0. Atualizacao rapida (21/03/2026) - portal nacional, prestador e continuidade do webhook
+
+Fonte: `codigo local` + `testes locais`.
+
+Leitura consolidada:
+- o cadastro de prestador no frontend foi ajustado para refletir os identificadores corretos da ultima emissao no card `Portal Nacional`
+- esses campos passaram a ser lidos como espelho do retorno real do provider, e nao mais como verdade primaria do cadastro
+- o backend continua com webhook tecnicamente pronto, mas ainda em fase de homologacao operacional controlada
+
+Portal Nacional / Prestador:
+- valores corretos esperados a partir da emissao:
+  - `NFS-e Nº` <- `retorno.numeroNfse`
+  - `DPS Nº` <- `dps.numero`
+  - `Serie DPS Nº` <- `dps.serie`
+- leitura correta:
+  - esses campos sao recebidos do provider
+  - nao alteram a regra de emissao
+  - nao devem ser tratados como payload canônico da emissao
+
+Webhook:
+- continua como frente prioritara do backend
+- ainda **nao** virou malha principal unica de request/response
+- `polling` segue obrigatorio como fallback ate:
+  - callback real comprovado em producao
+  - segredo validado em runtime
+  - match confiavel por `externalId`
+  - observabilidade confirmando `lastUpdateSource = webhook`
 
 ## 0. Atualizacao rapida (18/03/2026) - consolidado do dia
 
