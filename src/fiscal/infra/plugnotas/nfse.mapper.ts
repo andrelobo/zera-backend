@@ -56,6 +56,7 @@ export function extractPlugNotasDocumentIdentifiers(response: unknown): {
   const root = first(response);
   const retorno = first(root?.retorno);
   const data = first(root?.data);
+  const dps = first(root?.dps);
   const documento = first(root?.documento);
   const firstDocument = first(root?.documents);
   const nota = first(root?.nota);
@@ -70,6 +71,7 @@ export function extractPlugNotasDocumentIdentifiers(response: unknown): {
       root?.numeroNfse,
     ),
     dpsNum: toStringOrUndefined(
+      dps?.numero ??
       retorno?.numeroDps ??
       retorno?.dpsNum ??
       data?.numeroDps ??
@@ -86,6 +88,7 @@ export function extractPlugNotasDocumentIdentifiers(response: unknown): {
       root?.dpsNum,
     ),
     serieDpsNum: toStringOrUndefined(
+      dps?.serie ??
       retorno?.serieDps ??
       retorno?.serieDPS ??
       retorno?.serie_dps ??
