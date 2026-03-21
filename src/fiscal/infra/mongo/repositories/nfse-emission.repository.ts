@@ -200,7 +200,7 @@ export class NfseEmissionRepository {
       update.lastPollError = null;
     }
 
-    const result = await this.model.updateOne(filter, update);
+    const result = await this.model.updateMany(filter, update);
 
     return {
       matchedCount: result.matchedCount ?? 0,
@@ -546,7 +546,7 @@ export class NfseEmissionRepository {
   }
 
   async findByExternalId(externalId: string): Promise<NfseEmissionDocument | null> {
-    return this.model.findOne({ externalId }).exec();
+    return this.model.findOne({ externalId }).sort({ updatedAt: -1, createdAt: -1 }).exec();
   }
 
   async findByIdempotencyKey(
