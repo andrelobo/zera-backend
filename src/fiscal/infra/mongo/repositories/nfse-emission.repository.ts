@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { NfseEmission, NfseEmissionDocument } from '../schemas/nfse-emission.schema';
 import { NfseEmissionStatus } from '../../../domain/types/nfse-emission-status';
+import { extractPlugNotasDocumentIdentifiers } from '../../plugnotas/nfse.mapper';
 
 @Injectable()
 export class NfseEmissionRepository {
@@ -30,6 +31,8 @@ export class NfseEmissionRepository {
     localPrestacaoUf?: string;
     localPrestacaoMunicipio?: string;
     numeroNfse?: string;
+    dpsNum?: string;
+    serieDpsNum?: string;
     competencia?: string;
     dataEmissao?: string;
     valorServico?: number;
@@ -51,6 +54,7 @@ export class NfseEmissionRepository {
     providerResponse?: Record<string, any>;
   }): Promise<NfseEmissionDocument> {
     const now = new Date();
+    const identifiers = extractPlugNotasDocumentIdentifiers(input.providerResponse);
     return this.model.create({
       provider: input.provider,
       payload: input.payload,
@@ -69,7 +73,9 @@ export class NfseEmissionRepository {
       localPrestacaoPais: input.localPrestacaoPais,
       localPrestacaoUf: input.localPrestacaoUf,
       localPrestacaoMunicipio: input.localPrestacaoMunicipio,
-      numeroNfse: input.numeroNfse,
+      numeroNfse: input.numeroNfse ?? identifiers.numeroNfse,
+      dpsNum: input.dpsNum ?? identifiers.dpsNum,
+      serieDpsNum: input.serieDpsNum ?? identifiers.serieDpsNum,
       competencia: input.competencia,
       dataEmissao: input.dataEmissao,
       valorServico: input.valorServico,
@@ -117,7 +123,13 @@ export class NfseEmissionRepository {
     const update: Record<string, any> = {};
     if (patch.provider !== undefined) update.provider = patch.provider;
     if (patch.externalId !== undefined) update.externalId = patch.externalId;
-    if (patch.providerResponse !== undefined) update.providerResponse = patch.providerResponse;
+    if (patch.providerResponse !== undefined) {
+      update.providerResponse = patch.providerResponse;
+      const identifiers = extractPlugNotasDocumentIdentifiers(patch.providerResponse);
+      if (identifiers.numeroNfse !== undefined) update.numeroNfse = identifiers.numeroNfse;
+      if (identifiers.dpsNum !== undefined) update.dpsNum = identifiers.dpsNum;
+      if (identifiers.serieDpsNum !== undefined) update.serieDpsNum = identifiers.serieDpsNum;
+    }
     if (patch.providerRequest !== undefined) update.providerRequest = patch.providerRequest;
     if (patch.error !== undefined) update.error = patch.error;
     if (patch.xmlBase64 !== undefined) update.xmlBase64 = patch.xmlBase64;
@@ -167,6 +179,7 @@ export class NfseEmissionRepository {
       filter.provider = input.provider;
     }
 
+    const identifiers = extractPlugNotasDocumentIdentifiers(input.providerResponse);
     const update: Record<string, any> = {
       status: input.status,
       providerResponse: input.providerResponse,
@@ -178,6 +191,9 @@ export class NfseEmissionRepository {
     if (input.lastPolledAt !== undefined) update.lastPolledAt = input.lastPolledAt;
     if (input.lastWebhookAt !== undefined) update.lastWebhookAt = input.lastWebhookAt;
     if (input.lastUpdateSource !== undefined) update.lastUpdateSource = input.lastUpdateSource;
+    if (identifiers.numeroNfse !== undefined) update.numeroNfse = identifiers.numeroNfse;
+    if (identifiers.dpsNum !== undefined) update.dpsNum = identifiers.dpsNum;
+    if (identifiers.serieDpsNum !== undefined) update.serieDpsNum = identifiers.serieDpsNum;
 
     if (input.status !== NfseEmissionStatus.PENDING) {
       update.nextPollAt = null;
@@ -250,6 +266,7 @@ export class NfseEmissionRepository {
     limit?: number;
     provider?: string;
     status?: NfseEmissionStatus;
+    empresaCnpj?: string;
     createdFrom?: Date;
     createdTo?: Date;
   }): Promise<{
@@ -266,6 +283,7 @@ export class NfseEmissionRepository {
     const filter: Record<string, any> = {};
     if (input?.provider) filter.provider = input.provider;
     if (input?.status) filter.status = input.status;
+    if (input?.empresaCnpj) filter.empresaCnpj = input.empresaCnpj;
     if (input?.createdFrom || input?.createdTo) {
       filter.createdAt = {};
       if (input.createdFrom) filter.createdAt.$gte = input.createdFrom;

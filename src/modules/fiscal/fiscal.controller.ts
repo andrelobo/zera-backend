@@ -252,6 +252,7 @@ export class FiscalController {
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 20 })
   @ApiQuery({ name: 'provider', required: false, example: 'plugnotas' })
+  @ApiQuery({ name: 'empresaCnpj', required: false, example: '43521115000134' })
   @ApiQuery({ name: 'dateFrom', required: false, example: '2026-02-01' })
   @ApiQuery({ name: 'dateTo', required: false, example: '2026-03-31' })
   @ApiQuery({
@@ -269,6 +270,7 @@ export class FiscalController {
     @Query('page') pageRaw?: string,
     @Query('limit') limitRaw?: string,
     @Query('provider') provider?: string,
+    @Query('empresaCnpj') empresaCnpjRaw?: string,
     @Query('status') status?: string,
     @Query('dateFrom') dateFromRaw?: string,
     @Query('dateTo') dateToRaw?: string,
@@ -321,6 +323,7 @@ export class FiscalController {
       page,
       limit,
       provider: provider?.trim() || undefined,
+      empresaCnpj: empresaCnpjRaw?.replace(/\D/g, '') || undefined,
       status: statusFilter,
       createdFrom,
       createdTo,
@@ -337,6 +340,8 @@ export class FiscalController {
         tomadorRazaoSocial: doc.tomadorRazaoSocial ?? null,
         codigoServico: doc.codigoServico ?? null,
         numeroNfse: doc.numeroNfse ?? null,
+        dpsNum: (doc as any).dpsNum ?? null,
+        serieDpsNum: (doc as any).serieDpsNum ?? null,
         competencia: doc.competencia ?? null,
         dataEmissao: doc.dataEmissao ?? null,
         descricaoServico: doc.descricaoServico ?? null,
@@ -540,6 +545,8 @@ export class FiscalController {
       tomadorRazaoSocial: doc.tomadorRazaoSocial ?? null,
       codigoServico: doc.codigoServico ?? null,
       numeroNfse: doc.numeroNfse ?? null,
+      dpsNum: (doc as any).dpsNum ?? null,
+      serieDpsNum: (doc as any).serieDpsNum ?? null,
       competencia: doc.competencia ?? null,
       dataEmissao: doc.dataEmissao ?? null,
       descricaoServico: doc.descricaoServico ?? null,
@@ -671,6 +678,8 @@ export class FiscalController {
       tomadorRazaoSocial: doc.tomadorRazaoSocial ?? null,
       codigoServico: doc.codigoServico ?? null,
       numeroNfse: doc.numeroNfse ?? null,
+      dpsNum: (doc as any).dpsNum ?? null,
+      serieDpsNum: (doc as any).serieDpsNum ?? null,
       competencia: doc.competencia ?? null,
       dataEmissao: doc.dataEmissao ?? null,
       descricaoServico: doc.descricaoServico ?? null,

@@ -62,6 +62,12 @@ export class NfseEmission {
   numeroNfse?: string;
 
   @Prop()
+  dpsNum?: string;
+
+  @Prop()
+  serieDpsNum?: string;
+
+  @Prop()
   competencia?: string;
 
   @Prop()

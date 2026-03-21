@@ -53,10 +53,10 @@ describe('FiscalController', () => {
   });
 
   it('throws INVALID_STATUS when status is unknown', async () => {
-    await expect(controller.list('1', '20', undefined, 'UNKNOWN')).rejects.toThrow(
+    await expect(controller.list('1', '20', undefined, undefined, 'UNKNOWN')).rejects.toThrow(
       BadRequestException,
     );
-    await expect(controller.list('1', '20', undefined, 'UNKNOWN')).rejects.toMatchObject({
+    await expect(controller.list('1', '20', undefined, undefined, 'UNKNOWN')).rejects.toMatchObject({
       response: { code: 'INVALID_STATUS' },
     });
   });
@@ -80,12 +80,13 @@ describe('FiscalController', () => {
       totalPages: 1,
     });
 
-    const out = await controller.list(undefined, undefined, '  plugnotas  ');
+    const out = await controller.list(undefined, undefined, '  plugnotas  ', undefined, undefined, undefined, undefined);
 
     expect(repo.findPaginated).toHaveBeenCalledWith({
       page: 1,
       limit: 20,
       provider: 'plugnotas',
+      empresaCnpj: undefined,
       status: undefined,
       createdFrom: undefined,
       createdTo: undefined,
@@ -119,12 +120,13 @@ describe('FiscalController', () => {
       totalPages: 1,
     });
 
-    await controller.list('2', '10', undefined, NfseEmissionStatus.AUTHORIZED);
+    await controller.list('2', '10', undefined, undefined, NfseEmissionStatus.AUTHORIZED);
 
     expect(repo.findPaginated).toHaveBeenCalledWith({
       page: 2,
       limit: 10,
       provider: undefined,
+      empresaCnpj: undefined,
       status: NfseEmissionStatus.AUTHORIZED,
       createdFrom: undefined,
       createdTo: undefined,
@@ -133,10 +135,52 @@ describe('FiscalController', () => {
 
   it('throws INVALID_DATE_TO when dateTo is invalid', async () => {
     await expect(
-      controller.list('1', '20', undefined, undefined, undefined, 'invalid'),
+      controller.list('1', '20', undefined, undefined, undefined, undefined, 'invalid'),
     ).rejects.toMatchObject({
       response: { code: 'INVALID_DATE_TO' },
     });
+  });
+
+  it('forwards empresaCnpj filter and exposes portal nacional fields in list output', async () => {
+    repo.findPaginated.mockResolvedValue({
+      items: [
+        {
+          _id: { toString: () => 'em-portal-1' },
+          provider: 'PLUGNOTAS',
+          status: NfseEmissionStatus.AUTHORIZED,
+          externalId: 'ext-portal-1',
+          empresaCnpj: '43521115000134',
+          numeroNfse: '1001',
+          dpsNum: '2002',
+          serieDpsNum: '3',
+          createdAt: new Date('2026-03-20T00:00:00.000Z'),
+          updatedAt: new Date('2026-03-20T00:01:00.000Z'),
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 1,
+      totalPages: 1,
+    });
+
+    const out = await controller.list('1', '1', 'plugnotas', '43.521.115/0001-34');
+
+    expect(repo.findPaginated).toHaveBeenCalledWith({
+      page: 1,
+      limit: 1,
+      provider: 'plugnotas',
+      empresaCnpj: '43521115000134',
+      status: undefined,
+      createdFrom: undefined,
+      createdTo: undefined,
+    });
+    expect(out.items[0]).toEqual(
+      expect.objectContaining({
+        numeroNfse: '1001',
+        dpsNum: '2002',
+        serieDpsNum: '3',
+      }),
+    );
   });
 
   it('forwards BI summary filters with sanitization', async () => {
