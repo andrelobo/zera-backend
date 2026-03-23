@@ -5,13 +5,17 @@ import { WebhooksService } from './webhooks.service';
 describe('WebhooksService', () => {
   const emissions = {
     updateByExternalId: jest.fn(),
+    findByExternalId: jest.fn(),
+  };
+  const syncArtifacts = {
+    execute: jest.fn(),
   };
 
   let service: WebhooksService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new WebhooksService(emissions as any);
+    service = new WebhooksService(emissions as any, syncArtifacts as any);
     jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
     jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
   });
@@ -22,6 +26,8 @@ describe('WebhooksService', () => {
 
   it('updates emission as authorized when payload contains concluded status', async () => {
     emissions.updateByExternalId.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+    emissions.findByExternalId.mockResolvedValue({ _id: { toString: () => 'emission-1' } });
+    syncArtifacts.execute.mockResolvedValue({ found: true, synced: true, reason: 'ok' });
 
     const payload = {
       externalId: 'ext-1',
@@ -34,6 +40,12 @@ describe('WebhooksService', () => {
       externalId: 'ext-1',
       providerStatus: 'AUTORIZADO',
       mappedStatus: NfseEmissionStatus.AUTHORIZED,
+      artifactSync: {
+        ok: true,
+        found: true,
+        synced: true,
+        reason: 'ok',
+      },
       matchedCount: 1,
       modifiedCount: 1,
     });
@@ -45,6 +57,11 @@ describe('WebhooksService', () => {
       provider: 'PLUGNOTAS',
       lastWebhookAt: expect.any(Date),
       lastUpdateSource: 'webhook',
+    });
+    expect(syncArtifacts.execute).toHaveBeenCalledWith({
+      emissionId: 'emission-1',
+      requestedBy: 'webhook',
+      ip: null,
     });
   });
 
@@ -106,6 +123,7 @@ describe('WebhooksService', () => {
       lastWebhookAt: expect.any(Date),
       lastUpdateSource: 'webhook',
     });
+    expect(syncArtifacts.execute).not.toHaveBeenCalled();
   });
 
   it('ignores payload without externalId', async () => {
@@ -138,6 +156,31 @@ describe('WebhooksService', () => {
       externalId: 'ext-missing',
       providerStatus: 'AUTORIZADO',
       mappedStatus: NfseEmissionStatus.AUTHORIZED,
+    });
+  });
+
+  it('preserves webhook success when artifact sync fails', async () => {
+    emissions.updateByExternalId.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+    emissions.findByExternalId.mockResolvedValue({ _id: { toString: () => 'emission-2' } });
+    syncArtifacts.execute.mockRejectedValue(new Error('provider timeout'));
+
+    const payload = {
+      externalId: 'ext-artifacts-1',
+      status: 'AUTORIZADO',
+    };
+
+    await expect(service.handleFiscalWebhook(payload)).resolves.toEqual({
+      ok: true,
+      externalId: 'ext-artifacts-1',
+      providerStatus: 'AUTORIZADO',
+      mappedStatus: NfseEmissionStatus.AUTHORIZED,
+      artifactSync: {
+        ok: false,
+        reason: 'artifact_sync_failed',
+        message: 'provider timeout',
+      },
+      matchedCount: 1,
+      modifiedCount: 1,
     });
   });
 });

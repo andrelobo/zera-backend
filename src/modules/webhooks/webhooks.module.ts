@@ -8,9 +8,13 @@ import {
   NfseEmission,
   NfseEmissionSchema,
 } from '../../fiscal/infra/mongo/schemas/nfse-emission.schema';
+import { FiscalModule } from '../fiscal/fiscal.module';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: NfseEmission.name, schema: NfseEmissionSchema }])],
+  imports: [
+    MongooseModule.forFeature([{ name: NfseEmission.name, schema: NfseEmissionSchema }]),
+    FiscalModule,
+  ],
   controllers: [WebhooksController],
   providers: [WebhooksService, WebhookHandler, NfseEmissionRepository],
 })

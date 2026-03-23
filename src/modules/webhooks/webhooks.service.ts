@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { NfseEmissionRepository } from '../../fiscal/infra/mongo/repositories/nfse-emission.repository';
 import { NfseEmissionStatus } from '../../fiscal/domain/types/nfse-emission-status';
 import {
   extractPlugNotasStatus,
   mapPlugNotasStatusToDomain,
 } from '../../fiscal/infra/plugnotas/nfse.mapper';
+import { SyncNfseArtifactsService } from '../../fiscal/application/sync-nfse-artifacts.service';
 
 export function extractWebhookExternalId(payload: any): string | undefined {
   if (!payload) return undefined;
@@ -35,7 +36,47 @@ export function extractWebhookExternalId(payload: any): string | undefined {
 export class WebhooksService {
   private readonly logger = new Logger(WebhooksService.name);
 
-  constructor(private readonly emissions: NfseEmissionRepository) {}
+  constructor(
+    private readonly emissions: NfseEmissionRepository,
+    @Optional() private readonly syncArtifacts?: SyncNfseArtifactsService,
+  ) {}
+
+  private async syncArtifactsIfAuthorized(externalId: string, status: NfseEmissionStatus) {
+    if (status !== NfseEmissionStatus.AUTHORIZED || !this.syncArtifacts) {
+      return null;
+    }
+
+    const emission = await this.emissions.findByExternalId(externalId);
+    if (!emission?._id) {
+      return {
+        ok: false,
+        reason: 'emission_not_found_after_update',
+      };
+    }
+
+    try {
+      const out = await this.syncArtifacts.execute({
+        emissionId: emission._id.toString(),
+        requestedBy: 'webhook',
+        ip: null,
+      });
+      return {
+        ok: true,
+        ...out,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn('Webhook fiscal nao conseguiu sincronizar artefatos', {
+        externalId,
+        message,
+      });
+      return {
+        ok: false,
+        reason: 'artifact_sync_failed',
+        message,
+      };
+    }
+  }
 
   async handleFiscalWebhook(payload: any) {
     const externalId = extractWebhookExternalId(payload);
@@ -78,6 +119,11 @@ export class WebhooksService {
       };
     }
 
+    const artifactSync = await this.syncArtifactsIfAuthorized(
+      externalId,
+      status ?? NfseEmissionStatus.PENDING,
+    );
+
     this.logger.log('Webhook fiscal processado', {
       externalId,
       status: status ?? NfseEmissionStatus.PENDING,
@@ -88,6 +134,7 @@ export class WebhooksService {
       externalId,
       providerStatus: rawStatus ?? null,
       mappedStatus: status ?? NfseEmissionStatus.PENDING,
+      artifactSync,
       matchedCount: updateResult.matchedCount,
       modifiedCount: updateResult.modifiedCount,
     };

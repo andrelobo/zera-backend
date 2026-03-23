@@ -1,6 +1,32 @@
 # ZERA Backend – Current State
 
-Snapshot operacional do backend em **21/03/2026** (ultima atualizacao consolidada).
+Snapshot operacional do backend em **23/03/2026** (ultima atualizacao consolidada).
+
+## 0. Atualizacao rapida (23/03/2026) - webhook com sync oportunista de artefatos
+
+Fonte: `codigo local` + `testes locais`.
+
+Leitura consolidada:
+- o webhook continua em homologacao controlada
+- o `polling` continua obrigatorio como fallback
+- quando o callback chega ja com status autorizado, o backend agora tenta sincronizar XML/PDF imediatamente
+
+O que isso significa na pratica:
+- callback autorizado pode acelerar disponibilidade de artefatos
+- falha nesse sync **nao** derruba o webhook
+- o fluxo continua resiliente porque o `polling` segue cobrindo reconciliacao
+
+Resposta operacional do webhook agora ficou mais clara:
+- `externalId`
+- `providerStatus`
+- `mappedStatus`
+- `artifactSync`
+
+Leitura arquitetural correta agora:
+1. webhook continua camada aditiva
+2. polling continua rede de seguranca
+3. webhook ainda **nao** e a malha principal unica de request/response
+4. esta rodada melhora tempo de artefatos e rastreabilidade, sem mudar regra fiscal
 
 ## 0. Atualizacao rapida (21/03/2026) - portal nacional, prestador e continuidade do webhook
 

@@ -44,6 +44,6 @@ import { TomadoresModule } from '../tomadores/tomadores.module';
       useClass: PlugNotasProvider,
     },
   ],
-  exports: [EmitirNfseService, PollNfseStatusService],
+  exports: [EmitirNfseService, PollNfseStatusService, SyncNfseArtifactsService],
 })
 export class FiscalModule {}

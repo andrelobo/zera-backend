@@ -22,6 +22,48 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+## ATUALIZACAO RAPIDA (2026-03-23) - WEBHOOK COM SYNC OPORTUNISTA DE ARTEFATOS
+
+Fonte: `codigo local` + `testes automatizados locais`.
+
+Resumo executivo:
+- o webhook fiscal recebeu mais um endurecimento conservador
+- quando o callback chega com status autorizado, o backend agora tenta sincronizar XML/PDF imediatamente
+- isso foi feito sem transformar o webhook em dependencia dura e sem desligar o `polling`
+
+O que mudou:
+- o parser de `externalId` do webhook ficou mais robusto para formatos aninhados:
+  - `documents.protocol`
+  - `documents.protocolo`
+  - `documents.idIntegracao`
+- a resposta do webhook ficou mais rastreavel e agora pode devolver:
+  - `externalId`
+  - `providerStatus`
+  - `mappedStatus`
+  - `artifactSync`
+- quando o status mapeado e `AUTHORIZED`, o webhook tenta localizar a emissao mais recente por `externalId` e chama o sync de artefatos
+
+Leitura arquitetural correta:
+- o webhook continua **aditivo**
+- o `polling` continua **fallback obrigatorio**
+- falha de sync de XML/PDF **nao derruba** o processamento do webhook
+- o objetivo desta rodada foi:
+  - reduzir tempo para artefatos aparecerem
+  - melhorar homologacao
+  - aumentar rastreabilidade de callback
+  - preservar resiliencia
+
+Regra consolidada apos esta rodada:
+- webhook pode antecipar status e artefatos quando producao ajudar
+- `polling` segue como rede de seguranca para reconciliacao e cobertura de falhas
+- ainda **nao** tratar webhook como malha principal unica ate haver evidencia real em producao
+
+Validacao executada:
+- `npm test -- src/modules/webhooks/webhooks.service.spec.ts src/modules/webhooks/webhooks.controller.spec.ts src/modules/webhooks/handlers/webhook.handler.spec.ts`
+- resultado: `14 passed, 14 total`
+- `npm run build`
+- build ok
+
 ## ATUALIZACAO RAPIDA (2026-03-21) - portal nacional espelhado pela emissao e webhook ainda em homologacao
 
 Fonte: `codigo local` + `testes automatizados locais`.
