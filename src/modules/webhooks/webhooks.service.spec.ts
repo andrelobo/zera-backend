@@ -31,6 +31,9 @@ describe('WebhooksService', () => {
 
     await expect(service.handleFiscalWebhook(payload)).resolves.toEqual({
       ok: true,
+      externalId: 'ext-1',
+      providerStatus: 'AUTORIZADO',
+      mappedStatus: NfseEmissionStatus.AUTHORIZED,
       matchedCount: 1,
       modifiedCount: 1,
     });
@@ -58,6 +61,26 @@ describe('WebhooksService', () => {
     expect(emissions.updateByExternalId).toHaveBeenCalledWith({
       externalId: 'nota-doc-1',
       status: NfseEmissionStatus.REJECTED,
+      providerResponse: payload,
+      provider: 'PLUGNOTAS',
+      lastWebhookAt: expect.any(Date),
+      lastUpdateSource: 'webhook',
+    });
+  });
+
+  it('extracts externalId from nested documents protocol payload', async () => {
+    emissions.updateByExternalId.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+
+    const payload = {
+      status: 'AUTORIZADO',
+      documents: [{ protocol: 'nota-doc-protocol-1' }],
+    };
+
+    await service.handleFiscalWebhook(payload);
+
+    expect(emissions.updateByExternalId).toHaveBeenCalledWith({
+      externalId: 'nota-doc-protocol-1',
+      status: NfseEmissionStatus.AUTHORIZED,
       providerResponse: payload,
       provider: 'PLUGNOTAS',
       lastWebhookAt: expect.any(Date),
@@ -93,6 +116,9 @@ describe('WebhooksService', () => {
     await expect(service.handleFiscalWebhook(payload)).resolves.toEqual({
       ok: false,
       reason: 'externalId_not_found',
+      externalId: null,
+      providerStatus: 'AUTORIZADO',
+      mappedStatus: NfseEmissionStatus.AUTHORIZED,
     });
 
     expect(emissions.updateByExternalId).not.toHaveBeenCalled();
@@ -109,6 +135,9 @@ describe('WebhooksService', () => {
     await expect(service.handleFiscalWebhook(payload)).resolves.toEqual({
       ok: false,
       reason: 'emission_not_found_or_not_eligible',
+      externalId: 'ext-missing',
+      providerStatus: 'AUTORIZADO',
+      mappedStatus: NfseEmissionStatus.AUTHORIZED,
     });
   });
 });

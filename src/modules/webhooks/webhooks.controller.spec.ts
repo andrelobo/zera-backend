@@ -13,7 +13,13 @@ describe('WebhooksController', () => {
   });
 
   it('delegates payload and headers to handler', async () => {
-    handler.handle.mockResolvedValue({ received: true, ok: true });
+    handler.handle.mockResolvedValue({
+      received: true,
+      ok: true,
+      externalId: 'ext-1',
+      providerStatus: 'AUTORIZADO',
+      mappedStatus: 'AUTHORIZED',
+    });
 
     const payload = { externalId: 'ext-1', status: 'AUTORIZADO' };
     const headers = { 'x-webhook-token': 'segredo' };
@@ -21,6 +27,9 @@ describe('WebhooksController', () => {
     await expect(controller.receive(payload, headers)).resolves.toEqual({
       received: true,
       ok: true,
+      externalId: 'ext-1',
+      providerStatus: 'AUTORIZADO',
+      mappedStatus: 'AUTHORIZED',
     });
 
     expect(handler.handle).toHaveBeenCalledWith(payload, headers);
@@ -31,6 +40,9 @@ describe('WebhooksController', () => {
       received: true,
       ok: false,
       reason: 'emission_not_found_or_not_eligible',
+      externalId: 'ext-missing',
+      providerStatus: 'AUTORIZADO',
+      mappedStatus: 'AUTHORIZED',
     });
 
     const payload = { externalId: 'ext-missing', status: 'AUTORIZADO' };
@@ -40,6 +52,9 @@ describe('WebhooksController', () => {
       received: true,
       ok: false,
       reason: 'emission_not_found_or_not_eligible',
+      externalId: 'ext-missing',
+      providerStatus: 'AUTORIZADO',
+      mappedStatus: 'AUTHORIZED',
     });
 
     expect(handler.handle).toHaveBeenCalledWith(payload, headers);
@@ -49,6 +64,9 @@ describe('WebhooksController', () => {
     handler.handle.mockResolvedValue({
       received: true,
       ok: true,
+      externalId: 'ext-array-1',
+      providerStatus: 'AUTORIZADO',
+      mappedStatus: 'AUTHORIZED',
       matchedCount: 1,
       modifiedCount: 1,
     });
@@ -59,6 +77,9 @@ describe('WebhooksController', () => {
     await expect(controller.receive(payload, headers)).resolves.toEqual({
       received: true,
       ok: true,
+      externalId: 'ext-array-1',
+      providerStatus: 'AUTORIZADO',
+      mappedStatus: 'AUTHORIZED',
       matchedCount: 1,
       modifiedCount: 1,
     });

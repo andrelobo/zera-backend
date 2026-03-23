@@ -1,5 +1,6 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { WebhooksService } from '../webhooks.service';
+import { WebhooksService, extractWebhookExternalId } from '../webhooks.service';
+import { extractPlugNotasStatus } from '../../../fiscal/infra/plugnotas/nfse.mapper';
 
 @Injectable()
 export class WebhookHandler {
@@ -26,8 +27,9 @@ export class WebhookHandler {
     this.requireSharedSecret(headers);
 
     this.logger.log('Webhook fiscal recebido', {
-      hasExternalId: !!payload?.externalId,
-      status: payload?.status,
+      hasExternalId: !!extractWebhookExternalId(payload),
+      externalId: extractWebhookExternalId(payload) ?? null,
+      status: extractPlugNotasStatus(payload) ?? null,
     });
 
     const result = await this.webhooksService.handleFiscalWebhook(payload);
