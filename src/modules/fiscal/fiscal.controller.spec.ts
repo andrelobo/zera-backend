@@ -373,6 +373,39 @@ describe('FiscalController', () => {
     ]);
   });
 
+  it('returns observability trace by externalId', async () => {
+    const createdAt = new Date('2026-03-10T10:00:00.000Z');
+    const updatedAt = new Date('2026-03-10T10:05:00.000Z');
+
+    repo.findByExternalId.mockResolvedValue({
+      _id: { toString: () => 'em-obs-ext-1' },
+      provider: 'PLUGNOTAS',
+      status: NfseEmissionStatus.AUTHORIZED,
+      externalId: 'ext-obs-ext-1',
+      idempotencyKey: 'idem-obs-ext-1',
+      numeroNfse: '999',
+      payload: { referenciaExterna: 'idem-obs-ext-1' },
+      providerRequest: { payload: [{ idIntegracao: 'idem-obs-ext-1' }] },
+      providerResponse: [{ status: 'AUTORIZADA' }],
+      xmlBase64: 'xml',
+      pdfBase64: 'pdf',
+      createdAt,
+      updatedAt,
+    });
+
+    const out = await controller.getObservabilityByExternalId('ext-obs-ext-1');
+
+    expect(repo.findByExternalId).toHaveBeenCalledWith('ext-obs-ext-1');
+    expect(out).toEqual(
+      expect.objectContaining({
+        id: 'em-obs-ext-1',
+        externalId: 'ext-obs-ext-1',
+        numeroNfse: '999',
+      }),
+    );
+    expect(out.observability.providerResponse).toEqual([{ status: 'AUTORIZADA' }]);
+  });
+
   it('returns local artifacts availability for an emission', async () => {
     const updatedAt = new Date('2026-03-10T10:05:00.000Z');
 
