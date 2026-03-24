@@ -64,24 +64,61 @@ describe('WebhooksController', () => {
     handler.handle.mockResolvedValue({
       received: true,
       ok: true,
-      externalId: 'ext-array-1',
-      providerStatus: 'AUTORIZADO',
-      mappedStatus: 'AUTHORIZED',
-      matchedCount: 1,
-      modifiedCount: 1,
+      batch: true,
+      totalReceived: 2,
+      okCount: 2,
+      failedCount: 0,
+      results: [
+        {
+          ok: true,
+          externalId: 'ext-array-1',
+          providerStatus: 'AUTORIZADO',
+          mappedStatus: 'AUTHORIZED',
+          matchedCount: 1,
+          modifiedCount: 1,
+        },
+        {
+          ok: true,
+          externalId: 'ext-array-2',
+          providerStatus: 'REJEITADA',
+          mappedStatus: 'REJECTED',
+          matchedCount: 1,
+          modifiedCount: 1,
+        },
+      ],
     });
 
-    const payload = [{ externalId: 'ext-array-1', status: 'AUTORIZADO' }];
+    const payload = [
+      { externalId: 'ext-array-1', status: 'AUTORIZADO' },
+      { externalId: 'ext-array-2', status: 'REJEITADA' },
+    ];
     const headers = { 'x-webhook-token': 'segredo' };
 
     await expect(controller.receive(payload, headers)).resolves.toEqual({
       received: true,
       ok: true,
-      externalId: 'ext-array-1',
-      providerStatus: 'AUTORIZADO',
-      mappedStatus: 'AUTHORIZED',
-      matchedCount: 1,
-      modifiedCount: 1,
+      batch: true,
+      totalReceived: 2,
+      okCount: 2,
+      failedCount: 0,
+      results: [
+        {
+          ok: true,
+          externalId: 'ext-array-1',
+          providerStatus: 'AUTORIZADO',
+          mappedStatus: 'AUTHORIZED',
+          matchedCount: 1,
+          modifiedCount: 1,
+        },
+        {
+          ok: true,
+          externalId: 'ext-array-2',
+          providerStatus: 'REJEITADA',
+          mappedStatus: 'REJECTED',
+          matchedCount: 1,
+          modifiedCount: 1,
+        },
+      ],
     });
 
     expect(handler.handle).toHaveBeenCalledWith(payload, headers);

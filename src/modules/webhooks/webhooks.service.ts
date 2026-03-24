@@ -32,6 +32,14 @@ export function extractWebhookExternalId(payload: any): string | undefined {
   );
 }
 
+function normalizeWebhookPayloadItems(payload: any): any[] {
+  if (Array.isArray(payload)) {
+    return payload.filter((item) => item && typeof item === 'object');
+  }
+  if (payload && typeof payload === 'object') return [payload];
+  return [];
+}
+
 @Injectable()
 export class WebhooksService {
   private readonly logger = new Logger(WebhooksService.name);
@@ -78,7 +86,7 @@ export class WebhooksService {
     }
   }
 
-  async handleFiscalWebhook(payload: any) {
+  private async handleSingleFiscalWebhook(payload: any) {
     const externalId = extractWebhookExternalId(payload);
     const rawStatus = extractPlugNotasStatus(payload);
     const status = mapPlugNotasStatusToDomain(rawStatus);
@@ -138,5 +146,36 @@ export class WebhooksService {
       matchedCount: updateResult.matchedCount,
       modifiedCount: updateResult.modifiedCount,
     };
+  }
+
+  async handleFiscalWebhook(payload: any) {
+    const items = normalizeWebhookPayloadItems(payload);
+
+    if (Array.isArray(payload) && items.length > 1) {
+      const results = await Promise.all(items.map((item) => this.handleSingleFiscalWebhook(item)));
+      const okCount = results.filter((item) => item.ok).length;
+      const failedCount = results.length - okCount;
+
+      this.logger.log('Webhook fiscal em lote processado', {
+        totalReceived: items.length,
+        okCount,
+        failedCount,
+      });
+
+      return {
+        ok: failedCount === 0,
+        batch: true,
+        totalReceived: items.length,
+        okCount,
+        failedCount,
+        results,
+      };
+    }
+
+    if (Array.isArray(payload) && items.length === 1) {
+      return this.handleSingleFiscalWebhook(items[0]);
+    }
+
+    return this.handleSingleFiscalWebhook(payload);
   }
 }

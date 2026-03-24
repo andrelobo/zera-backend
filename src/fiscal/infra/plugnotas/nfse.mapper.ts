@@ -16,16 +16,17 @@ export function mapPlugNotasStatusToDomain(status?: string): NfseEmissionStatus 
   return NfseEmissionStatus.PENDING;
 }
 
-export function extractPlugNotasStatus(response: Record<string, any>): string | undefined {
+export function extractPlugNotasStatus(response: Record<string, any> | any): string | undefined {
+  const normalized = Array.isArray(response) ? response[0] : response;
   return (
-    response?.retorno?.situacao ??
-    response?.retorno?.status ??
-    response?.status ??
-    response?.situacao ??
-    response?.statusNota ??
-    response?.statusNfse ??
-    response?.situacaoNota ??
-    response?.situacaoRps
+    normalized?.retorno?.situacao ??
+    normalized?.retorno?.status ??
+    normalized?.status ??
+    normalized?.situacao ??
+    normalized?.statusNota ??
+    normalized?.statusNfse ??
+    normalized?.situacaoNota ??
+    normalized?.situacaoRps
   );
 }
 

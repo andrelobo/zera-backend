@@ -25,8 +25,10 @@ export class WebhookHandler {
 
   async handle(payload: any, headers: any) {
     this.requireSharedSecret(headers);
+    const batchSize = Array.isArray(payload) ? payload.length : 1;
 
     this.logger.log('Webhook fiscal recebido', {
+      batchSize,
       hasExternalId: !!extractWebhookExternalId(payload),
       externalId: extractWebhookExternalId(payload) ?? null,
       status: extractPlugNotasStatus(payload) ?? null,

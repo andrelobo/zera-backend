@@ -431,6 +431,20 @@ export class FiscalController {
     });
   }
 
+  @Get('webhook/diagnostico')
+  @ApiOperation({ summary: 'Diagnostico operacional do webhook fiscal' })
+  getWebhookDiagnostico() {
+    return {
+      route: '/webhooks/fiscal',
+      sharedSecretConfigured: Boolean(process.env.WEBHOOK_SHARED_SECRET),
+      sharedSecretHeader: process.env.WEBHOOK_SHARED_SECRET_HEADER ?? 'x-webhook-token',
+      pollingFallbackEnabled: true,
+      artifactSyncOnAuthorizedWebhook: true,
+      observabilityCheck: '/nfse/:id/observability',
+      providerResponseCheck: '/nfse/:id/provider-response',
+    };
+  }
+
   @Get('servicos/autocomplete')
   @ApiOperation({ summary: 'Autocomplete de servicos (catalogo LC116/NFS-e Nacional)' })
   @ApiQuery({ name: 'q', required: false, example: 'barbearia' })

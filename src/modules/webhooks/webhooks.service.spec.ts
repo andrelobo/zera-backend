@@ -105,6 +105,73 @@ describe('WebhooksService', () => {
     });
   });
 
+  it('processes single-item array payload using the item status and externalId', async () => {
+    emissions.updateByExternalId.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+    emissions.findByExternalId.mockResolvedValue({ _id: { toString: () => 'emission-array-1' } });
+    syncArtifacts.execute.mockResolvedValue({ found: true, synced: true, reason: 'ok' });
+
+    const payload = [{ externalId: 'ext-array-1', status: 'AUTORIZADO' }];
+
+    await expect(service.handleFiscalWebhook(payload)).resolves.toEqual({
+      ok: true,
+      externalId: 'ext-array-1',
+      providerStatus: 'AUTORIZADO',
+      mappedStatus: NfseEmissionStatus.AUTHORIZED,
+      artifactSync: {
+        ok: true,
+        found: true,
+        synced: true,
+        reason: 'ok',
+      },
+      matchedCount: 1,
+      modifiedCount: 1,
+    });
+  });
+
+  it('processes multi-item array payloads as a batch', async () => {
+    emissions.updateByExternalId.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+    emissions.findByExternalId.mockResolvedValue({ _id: { toString: () => 'emission-batch-1' } });
+    syncArtifacts.execute.mockResolvedValue({ found: true, synced: true, reason: 'ok' });
+
+    const payload = [
+      { externalId: 'ext-batch-1', status: 'AUTORIZADO' },
+      { externalId: 'ext-batch-2', status: 'REJEITADA' },
+    ];
+
+    await expect(service.handleFiscalWebhook(payload)).resolves.toEqual({
+      ok: true,
+      batch: true,
+      totalReceived: 2,
+      okCount: 2,
+      failedCount: 0,
+      results: [
+        {
+          ok: true,
+          externalId: 'ext-batch-1',
+          providerStatus: 'AUTORIZADO',
+          mappedStatus: NfseEmissionStatus.AUTHORIZED,
+          artifactSync: {
+            ok: true,
+            found: true,
+            synced: true,
+            reason: 'ok',
+          },
+          matchedCount: 1,
+          modifiedCount: 1,
+        },
+        {
+          ok: true,
+          externalId: 'ext-batch-2',
+          providerStatus: 'REJEITADA',
+          mappedStatus: NfseEmissionStatus.REJECTED,
+          artifactSync: null,
+          matchedCount: 1,
+          modifiedCount: 1,
+        },
+      ],
+    });
+  });
+
   it('keeps pending when payload status is unknown', async () => {
     emissions.updateByExternalId.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
 

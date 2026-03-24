@@ -215,6 +215,37 @@ describe('FiscalController', () => {
     });
   });
 
+  it('returns webhook diagnostics for homologation', () => {
+    delete process.env.WEBHOOK_SHARED_SECRET;
+    delete process.env.WEBHOOK_SHARED_SECRET_HEADER;
+
+    expect(controller.getWebhookDiagnostico()).toEqual({
+      route: '/webhooks/fiscal',
+      sharedSecretConfigured: false,
+      sharedSecretHeader: 'x-webhook-token',
+      pollingFallbackEnabled: true,
+      artifactSyncOnAuthorizedWebhook: true,
+      observabilityCheck: '/nfse/:id/observability',
+      providerResponseCheck: '/nfse/:id/provider-response',
+    });
+
+    process.env.WEBHOOK_SHARED_SECRET = 'segredo';
+    process.env.WEBHOOK_SHARED_SECRET_HEADER = 'x-custom-token';
+
+    expect(controller.getWebhookDiagnostico()).toEqual({
+      route: '/webhooks/fiscal',
+      sharedSecretConfigured: true,
+      sharedSecretHeader: 'x-custom-token',
+      pollingFallbackEnabled: true,
+      artifactSyncOnAuthorizedWebhook: true,
+      observabilityCheck: '/nfse/:id/observability',
+      providerResponseCheck: '/nfse/:id/provider-response',
+    });
+
+    delete process.env.WEBHOOK_SHARED_SECRET;
+    delete process.env.WEBHOOK_SHARED_SECRET_HEADER;
+  });
+
   it('emits substituicao using idNota from original emission when body does not provide idNotaSubstituida', async () => {
     repo.findById.mockResolvedValue({
       _id: { toString: () => 'em-1' },
