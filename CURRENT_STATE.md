@@ -1,6 +1,50 @@
 # ZERA Backend – Current State
 
-Snapshot operacional do backend em **23/03/2026** (ultima atualizacao consolidada).
+Snapshot operacional do backend em **24/03/2026** (ultima atualizacao consolidada).
+
+## 0. Atualizacao rapida (24/03/2026) - webhook com lote, diagnostico e observabilidade por externalId
+
+Fonte: `codigo local` + `testes locais`.
+
+Leitura consolidada:
+- o webhook continua em homologacao controlada
+- o `polling` continua obrigatorio como fallback
+- o backend agora lida melhor com payloads reais em array e oferece endpoints melhores para verificacao operacional
+
+O que isso significa na pratica:
+- webhook aceita:
+  - objeto unico
+  - array com 1 item
+  - array com varios itens
+- quando vier lote, o backend responde com:
+  - `batch: true`
+  - `okCount`
+  - `failedCount`
+  - `results`
+- agora tambem existem endpoints autenticados para homologacao:
+  - `GET /nfse/webhook/diagnostico`
+  - `GET /nfse/external/:externalId/observability`
+
+Leitura arquitetural correta agora:
+1. webhook continua camada aditiva
+2. polling continua rede de seguranca
+3. webhook ainda **nao** e a malha principal unica de request/response
+4. esta rodada melhora compatibilidade com payload real, rastreabilidade e velocidade de homologacao
+
+Leitura complementar sobre tributacao:
+- `E0312` / `E0314` seguem registrados no historico do repositorio
+- mas, com a evidencia raiz de payload aceito e com emissoes recentes reportadas, essa frente nao deve mais ser tratada automaticamente como gargalo principal atual
+- a prioridade atual do backend esta em:
+  - callback real
+  - diagnostico
+  - observabilidade
+  - transicao segura entre webhook e polling
+
+Validacao executada:
+- `npm test -- src/modules/webhooks/webhooks.service.spec.ts src/modules/webhooks/webhooks.controller.spec.ts src/modules/webhooks/handlers/webhook.handler.spec.ts src/modules/fiscal/fiscal.controller.spec.ts`
+- resultado: `30 passed, 30 total`
+- `npm run build`
+- build ok
 
 ## 0. Atualizacao rapida (23/03/2026) - webhook com sync oportunista de artefatos
 

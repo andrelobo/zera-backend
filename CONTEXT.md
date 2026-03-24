@@ -22,6 +22,64 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+## ATUALIZACAO RAPIDA (2026-03-24) - WEBHOOK COM LOTE E DIAGNOSTICO POR EXTERNAL ID
+
+Fonte: `codigo local` + `testes automatizados locais`.
+
+Resumo executivo:
+- o backend ganhou mais uma rodada conservadora de endurecimento do webhook fiscal
+- payloads em array agora sao tratados corretamente
+- a homologacao operacional ficou mais simples por causa de novos endpoints autenticados de diagnostico e observabilidade
+
+O que mudou:
+- `POST /webhooks/fiscal` agora aceita:
+  - objeto unico
+  - array com 1 item
+  - array com varios itens
+- quando o payload chega em lote:
+  - o backend processa item a item
+  - devolve `batch: true`
+  - devolve `okCount`, `failedCount` e `results`
+- o parser de status passou a normalizar payload em array antes de extrair `status`
+- entrou `GET /nfse/webhook/diagnostico`
+- entrou `GET /nfse/external/:externalId/observability`
+
+Leitura arquitetural correta:
+- webhook continua **aditivo**
+- polling continua **fallback obrigatorio**
+- a novidade desta rodada foi:
+  - melhorar compatibilidade com payload real do provider
+  - reduzir atrito de homologacao
+  - permitir leitura operacional por `externalId` sem depender primeiro do `id` interno
+
+Leitura importante sobre codigos de tributacao:
+- `E0312` / `E0314` continuam documentados no repositorio como gargalo historico real
+- mas a leitura correta em 24/03/2026 e:
+  - isso nao deve mais ser tratado automaticamente como principal gargalo atual do projeto
+  - ha evidencia root de payload aceito em `PAYLOADS_PLUGNOTAS_ACEITO_2026-02-10.md`
+  - o foco backend atual esta em webhook, homologacao e observabilidade
+- ressalva operacional:
+  - isso nao significa que qualquer combinacao de servico/competencia/municipio esteja livre de rejeicao
+  - significa apenas que o bloqueio central do momento ja nao e mais, por padrao, esse historico de fevereiro
+
+Como homologar agora:
+1. consultar `GET /nfse/webhook/diagnostico`
+2. validar:
+   - segredo configurado
+   - header esperado
+   - rota de callback
+3. usar o `externalId` da emissao real
+4. consultar `GET /nfse/external/:externalId/observability`
+5. confirmar:
+   - timeline com `WEBHOOK_RECEIVED`
+   - `lastUpdateSource = webhook` quando o callback realmente aplicar update
+
+Validacao executada:
+- `npm test -- src/modules/webhooks/webhooks.service.spec.ts src/modules/webhooks/webhooks.controller.spec.ts src/modules/webhooks/handlers/webhook.handler.spec.ts src/modules/fiscal/fiscal.controller.spec.ts`
+- resultado: `30 passed, 30 total`
+- `npm run build`
+- build ok
+
 ## ATUALIZACAO RAPIDA (2026-03-23) - WEBHOOK COM SYNC OPORTUNISTA DE ARTEFATOS
 
 Fonte: `codigo local` + `testes automatizados locais`.
