@@ -153,6 +153,7 @@ describe('FiscalController', () => {
           numeroNfse: '1001',
           dpsNum: '2002',
           serieDpsNum: '3',
+          parametroIssAplicado: 'iss_proprio_municipio',
           createdAt: new Date('2026-03-20T00:00:00.000Z'),
           updatedAt: new Date('2026-03-20T00:01:00.000Z'),
         },
@@ -179,6 +180,7 @@ describe('FiscalController', () => {
         numeroNfse: '1001',
         dpsNum: '2002',
         serieDpsNum: '3',
+        parametroIssAplicado: 'iss_proprio_municipio',
       }),
     );
   });

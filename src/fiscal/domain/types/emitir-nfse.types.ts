@@ -2,6 +2,7 @@ export interface EmitirNfseInput {
   numeroNfse?: string;
   competencia?: string;
   dataEmissao?: string;
+  parametroIssAplicado?: string;
   substituicao?: boolean;
   idNotaSubstituida?: string;
 

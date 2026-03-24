@@ -244,4 +244,43 @@ describe('EmitirNfseService idempotency', () => {
       }),
     );
   });
+
+  it('persists parametroIssAplicado only for BI and observability', async () => {
+    const created = { _id: { toString: () => 'em-792' } };
+    const repository = {
+      findByReference: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue(created),
+      updateEmission: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = {
+      providerName: 'PLUGNOTAS',
+      emitirNfse: jest.fn().mockResolvedValue({
+        status: NfseEmissionStatus.PENDING,
+        provider: 'PLUGNOTAS',
+        externalId: 'ext-792',
+      }),
+    };
+
+    const empresasService = makeEmpresasServiceMock();
+    const tomadoresService = makeTomadoresServiceMock();
+    const service = new EmitirNfseService(
+      provider as any,
+      repository as any,
+      empresasService as any,
+      tomadoresService as any,
+    );
+
+    const input = makeInput() as any;
+    input.parametroIssAplicado = 'iss_proprio_municipio';
+
+    await service.execute(input);
+
+    const persisted = repository.create.mock.calls[0][0];
+    expect(persisted.parametroIssAplicado).toBe('iss_proprio_municipio');
+    expect(persisted.biSnapshot?.parametroIssAplicado).toBe('iss_proprio_municipio');
+    expect(persisted.biSnapshot?.metricas?.parametroIssAplicado).toBe('iss_proprio_municipio');
+
+    expect(provider.emitirNfse).toHaveBeenCalledTimes(1);
+    expect(provider.emitirNfse.mock.calls[0][0]).not.toHaveProperty('parametroIssAplicado');
+  });
 });

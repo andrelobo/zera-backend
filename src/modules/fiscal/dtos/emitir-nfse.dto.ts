@@ -375,4 +375,13 @@ export class EmitirNfseDto {
   @IsString()
   @IsNotEmpty()
   referenciaExterna!: string;
+
+  @ApiProperty({
+    example: 'iss_proprio_municipio',
+    required: false,
+    description: 'Parametro tributario de ISS aplicado pela camada de emissao para BI/observabilidade.',
+  })
+  @IsOptional()
+  @IsString()
+  parametroIssAplicado?: string;
 }

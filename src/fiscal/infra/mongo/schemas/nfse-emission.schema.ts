@@ -89,6 +89,9 @@ export class NfseEmission {
   valorIss?: number;
 
   @Prop()
+  parametroIssAplicado?: string;
+
+  @Prop()
   retPis?: number;
 
   @Prop()

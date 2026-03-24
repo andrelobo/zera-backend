@@ -146,6 +146,7 @@ export class EmitirNfseService {
         desconto: bi.desconto,
         aliquotaIss: bi.aliquotaIss,
         valorIss: bi.valorIss,
+        parametroIssAplicado: bi.parametroIssAplicado,
         retPis: bi.retPis,
         retCofins: bi.retCofins,
         retCsll: bi.retCsll,
@@ -182,7 +183,8 @@ export class EmitirNfseService {
 
     try {
       await this.upsertTomadorFromEmission(enrichedInput);
-      const result = await this.provider.emitirNfse(enrichedInput);
+      const { parametroIssAplicado: _parametroIssAplicado, ...providerInput } = enrichedInput;
+      const result = await this.provider.emitirNfse(providerInput);
 
       await this.repository.updateEmission(emission._id.toString(), {
         provider: result.provider,
@@ -306,6 +308,7 @@ export class EmitirNfseService {
     desconto?: number;
     aliquotaIss?: number;
     valorIss?: number;
+    parametroIssAplicado?: string;
     retPis?: number;
     retCofins?: number;
     retCsll?: number;
@@ -326,6 +329,10 @@ export class EmitirNfseService {
     const desconto = normalizeNumber(input.servico?.desconto);
     const aliquotaIss = normalizeNumber(input.servico?.iss?.aliquota);
     const valorIss = calculateValorIss(input);
+    const parametroIssAplicado =
+      typeof input.parametroIssAplicado === 'string'
+        ? input.parametroIssAplicado.trim() || undefined
+        : undefined;
     const retPis = normalizeNumber(input.servico?.retencoesFederais?.pis);
     const retCofins = normalizeNumber(input.servico?.retencoesFederais?.cofins);
     const retCsll = normalizeNumber(input.servico?.retencoesFederais?.csll);
@@ -363,6 +370,7 @@ export class EmitirNfseService {
         uf: input.localPrestacao?.uf,
         municipio: input.localPrestacao?.municipio,
       },
+      parametroIssAplicado,
       servico: {
         codigoNacional: input.servico?.codigoNacional,
         codigoMunicipal: input.servico?.codigoMunicipal,
@@ -387,6 +395,7 @@ export class EmitirNfseService {
         desconto,
         aliquotaIss,
         valorIss,
+        parametroIssAplicado,
         issRetido: input.servico?.iss?.retido ?? false,
         retPis,
         retCofins,
@@ -423,6 +432,7 @@ export class EmitirNfseService {
       desconto,
       aliquotaIss,
       valorIss,
+      parametroIssAplicado,
       retPis,
       retCofins,
       retCsll,

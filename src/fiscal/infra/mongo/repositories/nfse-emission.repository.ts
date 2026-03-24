@@ -40,6 +40,7 @@ export class NfseEmissionRepository {
     desconto?: number;
     aliquotaIss?: number;
     valorIss?: number;
+    parametroIssAplicado?: string;
     retPis?: number;
     retCofins?: number;
     retCsll?: number;
@@ -83,6 +84,7 @@ export class NfseEmissionRepository {
       desconto: input.desconto,
       aliquotaIss: input.aliquotaIss,
       valorIss: input.valorIss,
+      parametroIssAplicado: input.parametroIssAplicado,
       retPis: input.retPis,
       retCofins: input.retCofins,
       retCsll: input.retCsll,
