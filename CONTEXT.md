@@ -22,6 +22,29 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+## ATUALIZACAO RAPIDA (2026-03-24) - RODADA DO DIA SEM MUDANCA DE CONTRATO NO BACKEND
+
+Fonte: `observacao operacional` + `repositorio local`.
+
+Leitura consolidada:
+- a rodada critica do dia foi predominantemente de frontend
+- nao houve mudanca canonicamente consolidada hoje em:
+  - contrato fiscal
+  - regras de emissao
+  - payload de emissao
+  - webhook fiscal
+  - polling
+- portanto, qualquer incidente observado hoje em tela, cache, layout ou navegacao **nao** deve ser interpretado por padrao como regressao do backend
+
+Regra operacional reforcada:
+- em incidente de producao originado no frontend, preservar backend como referencia canonica de verdade de negocio
+- evitar atribuir ao backend falha cuja evidencia esteja em:
+  - boot de app
+  - localStorage
+  - rota lazy
+  - layout de card
+  - referencia quebrada em componente React
+
 ## ATUALIZACAO RAPIDA (2026-03-24) - WEBHOOK COM LOTE E DIAGNOSTICO POR EXTERNAL ID
 
 Fonte: `codigo local` + `testes automatizados locais`.
