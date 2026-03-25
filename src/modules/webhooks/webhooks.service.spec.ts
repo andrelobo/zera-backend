@@ -105,6 +105,52 @@ describe('WebhooksService', () => {
     });
   });
 
+  it('prefers protocol over id when both are present in the webhook payload', async () => {
+    emissions.updateByExternalId.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+    emissions.findByExternalId.mockResolvedValue({ _id: { toString: () => 'emission-protocol-1' } });
+    syncArtifacts.execute.mockResolvedValue({ found: true, synced: true, reason: 'ok' });
+
+    const payload = {
+      id: 'nota-id-1',
+      protocol: 'nota-protocol-1',
+      idIntegracao: 'nfse-front-1',
+      status: 'AUTORIZADO',
+    };
+
+    await service.handleFiscalWebhook(payload);
+
+    expect(emissions.updateByExternalId).toHaveBeenCalledWith({
+      externalId: 'nota-protocol-1',
+      status: NfseEmissionStatus.AUTHORIZED,
+      providerResponse: payload,
+      provider: 'PLUGNOTAS',
+      lastWebhookAt: expect.any(Date),
+      lastUpdateSource: 'webhook',
+    });
+  });
+
+  it('prefers nested document protocol over id when both are present', async () => {
+    emissions.updateByExternalId.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+    emissions.findByExternalId.mockResolvedValue({ _id: { toString: () => 'emission-doc-protocol-1' } });
+    syncArtifacts.execute.mockResolvedValue({ found: true, synced: true, reason: 'ok' });
+
+    const payload = {
+      status: 'AUTORIZADO',
+      documents: [{ id: 'nota-doc-id-1', protocol: 'nota-doc-protocol-1' }],
+    };
+
+    await service.handleFiscalWebhook(payload);
+
+    expect(emissions.updateByExternalId).toHaveBeenCalledWith({
+      externalId: 'nota-doc-protocol-1',
+      status: NfseEmissionStatus.AUTHORIZED,
+      providerResponse: payload,
+      provider: 'PLUGNOTAS',
+      lastWebhookAt: expect.any(Date),
+      lastUpdateSource: 'webhook',
+    });
+  });
+
   it('processes single-item array payload using the item status and externalId', async () => {
     emissions.updateByExternalId.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
     emissions.findByExternalId.mockResolvedValue({ _id: { toString: () => 'emission-array-1' } });

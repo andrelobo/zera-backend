@@ -17,17 +17,17 @@ export function extractWebhookExternalId(payload: any): string | undefined {
 
   return (
     normalized?.externalId ??
-    normalized?.idNota ??
-    normalized?.id ??
     normalized?.protocolo ??
     normalized?.protocol ??
     normalized?.idIntegracao ??
+    normalized?.idNota ??
+    normalized?.id ??
     doc?.externalId ??
-    doc?.id ??
-    doc?.idNota ??
     doc?.protocolo ??
     doc?.protocol ??
     doc?.idIntegracao ??
+    doc?.idNota ??
+    doc?.id ??
     undefined
   );
 }
