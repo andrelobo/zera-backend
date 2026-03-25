@@ -5,6 +5,30 @@ import { NfseEmission, NfseEmissionDocument } from '../schemas/nfse-emission.sch
 import { NfseEmissionStatus } from '../../../domain/types/nfse-emission-status';
 import { extractPlugNotasDocumentIdentifiers } from '../../plugnotas/nfse.mapper';
 
+export function buildExternalReferenceFilter(externalId: string): Record<string, any> {
+  return {
+    $or: [
+      { externalId },
+      { idempotencyKey: externalId },
+      { 'payload.referenciaExterna': externalId },
+      { 'providerResponse.externalId': externalId },
+      { 'providerResponse.idNota': externalId },
+      { 'providerResponse.id': externalId },
+      { 'providerResponse.protocolo': externalId },
+      { 'providerResponse.protocol': externalId },
+      { 'providerResponse.idIntegracao': externalId },
+      { 'providerResponse.nota.idNota': externalId },
+      { 'providerResponse.nota.id': externalId },
+      { 'providerResponse.documents.externalId': externalId },
+      { 'providerResponse.documents.idNota': externalId },
+      { 'providerResponse.documents.id': externalId },
+      { 'providerResponse.documents.protocolo': externalId },
+      { 'providerResponse.documents.protocol': externalId },
+      { 'providerResponse.documents.idIntegracao': externalId },
+    ],
+  };
+}
+
 @Injectable()
 export class NfseEmissionRepository {
   constructor(
@@ -173,13 +197,13 @@ export class NfseEmissionRepository {
     lastUpdateSource?: string;
   }): Promise<{ matchedCount: number; modifiedCount: number }> {
     const filter: Record<string, any> = {
-      externalId: input.externalId,
-      $or: [{ status: NfseEmissionStatus.PENDING }, { status: input.status }],
+      $and: [
+        buildExternalReferenceFilter(input.externalId),
+        { $or: [{ status: NfseEmissionStatus.PENDING }, { status: input.status }] },
+      ],
     };
 
-    if (input.provider) {
-      filter.provider = input.provider;
-    }
+    if (input.provider) filter.$and.push({ provider: input.provider });
 
     const identifiers = extractPlugNotasDocumentIdentifiers(input.providerResponse);
     const update: Record<string, any> = {
@@ -548,7 +572,10 @@ export class NfseEmissionRepository {
   }
 
   async findByExternalId(externalId: string): Promise<NfseEmissionDocument | null> {
-    return this.model.findOne({ externalId }).sort({ updatedAt: -1, createdAt: -1 }).exec();
+    return this.model
+      .findOne(buildExternalReferenceFilter(externalId))
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .exec();
   }
 
   async findByIdempotencyKey(
