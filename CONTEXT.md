@@ -22,6 +22,43 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+## ATUALIZACAO RAPIDA (2026-03-25) - CHECKLIST OPERACIONAL DO WEBHOOK NA PLUGNOTAS
+
+Fonte: `observabilidade real em producao` + `logs do backend` + `validacao manual`.
+
+Leitura consolidada:
+- o backend ja esta pronto para webhook em producao
+- o segredo no Render ja foi configurado corretamente
+- a tela `Observabilidade Fiscal` ja mostra:
+  - `Segredo: Configurado`
+  - `Polling Fallback: Ativo`
+  - `Sync Autorizado: Ativo`
+- porem, as ultimas emissoes reais ainda fecharam por:
+  - `polling`
+
+Evidencia operacional importante:
+- nas consultas de observabilidade ainda nao apareceu:
+  - `WEBHOOK_RECEIVED`
+  - `Ultima Origem: webhook`
+- nos logs do backend ainda nao apareceu:
+  - `POST /webhooks/fiscal`
+
+Conclusao correta em 25/03/2026:
+- o gargalo atual deixou de ser codigo
+- o proximo passo esta na configuracao operacional da PlugNotas
+
+Documento raiz criado para continuidade em casa:
+- `CHECKLIST_WEBHOOK_PLUGNOTAS_PRODUCAO.md`
+
+Uso recomendado:
+1. abrir o checklist no root do backend
+2. revisar painel da PlugNotas
+3. validar callback real
+4. emitir nova nota
+5. confirmar em observabilidade:
+   - `WEBHOOK_RECEIVED`
+   - `Ultima Origem: webhook`
+
 ## ATUALIZACAO RAPIDA (2026-03-24) - RODADA DO DIA SEM MUDANCA DE CONTRATO NO BACKEND
 
 Fonte: `observacao operacional` + `repositorio local`.
