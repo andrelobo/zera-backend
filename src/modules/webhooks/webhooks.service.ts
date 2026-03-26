@@ -7,7 +7,50 @@ import {
 } from '../../fiscal/infra/plugnotas/nfse.mapper';
 import { SyncNfseArtifactsService } from '../../fiscal/application/sync-nfse-artifacts.service';
 
+function normalizeCandidate(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
+function appendCandidate(target: string[], value: unknown) {
+  const normalized = normalizeCandidate(value);
+  if (!normalized || target.includes(normalized)) return;
+  target.push(normalized);
+}
+
+export function extractWebhookExternalIdCandidates(payload: any): string[] {
+  if (!payload) return [];
+
+  const normalized = Array.isArray(payload) ? payload[0] : payload;
+  const doc = Array.isArray(normalized?.documents)
+    ? normalized.documents[0]
+    : normalized?.documents;
+
+  const candidates: string[] = [];
+
+  // Prefer our own correlation key when present, then fall back to provider identifiers.
+  appendCandidate(candidates, normalized?.externalId);
+  appendCandidate(candidates, normalized?.idIntegracao);
+  appendCandidate(candidates, normalized?.protocolo);
+  appendCandidate(candidates, normalized?.protocol);
+  appendCandidate(candidates, normalized?.idNota);
+  appendCandidate(candidates, normalized?.id);
+  appendCandidate(candidates, doc?.externalId);
+  appendCandidate(candidates, doc?.idIntegracao);
+  appendCandidate(candidates, doc?.protocolo);
+  appendCandidate(candidates, doc?.protocol);
+  appendCandidate(candidates, doc?.idNota);
+  appendCandidate(candidates, doc?.id);
+
+  return candidates;
+}
+
 export function extractWebhookExternalId(payload: any): string | undefined {
+  return extractWebhookExternalIdCandidates(payload)[0];
+}
+
+function extractWebhookProviderReference(payload: any): string | undefined {
   if (!payload) return undefined;
 
   const normalized = Array.isArray(payload) ? payload[0] : payload;
@@ -16,19 +59,14 @@ export function extractWebhookExternalId(payload: any): string | undefined {
     : normalized?.documents;
 
   return (
-    normalized?.externalId ??
-    normalized?.protocolo ??
-    normalized?.protocol ??
-    normalized?.idIntegracao ??
-    normalized?.idNota ??
-    normalized?.id ??
-    doc?.externalId ??
-    doc?.protocolo ??
-    doc?.protocol ??
-    doc?.idIntegracao ??
-    doc?.idNota ??
-    doc?.id ??
-    undefined
+    normalizeCandidate(normalized?.protocolo) ??
+    normalizeCandidate(normalized?.protocol) ??
+    normalizeCandidate(normalized?.idNota) ??
+    normalizeCandidate(normalized?.id) ??
+    normalizeCandidate(doc?.protocolo) ??
+    normalizeCandidate(doc?.protocol) ??
+    normalizeCandidate(doc?.idNota) ??
+    normalizeCandidate(doc?.id)
   );
 }
 
@@ -87,9 +125,11 @@ export class WebhooksService {
   }
 
   private async handleSingleFiscalWebhook(payload: any) {
-    const externalId = extractWebhookExternalId(payload);
+    const candidateExternalIds = extractWebhookExternalIdCandidates(payload);
+    const externalId = candidateExternalIds[0];
     const rawStatus = extractPlugNotasStatus(payload);
     const status = mapPlugNotasStatusToDomain(rawStatus);
+    const providerReference = extractWebhookProviderReference(payload);
 
     if (!externalId) {
       this.logger.warn('Webhook fiscal ignorado: externalId ausente', {
@@ -104,18 +144,30 @@ export class WebhooksService {
       };
     }
 
-    const updateResult = await this.emissions.updateByExternalId({
-      externalId,
-      status: status ?? NfseEmissionStatus.PENDING,
-      providerResponse: payload,
-      provider: 'PLUGNOTAS',
-      lastWebhookAt: new Date(),
-      lastUpdateSource: 'webhook',
-    });
+    let matchedBy: string | null = null;
+    let updateResult = { matchedCount: 0, modifiedCount: 0 };
+
+    for (const candidate of candidateExternalIds) {
+      updateResult = await this.emissions.updateByExternalId({
+        externalId: candidate,
+        resolvedExternalId: providerReference,
+        status: status ?? NfseEmissionStatus.PENDING,
+        providerResponse: payload,
+        provider: 'PLUGNOTAS',
+        lastWebhookAt: new Date(),
+        lastUpdateSource: 'webhook',
+      });
+
+      if (updateResult.matchedCount) {
+        matchedBy = candidate;
+        break;
+      }
+    }
 
     if (!updateResult.matchedCount) {
       this.logger.warn('Webhook fiscal sem emissao elegivel para atualizar', {
         externalId,
+        candidates: candidateExternalIds,
         status: status ?? NfseEmissionStatus.PENDING,
       });
       return {
@@ -127,19 +179,22 @@ export class WebhooksService {
       };
     }
 
+    const resolvedExternalId = providerReference ?? matchedBy ?? externalId;
     const artifactSync = await this.syncArtifactsIfAuthorized(
-      externalId,
+      resolvedExternalId,
       status ?? NfseEmissionStatus.PENDING,
     );
 
     this.logger.log('Webhook fiscal processado', {
-      externalId,
+      externalId: resolvedExternalId,
+      matchedBy,
       status: status ?? NfseEmissionStatus.PENDING,
     });
 
     return {
       ok: true,
-      externalId,
+      externalId: resolvedExternalId,
+      matchedBy,
       providerStatus: rawStatus ?? null,
       mappedStatus: status ?? NfseEmissionStatus.PENDING,
       artifactSync,

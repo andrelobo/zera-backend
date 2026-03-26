@@ -45,6 +45,7 @@ describe('NfseEmissionRepository', () => {
 
     const result = await repo.updateByExternalId({
       externalId: 'note-id-123',
+      resolvedExternalId: 'protocol-123',
       status: NfseEmissionStatus.AUTHORIZED,
       provider: 'PLUGNOTAS',
       providerResponse: {
@@ -71,6 +72,7 @@ describe('NfseEmissionRepository', () => {
         ]),
       }),
       expect.objectContaining({
+        externalId: 'protocol-123',
         status: NfseEmissionStatus.AUTHORIZED,
         numeroNfse: '28',
         dpsNum: '41',

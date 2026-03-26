@@ -186,6 +186,7 @@ export class NfseEmissionRepository {
 
   async updateByExternalId(input: {
     externalId: string;
+    resolvedExternalId?: string;
     status: NfseEmissionStatus;
     providerResponse?: Record<string, any>;
     error?: string;
@@ -212,6 +213,7 @@ export class NfseEmissionRepository {
       error: input.error,
     };
 
+    if (input.resolvedExternalId !== undefined) update.externalId = input.resolvedExternalId;
     if (input.xmlBase64 !== undefined) update.xmlBase64 = input.xmlBase64;
     if (input.pdfBase64 !== undefined) update.pdfBase64 = input.pdfBase64;
     if (input.lastPolledAt !== undefined) update.lastPolledAt = input.lastPolledAt;
