@@ -22,6 +22,78 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+## ATUALIZACAO RAPIDA (2026-03-26) - webhook da PlugNotas comprovado via API, callback real capturado e match endurecido
+
+Fonte: `documentacao oficial da API PlugNotas` + `configuracao real` + `payload real capturado` + `codigo local` + `testes automatizados locais`.
+
+Leitura consolidada:
+- a duvida "sera que a PlugNotas realmente suporta/cadastra webhook neste fluxo?" deixou de existir
+- a documentacao oficial passou a ser lida corretamente como:
+  - existe webhook organizacional
+  - existe tambem rota de webhook por empresa
+  - a configuracao do callback e feita do lado da PlugNotas
+- isso confirma a leitura arquitetural correta:
+  - o `zera-backend` e o lado receptor/processador
+  - ele nao fazia provisionamento automatico desse webhook remoto
+
+Evidencia operacional nova e mais forte:
+- a configuracao real do callback foi aceita pela PlugNotas
+- a consulta do webhook passou a devolver:
+  - `https://zera-backend.onrender.com/webhooks/fiscal`
+  - `POST`
+  - header `x-webhook-token`
+- houve captura de payload real de callback com:
+  - `idIntegracao`
+  - `protocol`
+  - `id`
+  - `status = CONCLUIDO`
+  - `retorno.situacao = AUTORIZADA`
+
+Leitura correta do incidente observado no dia:
+- o callback real existiu
+- porem a emissao observada ainda terminou com:
+  - `Ultima Origem: polling`
+- isso mudou o diagnostico:
+  - o problema nao era mais "callback nao configurado"
+  - o problema passou a ser "match insuficiente do webhook no backend para esse payload real"
+
+Causa raiz identificada no codigo:
+- a emissao pendente era inicialmente correlacionada pela chave de negocio do ZERA:
+  - `referenciaExterna` / `idIntegracao`
+- o callback real veio tambem com identificadores finais do provider:
+  - `protocol`
+  - `id`
+- a ordem anterior do webhook priorizava identificadores do provider cedo demais
+- isso podia fazer o update por webhook nao encontrar a emissao correta antes do `polling`
+
+Mudanca aplicada localmente:
+- o webhook passou a tentar multiplos candidatos de identificacao
+- a prioridade ficou mais segura para o caso real:
+  - `externalId`
+  - `idIntegracao`
+  - depois `protocol` / `idNota` / `id`
+- quando o match acontece, o backend passa a persistir o identificador final do provider como `externalId`
+- o `polling` foi preservado integralmente como fallback
+
+Validacao local desta rodada:
+- `npm test -- src/modules/webhooks/webhooks.service.spec.ts src/fiscal/infra/mongo/repositories/nfse-emission.repository.spec.ts`
+- resultado:
+  - `15 passed, 15 total`
+- `npm run build`
+- build ok
+
+Regra operacional correta a partir de agora:
+1. nao voltar a tratar ausencia de `WEBHOOK_RECEIVED` como prova suficiente de "callback inexistente" sem antes olhar payload/configuracao real
+2. nao desligar `polling`
+3. subir o patch de endurecimento do match
+4. emitir nova NFSe real
+5. validar no front/observabilidade:
+   - `WEBHOOK_RECEIVED`
+   - `Ultima Origem: webhook`
+
+Documento local de apoio criado nesta rodada:
+- `docs/PLUGNOTAS_WEBHOOK_API_2026-03-26.md`
+
 ## ATUALIZACAO RAPIDA (2026-03-25) - SITUACAO CANONICA DE HOJE
 
 Fonte: `observabilidade real em producao` + `repositorio local` + `alinhamento com frontend`.

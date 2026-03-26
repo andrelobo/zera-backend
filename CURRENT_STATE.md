@@ -1,6 +1,76 @@
 # ZERA Backend – Current State
 
-Snapshot operacional do backend em **25/03/2026**.
+Snapshot operacional do backend em **26/03/2026**.
+
+## 0. Atualizacao rapida (26/03/2026) - callback real comprovado, match do webhook endurecido
+
+Fonte: `documentacao oficial da API PlugNotas` + `configuracao real na PlugNotas` + `payload real capturado` + `codigo local` + `testes locais` + `build local`.
+
+Leitura consolidada:
+- o webhook da PlugNotas deixou de ser hipotese e passou a ter evidencia operacional concreta
+- a configuracao do callback organizacional foi aceita pela API da PlugNotas
+- a consulta de configuracao passou a retornar:
+  - `url = https://zera-backend.onrender.com/webhooks/fiscal`
+  - `method = POST`
+  - header `x-webhook-token`
+- houve captura de payload real de callback da PlugNotas em producao com:
+  - `idIntegracao`
+  - `protocol`
+  - `id`
+  - `status = CONCLUIDO`
+  - `retorno.situacao = AUTORIZADA`
+
+O que esse payload real provou:
+- a PlugNotas esta sim disparando callback
+- a ausencia de `WEBHOOK_RECEIVED` na observabilidade daquela emissao especifica nao significou mais "callback inexistente"
+- o problema real observado no dia passou a ser:
+  - match insuficiente do webhook no backend antes do patch
+
+Causa raiz consolidada:
+- o callback real pode chegar com mais de um identificador relevante:
+  - chave de correlacao do ZERA:
+    - `idIntegracao`
+  - identificadores finais do provider:
+    - `protocol`
+    - `id`
+    - `idNota`
+- a ordem anterior do parser/atualizacao do webhook priorizava identificadores do provider cedo demais
+- isso podia impedir o match da emissao ainda pendente, que inicialmente estava correlacionada por `referenciaExterna` / `idIntegracao`
+- quando isso acontecia, a emissao acabava sendo fechada logo depois por `polling`
+
+Mudanca aplicada no codigo local:
+- o webhook agora tenta multiplos candidatos de match
+- a prioridade operacional ficou mais segura para o caso real:
+  - `externalId`
+  - `idIntegracao`
+  - depois identificadores finais do provider
+- quando o webhook encontra a emissao, o backend passa a persistir o identificador final do provider como `externalId`
+- nenhuma mudanca foi feita em:
+  - contrato do endpoint `POST /webhooks/fiscal`
+  - fallback por `polling`
+  - regra de emissao
+
+Validacao executada:
+- `npm test -- src/modules/webhooks/webhooks.service.spec.ts src/fiscal/infra/mongo/repositories/nfse-emission.repository.spec.ts`
+- resultado:
+  - `15 passed, 15 total`
+- `npm run build`
+- build ok
+
+Leitura operacional correta agora:
+1. callback real da PlugNotas esta comprovado
+2. o gargalo de 26/03 nao era mais "cadastro de webhook ausente"
+3. o gargalo virou robustez de match entre callback real e emissao pendente
+4. o backend local foi endurecido para esse caso real sem desligar `polling`
+5. a homologacao final ainda depende de:
+   - deploy dessa rodada
+   - nova emissao real
+   - observabilidade mostrando:
+     - `WEBHOOK_RECEIVED`
+     - `lastUpdateSource = webhook`
+
+Documentacao local criada nesta rodada:
+- `docs/PLUGNOTAS_WEBHOOK_API_2026-03-26.md`
 
 ## 0. Atualizacao rapida (25/03/2026) - webhook pronto internamente, pendente externamente
 
