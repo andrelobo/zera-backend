@@ -22,6 +22,29 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+## ATUALIZACAO RAPIDA (2026-03-25) - SITUACAO CANONICA DE HOJE
+
+Fonte: `observabilidade real em producao` + `repositorio local` + `alinhamento com frontend`.
+
+Leitura consolidada:
+- a situacao do dia ficou claramente dividida em duas frentes:
+  - backend: aguardando callback real da PlugNotas
+  - frontend: investigando integracoes assistidas e equivalencia de tela
+- no backend, a leitura canonica correta agora e:
+  - codigo de webhook ja esta suficientemente pronto
+  - polling segue fechando as emissoes reais
+  - o proximo gargalo nao e mais implementacao interna, e sim configuracao operacional externa
+- em especial:
+  - ainda nao apareceu `POST /webhooks/fiscal` nos logs operacionais esperados
+  - ainda nao apareceu `WEBHOOK_RECEIVED` como evidencia real de callback produtivo
+
+Implicacao pratica:
+- nao ha indicio forte de que o backend precise de nova rodada ampla de codigo hoje
+- o proximo passo maduro continua sendo:
+  - validar callback na PlugNotas
+  - emitir nota real
+  - confirmar update por webhook em observabilidade
+
 ## ATUALIZACAO RAPIDA (2026-03-25) - CHECKLIST OPERACIONAL DO WEBHOOK NA PLUGNOTAS
 
 Fonte: `observabilidade real em producao` + `logs do backend` + `validacao manual`.
