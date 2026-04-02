@@ -22,6 +22,49 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+## ATUALIZACAO RAPIDA (2026-04-01) - PROPOSTA DE ARQUITETURA DE IA REGISTRADA PARA DISCUSSAO FUTURA
+
+Fonte: `discussao arquitetural` + `analise operacional do momento`.
+
+Leitura consolidada:
+- foi registrada uma proposta de arquitetura de IA para o ZERA em:
+  - `docs/PROPOSTA_ARQUITETURA_IA_ZERA.md`
+- essa proposta **nao** deve ser lida como decisao aprovada nem como roadmap ja iniciado
+- o objetivo desta rodada foi apenas:
+  - organizar a discussao
+  - separar fases
+  - explicitar guardrails
+
+Direcao proposta no documento:
+- tratar IA como `copiloto fiscal/operacional`, nao como agente autonomo unico
+- separar em frentes:
+  - `ai-insights`
+  - `ai-recommendations`
+  - `ai-memory`
+  - `automation-rules`
+  - `automation-runner`
+- manter a regra central:
+  - IA sugere e explica
+  - backend valida
+  - automacao fiscal so existe com auditoria, idempotencia e autorizacao explicita
+
+Leitura operacional correta hoje:
+- backend segue bem posicionado para uma futura frente de IA
+- porem isso ainda **nao** deve entrar na linha de fogo da operacao atual
+- a prioridade real continua sendo:
+  - preservacao do motor fiscal
+  - estabilidade de producao
+  - homologacao final do webhook
+
+Regra canonica desta frente:
+- considerar IA como proposta de evolucao
+- nao misturar essa discussao com alteracoes urgentes de producao
+- qualquer implementacao futura deve comecar por:
+  - dicas
+  - memoria por empresa
+  - recomendacoes explicaveis
+- emissao automatica recorrente fica como fase posterior e de risco mais alto
+
 ## ATUALIZACAO RAPIDA (2026-03-26) - webhook da PlugNotas comprovado via API, callback real capturado e match endurecido
 
 Fonte: `documentacao oficial da API PlugNotas` + `configuracao real` + `payload real capturado` + `codigo local` + `testes automatizados locais`.
