@@ -1,6 +1,41 @@
 # ZERA Backend – Current State
 
-Snapshot operacional do backend em **26/03/2026**.
+Snapshot operacional do backend em **07/04/2026**.
+
+## 0. Atualizacao rapida (07/04/2026) - webhook pronto por dentro, ainda nao comprovado ponta a ponta
+
+Fonte: `observabilidade real` + `logs reais do Render` + `codigo local` + `testes locais`.
+
+Leitura consolidada:
+- o backend continua tecnicamente pronto para webhook:
+  - segredo configurado
+  - header configurado
+  - diagnostico exposto
+  - observabilidade por `externalId` funcionando
+  - `polling` preservado como fallback
+- mas, no estado atual, a prova operacional final ainda nao apareceu
+
+O que foi observado de forma real:
+- a observabilidade mostrou:
+  - `Segredo: Configurado`
+  - `Polling Fallback: Ativo`
+  - `Sync Autorizado: Ativo`
+- emissões recentes continuaram terminando com:
+  - `Ultima Origem: polling`
+  - sem `WEBHOOK_RECEIVED`
+- os logs reais compartilhados do Render nao mostraram `POST /webhooks/fiscal` no recorte analisado
+
+Leitura operacional correta agora:
+1. o backend esta pronto internamente
+2. o `polling` continua sendo quem fecha as emissoes reais observadas
+3. ainda nao e correto afirmar "webhook 100% homologado"
+4. a frente atual e operacional:
+   - revisar PlugNotas com `CHECKLIST_WEBHOOK_PLUGNOTAS_PRODUCAO.md`
+   - emitir nova nota
+   - confirmar:
+     - `POST /webhooks/fiscal`
+     - `WEBHOOK_RECEIVED`
+     - `lastUpdateSource = webhook`
 
 ## 0. Atualizacao rapida (26/03/2026) - callback real comprovado, match do webhook endurecido
 

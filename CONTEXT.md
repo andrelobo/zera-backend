@@ -22,6 +22,51 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+## ATUALIZACAO RAPIDA (2026-04-07) - leitura canonica corrigida do webhook em producao
+
+Fonte: `observabilidade real` + `logs reais do Render` + `codigo local` + `testes locais`.
+
+Leitura consolidada:
+- a infraestrutura interna do webhook ficou mais madura do que antes:
+  - segredo configurado
+  - header configurado
+  - endpoint diagnostico exposto
+  - observabilidade por `externalId` em uso real
+- porem, a leitura operacional correta hoje ainda **nao** e "webhook homologado de ponta a ponta"
+
+Evidencia real mais forte desta rodada:
+- a tela `Observabilidade Fiscal` passou a mostrar:
+  - `Segredo: Configurado`
+  - `Polling Fallback: Ativo`
+  - `Sync Autorizado: Ativo`
+- emissoes reais recentes continuaram fechando com:
+  - `Ultima Origem: polling`
+  - sem `WEBHOOK_RECEIVED`
+- nos logs reais enviados do Render, no intervalo analisado, apareceram:
+  - `GET /nfse/webhook/diagnostico`
+  - `GET /nfse/external/:externalId/observability`
+  - healthchecks em `/`
+- no mesmo recorte **nao** apareceu:
+  - `POST /webhooks/fiscal`
+
+Leitura canonica correta a partir daqui:
+- nao ha prova operacional suficiente de callback produtivo chegando e sendo processado pelo backend nesse estado
+- portanto, ainda nao e correto afirmar:
+  - "webhook 100% homologado"
+- a afirmacao madura e:
+  - backend pronto internamente
+  - polling funcionando em producao
+  - callback da PlugNotas ainda pendente de prova conclusiva em runtime
+
+Implicacao pratica:
+1. nao desligar `polling`
+2. usar a observabilidade como fonte de verdade
+3. revisar configuracao real da PlugNotas com o checklist do root
+4. so promover o webhook como caminho comprovado quando houver:
+   - `POST /webhooks/fiscal` nos logs
+   - `WEBHOOK_RECEIVED`
+   - `Ultima Origem: webhook`
+
 ## ATUALIZACAO RAPIDA (2026-04-01) - PROPOSTA DE ARQUITETURA DE IA REGISTRADA PARA DISCUSSAO FUTURA
 
 Fonte: `discussao arquitetural` + `analise operacional do momento`.
