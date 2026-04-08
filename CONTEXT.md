@@ -22,6 +22,42 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+## ATUALIZACAO RAPIDA (2026-04-08) - webhook homologado em producao apos alinhamento do segredo compartilhado
+
+Fonte: `payload real da PlugNotas` + `diagnostico real do webhook` + `observabilidade real do frontend`.
+
+Leitura consolidada:
+- a auditoria adicionada no backend cumpriu exatamente o papel esperado:
+  - deixou de haver suposicao
+  - passou a haver causa raiz objetiva na borda HTTP
+- o diagnostico real mostrou:
+  - `reason = invalid_shared_secret`
+  - `tokenAccepted = false`
+- isso comprovou que:
+  - a PlugNotas estava chamando o endpoint certo
+  - o backend estava recebendo o callback
+  - o bloqueio estava no valor do segredo, nao na rota nem no match
+
+Correcao operacional aplicada:
+- o header `x-webhook-token` configurado na PlugNotas foi alinhado ao valor real de `WEBHOOK_SHARED_SECRET` no Render
+
+Evidencia final de homologacao:
+- nova emissao real de **08/04/2026** passou a mostrar:
+  - `Ultima Origem: webhook`
+  - `WEBHOOK_RECEIVED`
+  - `ARTIFACTS_SYNCED`
+  - `Tentativas de Polling: 0`
+- tempos observados nessa emissao:
+  - criada no ZERA: `13:20:54`
+  - callback aplicado: `13:21:07`
+  - finalizada no app: `13:21:09`
+
+Leitura canonica correta a partir daqui:
+1. webhook da PlugNotas esta homologado em producao no ZERA
+2. o problema principal dessa frente nao era ausencia de callback, e sim segredo divergente
+3. a auditoria de `lastAudit` / `lastSuccess` / `lastFailure` continua valiosa para incidentes futuros
+4. `polling` permanece ligado como fallback de seguranca e nao deve ser desligado nesta rodada
+
 ## ATUALIZACAO RAPIDA (2026-04-08) - auditoria de callbacks adicionada para fechar a homologacao do webhook
 
 Fonte: `payload real da PlugNotas` + `observabilidade real` + `codigo local` + `testes locais`.

@@ -2,6 +2,36 @@
 
 Snapshot operacional do backend em **08/04/2026**.
 
+## 0. Atualizacao rapida (08/04/2026) - webhook homologado em producao com callback real aplicado
+
+Fonte: `payload real da PlugNotas` + `diagnostico real do webhook` + `observabilidade real no frontend`.
+
+Leitura consolidada:
+- o webhook da PlugNotas agora esta **homologado na pratica** no ambiente produtivo
+- a causa raiz do bloqueio anterior foi identificada e fechada:
+  - `invalid_shared_secret`
+  - `tokenAccepted: false`
+  - descompasso entre `WEBHOOK_SHARED_SECRET` no Render e `x-webhook-token` configurado na PlugNotas
+- depois do alinhamento do segredo, uma nova emissao real de **08/04/2026** passou a mostrar:
+  - `Ultima Origem: webhook`
+  - `WEBHOOK_RECEIVED`
+  - `ARTIFACTS_SYNCED`
+  - `Tentativas de Polling: 0`
+
+Evidencia operacional final:
+- emissao criada: `13:20:54`
+- callback aplicado: `13:21:07`
+- emissao finalizada no ZERA: `13:21:09`
+- tempo ponta a ponta observado no app:
+  - cerca de `15 segundos`
+
+Conclusao operacional correta agora:
+1. a rota `POST /webhooks/fiscal` esta recebendo callback real em producao
+2. o segredo compartilhado esta validando corretamente apos o ajuste
+3. o update da emissao por webhook esta funcionando
+4. o sync oportunista de XML/PDF tambem funcionou nessa emissao homologada
+5. `polling` deve continuar ligado apenas como fallback, nao como trilha principal esperada
+
 ## 0. Atualizacao rapida (08/04/2026) - auditoria de recebimento do webhook adicionada para fechar homologacao
 
 Fonte: `payload real da PlugNotas em 08/04` + `observabilidade real` + `codigo local` + `testes locais`.

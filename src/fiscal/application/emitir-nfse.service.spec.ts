@@ -283,4 +283,50 @@ describe('EmitirNfseService idempotency', () => {
     expect(provider.emitirNfse).toHaveBeenCalledTimes(1);
     expect(provider.emitirNfse.mock.calls[0][0]).not.toHaveProperty('parametroIssAplicado');
   });
+
+  it('persists provider request and rejection body when PlugNotas returns 400', async () => {
+    const created = { _id: { toString: () => 'em-793' } };
+    const repository = {
+      findByReference: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue(created),
+      updateEmission: jest.fn().mockResolvedValue(undefined),
+    };
+    const rejectionBody = [{ Codigo: 'E001', Descricao: 'Servico invalido' }];
+    const provider = {
+      providerName: 'PLUGNOTAS',
+      emitirNfse: jest.fn().mockRejectedValue({
+        status: 400,
+        message: 'PlugNotas API error: 400',
+        body: rejectionBody,
+      }),
+    };
+
+    const empresasService = makeEmpresasServiceMock();
+    const tomadoresService = makeTomadoresServiceMock();
+    const service = new EmitirNfseService(
+      provider as any,
+      repository as any,
+      empresasService as any,
+      tomadoresService as any,
+    );
+
+    await expect(service.execute(makeInput() as any)).rejects.toMatchObject({
+      response: {
+        message: 'PLUGNOTAS rejected the request',
+        provider: rejectionBody,
+      },
+    });
+
+    expect(repository.updateEmission).toHaveBeenLastCalledWith(
+      'em-793',
+      expect.objectContaining({
+        status: NfseEmissionStatus.ERROR,
+        error: 'PlugNotas API error: 400',
+        providerRequest: expect.objectContaining({
+          payload: expect.any(Array),
+        }),
+        providerResponse: rejectionBody,
+      }),
+    );
+  });
 });

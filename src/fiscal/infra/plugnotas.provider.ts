@@ -170,6 +170,12 @@ export class PlugNotasProvider implements FiscalProvider {
         this.logger.warn('PlugNotas returned 400 with protocol/protocolo; treating as PENDING');
         response = body;
       } else {
+        if (error && typeof error === 'object') {
+          Object.assign(error, {
+            providerRequest: { payload },
+            providerResponse: body ?? null,
+          });
+        }
         throw error;
       }
     }

@@ -30,6 +30,19 @@ function optionalNumberFromEnv(value: string | undefined): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (
+    error &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof (error as { message?: unknown }).message === 'string'
+  ) {
+    return (error as { message: string }).message;
+  }
+  return String(error);
+}
+
 function booleanLike(value: unknown): boolean | undefined {
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') {
@@ -181,9 +194,12 @@ export class EmitirNfseService {
       throw error;
     }
 
+    let providerRequestForAudit: Record<string, any> | undefined;
+
     try {
       await this.upsertTomadorFromEmission(enrichedInput);
       const { parametroIssAplicado: _parametroIssAplicado, ...providerInput } = enrichedInput;
+      providerRequestForAudit = { payload: [providerInput] };
       const result = await this.provider.emitirNfse(providerInput);
 
       await this.repository.updateEmission(emission._id.toString(), {
@@ -200,10 +216,19 @@ export class EmitirNfseService {
         idempotentReplay: false,
       };
     } catch (error: any) {
-      const msg = error instanceof Error ? error.message : String(error);
+      const msg = extractErrorMessage(error);
+      const providerResponse =
+        error?.providerResponse ??
+        error?.body ??
+        undefined;
+      const providerRequest =
+        error?.providerRequest ??
+        providerRequestForAudit;
       await this.repository.updateEmission(emission._id.toString(), {
         status: NfseEmissionStatus.ERROR,
         error: msg,
+        providerRequest,
+        providerResponse,
       });
 
       const status = error?.status;
