@@ -22,6 +22,41 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+## ATUALIZACAO RAPIDA (2026-04-08) - auditoria de callbacks adicionada para fechar a homologacao do webhook
+
+Fonte: `payload real da PlugNotas` + `observabilidade real` + `codigo local` + `testes locais`.
+
+Leitura consolidada:
+- uma emissao real de **08/04/2026** voltou a mostrar o mesmo padrao operacional:
+  - autorizacao do provider aconteceu rapidamente
+  - a percepcao final no ZERA ficou dependente do `polling`
+  - a observabilidade continuou sem `WEBHOOK_RECEIVED`
+- isso reforcou a leitura canonica:
+  - callback da PlugNotas existe
+  - mas a prova final no backend ainda precisava de uma camada melhor de evidencia
+
+Mudanca aplicada no codigo local:
+- entrou uma colecao de auditoria resumida para callbacks de `POST /webhooks/fiscal`
+- o handler passou a gravar, sem bloquear o fluxo fiscal:
+  - recebimentos validos
+  - falhas por segredo invalido
+  - processamentos sem match
+  - identificadores relevantes do payload
+- o diagnostico em `GET /nfse/webhook/diagnostico` agora inclui:
+  - `lastAudit`
+  - `lastSuccess`
+  - `lastFailure`
+
+Como interpretar daqui para frente:
+1. `lastAudit` parado apos nova emissao sugere callback nao entregue ao backend
+2. `lastFailure.reason = invalid_shared_secret` aponta falha de token/header
+3. `lastSuccess` atualizado sem `WEBHOOK_RECEIVED` na emissao aponta problema residual de match/update
+4. `polling` segue obrigatorio ate aparecer evidência real de callback aplicando update na emissao
+
+Validacao local desta rodada:
+- `33 passed, 33 total`
+- `npm run build` ok
+
 ## ATUALIZACAO RAPIDA (2026-04-07) - leitura canonica corrigida do webhook em producao
 
 Fonte: `observabilidade real` + `logs reais do Render` + `codigo local` + `testes locais`.

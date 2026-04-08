@@ -11,6 +11,11 @@ describe('FiscalController', () => {
     findByCodigo: jest.fn(),
   };
   const syncNfseArtifactsService = { execute: jest.fn() };
+  const webhookAudits = {
+    getLatestByRoute: jest.fn(),
+    getLatestSuccessByRoute: jest.fn(),
+    getLatestFailureByRoute: jest.fn(),
+  };
   const repo = {
     findPaginated: jest.fn(),
     getBiSummary: jest.fn(),
@@ -34,6 +39,7 @@ describe('FiscalController', () => {
       servicoCatalog as any,
       syncNfseArtifactsService as any,
       repo as any,
+      webhookAudits as any,
       provider as any,
     );
   });
@@ -215,11 +221,14 @@ describe('FiscalController', () => {
     });
   });
 
-  it('returns webhook diagnostics for homologation', () => {
+  it('returns webhook diagnostics for homologation', async () => {
     delete process.env.WEBHOOK_SHARED_SECRET;
     delete process.env.WEBHOOK_SHARED_SECRET_HEADER;
+    webhookAudits.getLatestByRoute.mockResolvedValue(null);
+    webhookAudits.getLatestSuccessByRoute.mockResolvedValue(null);
+    webhookAudits.getLatestFailureByRoute.mockResolvedValue(null);
 
-    expect(controller.getWebhookDiagnostico()).toEqual({
+    await expect(controller.getWebhookDiagnostico()).resolves.toEqual({
       route: '/webhooks/fiscal',
       sharedSecretConfigured: false,
       sharedSecretHeader: 'x-webhook-token',
@@ -227,12 +236,36 @@ describe('FiscalController', () => {
       artifactSyncOnAuthorizedWebhook: true,
       observabilityCheck: '/nfse/:id/observability',
       providerResponseCheck: '/nfse/:id/provider-response',
+      lastAudit: null,
+      lastSuccess: null,
+      lastFailure: null,
     });
 
     process.env.WEBHOOK_SHARED_SECRET = 'segredo';
     process.env.WEBHOOK_SHARED_SECRET_HEADER = 'x-custom-token';
+    webhookAudits.getLatestByRoute.mockResolvedValue({
+      id: 'wa-1',
+      route: '/webhooks/fiscal',
+      ok: false,
+      reason: 'invalid_shared_secret',
+      createdAt: new Date('2026-04-08T15:00:00.000Z'),
+    });
+    webhookAudits.getLatestSuccessByRoute.mockResolvedValue({
+      id: 'wa-2',
+      route: '/webhooks/fiscal',
+      ok: true,
+      resolvedExternalId: 'protocol-1',
+      createdAt: new Date('2026-04-08T15:01:00.000Z'),
+    });
+    webhookAudits.getLatestFailureByRoute.mockResolvedValue({
+      id: 'wa-1',
+      route: '/webhooks/fiscal',
+      ok: false,
+      reason: 'invalid_shared_secret',
+      createdAt: new Date('2026-04-08T15:00:00.000Z'),
+    });
 
-    expect(controller.getWebhookDiagnostico()).toEqual({
+    await expect(controller.getWebhookDiagnostico()).resolves.toEqual({
       route: '/webhooks/fiscal',
       sharedSecretConfigured: true,
       sharedSecretHeader: 'x-custom-token',
@@ -240,6 +273,27 @@ describe('FiscalController', () => {
       artifactSyncOnAuthorizedWebhook: true,
       observabilityCheck: '/nfse/:id/observability',
       providerResponseCheck: '/nfse/:id/provider-response',
+      lastAudit: {
+        id: 'wa-1',
+        route: '/webhooks/fiscal',
+        ok: false,
+        reason: 'invalid_shared_secret',
+        createdAt: new Date('2026-04-08T15:00:00.000Z'),
+      },
+      lastSuccess: {
+        id: 'wa-2',
+        route: '/webhooks/fiscal',
+        ok: true,
+        resolvedExternalId: 'protocol-1',
+        createdAt: new Date('2026-04-08T15:01:00.000Z'),
+      },
+      lastFailure: {
+        id: 'wa-1',
+        route: '/webhooks/fiscal',
+        ok: false,
+        reason: 'invalid_shared_secret',
+        createdAt: new Date('2026-04-08T15:00:00.000Z'),
+      },
     });
 
     delete process.env.WEBHOOK_SHARED_SECRET;

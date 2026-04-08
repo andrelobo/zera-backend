@@ -20,10 +20,18 @@ import { PlugNotasNfseApi } from '../../fiscal/infra/plugnotas/nfse.api';
 import { PlugNotasPrerequisitesService } from '../../fiscal/infra/plugnotas/prerequisites.service';
 import { EmpresasModule } from '../empresas/empresas.module';
 import { TomadoresModule } from '../tomadores/tomadores.module';
+import { WebhookDeliveryAuditRepository } from '../webhooks/webhook-delivery-audit.repository';
+import {
+  WebhookDeliveryAudit,
+  WebhookDeliveryAuditSchema,
+} from '../webhooks/schemas/webhook-delivery-audit.schema';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: NfseEmission.name, schema: NfseEmissionSchema }]),
+    MongooseModule.forFeature([
+      { name: NfseEmission.name, schema: NfseEmissionSchema },
+      { name: WebhookDeliveryAudit.name, schema: WebhookDeliveryAuditSchema },
+    ]),
     EmpresasModule,
     TomadoresModule,
   ],
@@ -39,6 +47,7 @@ import { TomadoresModule } from '../tomadores/tomadores.module';
     PlugNotasHttp,
     PlugNotasNfseApi,
     PlugNotasPrerequisitesService,
+    WebhookDeliveryAuditRepository,
     {
       provide: 'FiscalProvider',
       useClass: PlugNotasProvider,

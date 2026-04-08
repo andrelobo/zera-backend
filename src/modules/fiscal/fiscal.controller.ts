@@ -39,6 +39,7 @@ import { NfseEmissionStatus } from '../../fiscal/domain/types/nfse-emission-stat
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/guards/roles.decorator';
+import { WebhookDeliveryAuditRepository } from '../webhooks/webhook-delivery-audit.repository';
 
 class CancelarNfseDto {
   @ApiPropertyOptional({
@@ -109,6 +110,7 @@ export class FiscalController {
     private readonly servicoCatalog: ServicoCatalogService,
     private readonly syncNfseArtifactsService: SyncNfseArtifactsService,
     private readonly repo: NfseEmissionRepository,
+    private readonly webhookAudits: WebhookDeliveryAuditRepository,
     @Inject('FiscalProvider')
     private readonly provider: FiscalProvider,
   ) {}
@@ -520,15 +522,25 @@ export class FiscalController {
 
   @Get('webhook/diagnostico')
   @ApiOperation({ summary: 'Diagnostico operacional do webhook fiscal' })
-  getWebhookDiagnostico() {
+  async getWebhookDiagnostico() {
+    const route = '/webhooks/fiscal';
+    const [lastAudit, lastSuccess, lastFailure] = await Promise.all([
+      this.webhookAudits.getLatestByRoute(route),
+      this.webhookAudits.getLatestSuccessByRoute(route),
+      this.webhookAudits.getLatestFailureByRoute(route),
+    ]);
+
     return {
-      route: '/webhooks/fiscal',
+      route,
       sharedSecretConfigured: Boolean(process.env.WEBHOOK_SHARED_SECRET),
       sharedSecretHeader: process.env.WEBHOOK_SHARED_SECRET_HEADER ?? 'x-webhook-token',
       pollingFallbackEnabled: true,
       artifactSyncOnAuthorizedWebhook: true,
       observabilityCheck: '/nfse/:id/observability',
       providerResponseCheck: '/nfse/:id/provider-response',
+      lastAudit,
+      lastSuccess,
+      lastFailure,
     };
   }
 

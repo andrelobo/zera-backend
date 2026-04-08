@@ -1,6 +1,48 @@
 # ZERA Backend – Current State
 
-Snapshot operacional do backend em **07/04/2026**.
+Snapshot operacional do backend em **08/04/2026**.
+
+## 0. Atualizacao rapida (08/04/2026) - auditoria de recebimento do webhook adicionada para fechar homologacao
+
+Fonte: `payload real da PlugNotas em 08/04` + `observabilidade real` + `codigo local` + `testes locais`.
+
+Leitura consolidada:
+- a PlugNotas continuou mostrando evidencia de callback real no lado deles
+- a emissao observada no ZERA ainda terminou com:
+  - `Ultima Origem: polling`
+  - sem `WEBHOOK_RECEIVED`
+- isso manteve a homologacao do webhook como `pendente`
+
+Mudanca aplicada no backend local:
+- foi adicionada uma auditoria resumida de entregas do webhook em colecao separada
+- o handler agora registra, em modo best-effort:
+  - callback recebido
+  - callback rejeitado por segredo invalido
+  - callback processado com sucesso ou sem match
+  - `requestExternalId`
+  - lista de `candidateExternalIds`
+  - `providerStatus`
+  - `mappedStatus`
+  - `matchedBy`
+  - `resolvedExternalId`
+- o endpoint `GET /nfse/webhook/diagnostico` agora expõe:
+  - `lastAudit`
+  - `lastSuccess`
+  - `lastFailure`
+
+Validacao executada:
+- `npm test -- src/modules/webhooks/handlers/webhook.handler.spec.ts src/modules/fiscal/fiscal.controller.spec.ts src/modules/webhooks/webhooks.service.spec.ts src/fiscal/infra/mongo/repositories/nfse-emission.repository.spec.ts`
+- resultado:
+  - `33 passed, 33 total`
+- `npm run build`
+- build ok
+
+Leitura operacional correta agora:
+1. a proxima emissao real deve ser lida primeiro pelo diagnostico enriquecido
+2. se `lastAudit` nao mudar, o callback nao chegou ao backend
+3. se `lastFailure` mudar para `invalid_shared_secret`, o problema e token/header
+4. se `lastSuccess` aparecer mas a emissao seguir em `polling`, o problema vira match/update residual
+5. `polling` continua ligado ate aparecer prova real de `WEBHOOK_RECEIVED`
 
 ## 0. Atualizacao rapida (07/04/2026) - webhook pronto por dentro, ainda nao comprovado ponta a ponta
 
