@@ -2,6 +2,46 @@
 
 Snapshot operacional do backend em **08/04/2026**.
 
+## 0. Atualizacao rapida (09/04/2026) - kit local de skills criado para desenvolvimento fiscal seguro
+
+Fonte: `estrutura local em .codex/skills` + `validacao com quick_validate.py`.
+
+Leitura consolidada:
+- o backend agora possui um conjunto local de skills focadas no coracao fiscal do produto
+- a intencao desta rodada foi transformar aprendizado operacional recente em guias reutilizaveis para desenvolvimento, diagnostico e teste
+
+Skills disponiveis localmente:
+- `zera-diagnose-emission`
+- `zera-feature-safe-builder`
+- `zera-payload-builder`
+- `zera-provider-diagnose`
+- `zera-webhook-debug`
+- `zera-polling-analysis`
+
+Leitura correta desse kit:
+- nao e documentacao de negocio para usuario final
+- e infraestrutura de trabalho para agentes e desenvolvimento assistido
+- foi desenhado para:
+  - reduzir chute
+  - melhorar triagem
+  - separar diagnostico por camada
+  - preservar a regra de producao sem regressao
+
+Validacao executada:
+- `quick_validate.py` em todas as skills locais
+- resultado:
+  - todas validas
+
+Regra operacional desta rodada:
+1. usar `zera-diagnose-emission` para triagem inicial
+2. usar skills especializadas quando o caso cair claramente em:
+   - implementacao segura
+   - payload fiscal
+   - provider
+   - webhook
+   - polling
+3. manter `CURRENT_STATE.md` como fonte de verdade do estado recente, acima de memoria antiga embutida em skill
+
 ## 0. Atualizacao rapida (08/04/2026) - webhook homologado em producao com callback real aplicado
 
 Fonte: `payload real da PlugNotas` + `diagnostico real do webhook` + `observabilidade real no frontend`.

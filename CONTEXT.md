@@ -22,6 +22,42 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+## ATUALIZACAO RAPIDA (2026-04-09) - kit de skills local criado para desenvolvimento fiscal orientado por risco
+
+Fonte: `estrutura local em .codex/skills` + `validacao automatica das skills`.
+
+Leitura consolidada:
+- foi criado um kit local de skills para apoiar desenvolvimento e diagnostico do backend fiscal do ZERA
+- essa frente nasceu da necessidade real de separar melhor as camadas de problema e de execucao no dia a dia:
+  - triagem
+  - implementacao segura
+  - payload
+  - provider
+  - webhook
+  - polling
+
+Skills registradas nesta rodada:
+- `zera-diagnose-emission`
+- `zera-feature-safe-builder`
+- `zera-payload-builder`
+- `zera-provider-diagnose`
+- `zera-webhook-debug`
+- `zera-polling-analysis`
+
+Leitura arquitetural correta:
+- essas skills nao substituem `CURRENT_STATE.md` nem `CONTEXT.md`
+- elas funcionam como camada procedural de trabalho para agentes
+- a regra definida foi:
+  - skill ajuda no metodo
+  - docs canonicos ajudam no estado do mundo
+
+Decisao importante desta rodada:
+- preferir multiplas skills pequenas e especializadas, em vez de uma skill gigante e generica
+- isso reduz ambiguidade de disparo e melhora a especializacao por camada
+
+Validacao:
+- todas as skills foram validadas localmente com `quick_validate.py`
+
 ## ATUALIZACAO RAPIDA (2026-04-08) - webhook homologado em producao apos alinhamento do segredo compartilhado
 
 Fonte: `payload real da PlugNotas` + `diagnostico real do webhook` + `observabilidade real do frontend`.
