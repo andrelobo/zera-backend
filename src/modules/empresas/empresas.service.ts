@@ -1,12 +1,9 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { createCipheriv, createDecipheriv, createHash, randomBytes, X509Certificate } from 'crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
 import type { File as MulterFile } from 'multer';
 import { Model } from 'mongoose';
-import { execFileSync } from 'child_process';
-import { unlinkSync, writeFileSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import * as forge from 'node-forge';
 import { PlugNotasCnpjApi } from '../../fiscal/infra/plugnotas/cnpj.api';
 import {
   NfseEmission,
@@ -1688,50 +1685,27 @@ export class EmpresasService {
     originalName: string,
     senhaCertificado: string,
   ): CertificateExpirationResult {
-    const extension = this.extractFileExtension(originalName) || 'pfx';
-    const tempFile = join(
-      tmpdir(),
-      `zera-cert-${Date.now()}-${randomBytes(6).toString('hex')}.${extension}`,
-    );
-
     try {
-      writeFileSync(tempFile, buffer);
+      const binary = buffer.toString('binary');
+      const asn1 = forge.asn1.fromDer(binary);
+      const pkcs12 = forge.pkcs12.pkcs12FromAsn1(asn1, false, senhaCertificado);
+      const bags = pkcs12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag] ?? [];
+      const certificateBag = bags.find((bag) => Boolean(bag.cert));
+      const notAfter = certificateBag?.cert?.validity?.notAfter;
 
-      const certificatePem = execFileSync(
-        'openssl',
-        [
-          'pkcs12',
-          '-in',
-          tempFile,
-          '-clcerts',
-          '-nokeys',
-          '-passin',
-          `pass:${senhaCertificado}`,
-        ],
-        { encoding: 'utf8' },
-      );
-
-      const certificate = new X509Certificate(certificatePem);
-      const expiresAt = new Date(certificate.validTo);
-
-      if (Number.isNaN(expiresAt.getTime())) {
+      if (!(notAfter instanceof Date) || Number.isNaN(notAfter.getTime())) {
         return { expiresAt: null, status: 'extract_failed', error: 'invalid_certificate_validity' };
       }
-      return { expiresAt, status: 'ok' };
+
+      return { expiresAt: notAfter, status: 'ok' };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Falha ao extrair validade do certificado ${originalName}: ${message}`);
       return {
         expiresAt: null,
-        status: message.includes('spawnSync openssl ENOENT') ? 'openssl_missing' : 'extract_failed',
+        status: 'extract_failed',
         error: message,
       };
-    } finally {
-      try {
-        unlinkSync(tempFile);
-      } catch {
-        // best-effort cleanup
-      }
     }
   }
 
