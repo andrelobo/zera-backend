@@ -88,6 +88,13 @@ Evidencia final de homologacao:
   - callback aplicado: `13:21:07`
   - finalizada no app: `13:21:09`
 
+Ganho operacional observado:
+- antes da homologacao efetiva do webhook, a percepcao de fechamento ate `AUTORIZADA` podia ficar em torno de **1min20s**
+- apos o alinhamento do segredo e a aplicacao real do callback, esse tempo caiu para cerca de **15s**
+- leitura correta:
+  - nao houve mudanca no motor fiscal
+  - o ganho veio da eliminacao da dependencia pratica do `polling` para fechar o ciclo visual da emissao
+
 Leitura canonica correta a partir daqui:
 1. webhook da PlugNotas esta homologado em producao no ZERA
 2. o problema principal dessa frente nao era ausencia de callback, e sim segredo divergente
