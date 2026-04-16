@@ -338,6 +338,8 @@ export class EmpresasService {
       providerPrestador.certificado ?? providerPrestador.certificadoId,
     );
 
+    const legacyExpirationDiag = this.inspectLegacyCertificateExpiration(certRaw);
+
     return {
       found: true,
       empresa: {
@@ -350,6 +352,8 @@ export class EmpresasService {
       certificadoBanco: {
         filename: this.toScalarStringOrUndefined(certRaw.filename),
         uploadedAt: certRaw.uploadedAt ?? undefined,
+        expiresAt: certRaw.expiresAt ?? legacyExpirationDiag.expiresAt ?? undefined,
+        legacyRepairStatus: legacyExpirationDiag.status,
         sha256: this.toScalarStringOrUndefined(certRaw.sha256),
         size: certRaw.size ?? undefined,
         hasPfxBase64: this.hasValue(certRaw.pfxBase64),
@@ -1710,6 +1714,42 @@ export class EmpresasService {
     }
   }
 
+  private inspectLegacyCertificateExpiration(certificadoRaw: Record<string, unknown>) {
+    const expiresAt = certificadoRaw.expiresAt;
+    if (this.hasValue(expiresAt)) {
+      return { status: 'present', expiresAt };
+    }
+
+    const uploadedAt = certificadoRaw.uploadedAt;
+    if (!this.hasValue(uploadedAt)) {
+      return { status: 'not_applicable' } as const;
+    }
+
+    const pfxBase64 = this.toScalarStringOrUndefined(certificadoRaw.pfxBase64);
+    if (!pfxBase64) return { status: 'missing_pfx' } as const;
+
+    const passwordEncrypted = this.toScalarStringOrUndefined(certificadoRaw.passwordEncrypted);
+    if (!passwordEncrypted) return { status: 'missing_password' } as const;
+
+    const password = this.decryptSecret(passwordEncrypted);
+    if (!password) return { status: 'decrypt_failed' } as const;
+
+    const filename = this.toScalarStringOrUndefined(certificadoRaw.filename) ?? 'certificado.pfx';
+    const repairedExpiresAt = this.extractCertificateExpirationFromBuffer(
+      Buffer.from(pfxBase64, 'base64'),
+      filename,
+      password,
+    );
+
+    if (!repairedExpiresAt) return { status: 'extract_failed' } as const;
+
+    return {
+      status: 'recoverable',
+      expiresAt: repairedExpiresAt.toISOString(),
+      repairedExpiresAt,
+    } as const;
+  }
+
   private decryptSecret(value?: string): string | null {
     if (!value) return null;
     if (!value.startsWith('v1:')) return value;
@@ -1759,31 +1799,20 @@ export class EmpresasService {
       ? ((fullDoc as { toObject: () => Record<string, unknown> }).toObject() as Record<string, unknown>)
       : undefined;
     const fullCertificado = ((fullRaw?.certificado as Record<string, unknown> | undefined) ?? {}) as Record<string, unknown>;
-    const pfxBase64 = this.toScalarStringOrUndefined(fullCertificado.pfxBase64);
-    const passwordEncrypted = this.toScalarStringOrUndefined(fullCertificado.passwordEncrypted);
-    const password = this.decryptSecret(passwordEncrypted);
-    const filename = this.toScalarStringOrUndefined(fullCertificado.filename) ?? 'certificado.pfx';
+    const legacyExpirationDiag = this.inspectLegacyCertificateExpiration(fullCertificado);
 
-    if (!pfxBase64 || !password) return raw;
-
-    const repairedExpiresAt = this.extractCertificateExpirationFromBuffer(
-      Buffer.from(pfxBase64, 'base64'),
-      filename,
-      password,
-    );
-
-    if (!repairedExpiresAt) return raw;
+    if (legacyExpirationDiag.status !== 'recoverable') return raw;
 
     await this.empresaModel.updateOne(
       { _id: id },
-      { $set: { 'certificado.expiresAt': repairedExpiresAt } },
+      { $set: { 'certificado.expiresAt': legacyExpirationDiag.repairedExpiresAt } },
     );
 
     return {
       ...raw,
       certificado: {
         ...certificadoRaw,
-        expiresAt: repairedExpiresAt.toISOString(),
+        expiresAt: legacyExpirationDiag.expiresAt,
       },
     };
   }

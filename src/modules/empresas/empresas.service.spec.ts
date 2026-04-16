@@ -324,6 +324,11 @@ describe('EmpresasService', () => {
       }),
     );
 
+    jest.spyOn(service as any, 'decryptSecret').mockReturnValue('123456');
+    jest
+      .spyOn(service as any, 'extractCertificateExpirationFromBuffer')
+      .mockReturnValue(new Date('2027-03-18T00:00:00.000Z'));
+
     const result = await service.diagnosticarCertificadoByCnpj('43.521.115/0001-34');
 
     expect(result).toEqual(
@@ -331,6 +336,8 @@ describe('EmpresasService', () => {
         found: true,
         certificadoBanco: expect.objectContaining({
           filename: 'certificado.pfx',
+          legacyRepairStatus: 'recoverable',
+          expiresAt: '2027-03-18T00:00:00.000Z',
           hasPfxBase64: true,
           hasPasswordEncrypted: true,
         }),
