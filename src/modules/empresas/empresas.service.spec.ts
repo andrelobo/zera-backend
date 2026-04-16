@@ -853,6 +853,101 @@ describe('EmpresasService', () => {
     );
   });
 
+  it('materializes parametroMunicipal for secondary cnaesLista items on update', async () => {
+    empresaModel.findById.mockResolvedValue({
+      toObject: () => ({
+        _id: 'empresa-multi',
+        cnaeFiscal: '6920601',
+        cnaeFiscalDescricao: 'Atividades de contabilidade',
+        parametroMunicipal: [
+          {
+            codigo: '6920601',
+            cnaeDescricao: 'Atividades de contabilidade',
+            vinculos: [
+              {
+                ctn: '171901',
+                ctnDescricao: 'Contabilidade',
+                nbs: '1.1302.21.00',
+                nbsDescricao: 'Serviços de contabilidade',
+              },
+            ],
+          },
+        ],
+        cnaesLista: [
+          {
+            codigo: '6920601',
+            descricao: 'Atividades de contabilidade',
+            isPrincipal: true,
+            anexo: 'III',
+          },
+          {
+            codigo: '7319002',
+            descricao: 'Promoção de vendas',
+            isPrincipal: false,
+            anexo: 'III',
+          },
+        ],
+      }),
+    });
+    empresaModel.findByIdAndUpdate.mockResolvedValue({
+      toObject: () => ({
+        _id: 'empresa-multi',
+      }),
+    });
+
+    await service.update('empresa-multi', {
+      cnaeFiscal: '6920601',
+      cnaeFiscalDescricao: 'Atividades de contabilidade',
+      parametroMunicipal: [
+        {
+          codigo: '6920601',
+          cnaeDescricao: 'Atividades de contabilidade',
+          vinculos: [
+            {
+              ctn: '171901',
+              ctnDescricao: 'Contabilidade',
+              nbs: '1.1302.21.00',
+              nbsDescricao: 'Serviços de contabilidade',
+            },
+          ],
+        },
+      ],
+      cnaesLista: [
+        {
+          codigo: '6920601',
+          descricao: 'Atividades de contabilidade',
+          isPrincipal: true,
+          anexo: 'III',
+        },
+        {
+          codigo: '7319002',
+          descricao: 'Promoção de vendas',
+          isPrincipal: false,
+          anexo: 'III',
+        },
+      ],
+    });
+
+    expect(empresaModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      'empresa-multi',
+      expect.objectContaining({
+        parametroMunicipal: [
+          expect.objectContaining({
+            codigo: '6920601',
+            vinculos: [
+              expect.objectContaining({ ctn: '171901', nbs: '1.1302.21.00' }),
+            ],
+          }),
+          expect.objectContaining({
+            codigo: '7319002',
+            cnaeDescricao: 'Promoção de vendas',
+          }),
+        ],
+      }),
+      { new: true },
+    );
+  });
+
   it('marks simplesSnapshot as invalid when anexo is unsupported for calculation', async () => {
     empresaModel.findById.mockResolvedValue({
       toObject: () => ({

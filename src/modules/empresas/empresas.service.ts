@@ -1278,9 +1278,6 @@ export class EmpresasService {
 
     if (!effectiveCnaeFiscal) return patch;
 
-    const defaults = this.cnaeOfficialDefaults[effectiveCnaeFiscal];
-    if (!defaults?.length) return patch;
-
     const patchParametroMunicipal = Array.isArray(patch.parametroMunicipal)
       ? patch.parametroMunicipal
       : undefined;
@@ -1290,39 +1287,61 @@ export class EmpresasService {
       : undefined;
 
     const currentParametroMunicipal = patchParametroMunicipal ?? existingParametroMunicipal;
-    const matchingItem = Array.isArray(currentParametroMunicipal)
-      ? currentParametroMunicipal.find(
-          (item) =>
-            this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? '') ===
-            effectiveCnaeFiscal,
-        )
+    const patchCnaesLista = Array.isArray(patch.cnaesLista)
+      ? this.normalizeCnaesLista(patch.cnaesLista)
       : undefined;
+    const existingCnaesLista = Array.isArray(existing?.cnaesLista)
+      ? this.normalizeCnaesLista(existing?.cnaesLista)
+      : undefined;
+    const currentCnaesLista = patchCnaesLista ?? existingCnaesLista;
 
-    const normalizedItem = this.normalizeParametroMunicipalItem({
-      codigo: effectiveCnaeFiscal,
-      cnaeDescricao:
-        this.toScalarStringOrUndefined(matchingItem?.cnaeDescricao) ??
-        this.toScalarStringOrUndefined(patch.cnaeFiscalDescricao) ??
-        this.toScalarStringOrUndefined(existing?.cnaeFiscalDescricao),
-      lc116Descricao: this.toScalarStringOrUndefined(matchingItem?.lc116Descricao),
-      lc116Item: this.toScalarStringOrUndefined(matchingItem?.lc116Item),
-      vinculos: Array.isArray(matchingItem?.vinculos) ? matchingItem.vinculos : [],
-      isManual: matchingItem?.isManual,
-      isPrincipal: matchingItem?.isPrincipal ?? true,
-      vinculadoSN: matchingItem?.vinculadoSN ?? true,
+    const orderedCodes = [
+      effectiveCnaeFiscal,
+      ...(Array.isArray(currentCnaesLista)
+        ? currentCnaesLista.map((item) => this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? ''))
+        : []),
+      ...(Array.isArray(currentParametroMunicipal)
+        ? currentParametroMunicipal.map((item) => this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? ''))
+        : []),
+    ].filter((codigo, index, items) => Boolean(codigo) && items.indexOf(codigo) == index);
+
+    if (orderedCodes.length === 0) return patch;
+
+    const normalizedList = orderedCodes.map((codigo) => {
+      const matchingItem = Array.isArray(currentParametroMunicipal)
+        ? currentParametroMunicipal.find(
+            (item) => this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? '') === codigo,
+          )
+        : undefined;
+      const matchingCnae = Array.isArray(currentCnaesLista)
+        ? currentCnaesLista.find(
+            (item) => this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? '') === codigo,
+          )
+        : undefined;
+
+      return this.normalizeParametroMunicipalItem({
+        codigo,
+        cnaeDescricao:
+          this.toScalarStringOrUndefined(matchingItem?.cnaeDescricao) ??
+          this.toScalarStringOrUndefined(matchingCnae?.descricao) ??
+          (codigo === effectiveCnaeFiscal
+            ? this.toScalarStringOrUndefined(patch.cnaeFiscalDescricao) ??
+              this.toScalarStringOrUndefined(existing?.cnaeFiscalDescricao)
+            : undefined),
+        lc116Descricao: this.toScalarStringOrUndefined(matchingItem?.lc116Descricao),
+        lc116Item: this.toScalarStringOrUndefined(matchingItem?.lc116Item),
+        vinculos: Array.isArray(matchingItem?.vinculos) ? matchingItem.vinculos : [],
+        isManual: matchingItem?.isManual ?? matchingCnae?.isManual,
+        isPrincipal: matchingItem?.isPrincipal ?? matchingCnae?.isPrincipal ?? (codigo === effectiveCnaeFiscal),
+        vinculadoSN: matchingItem?.vinculadoSN ?? true,
+      });
     });
 
-    const normalizedList = [
-      normalizedItem,
-      ...(Array.isArray(currentParametroMunicipal) ? currentParametroMunicipal : []).filter(
-        (item) =>
-          this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? '') !==
-          effectiveCnaeFiscal,
-      ),
-    ];
-
-    const firstVinculo = Array.isArray(normalizedItem.vinculos)
-      ? (normalizedItem.vinculos[0] as Record<string, unknown> | undefined)
+    const primaryItem = normalizedList.find(
+      (item) => this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? '') === effectiveCnaeFiscal,
+    ) ?? normalizedList[0];
+    const firstVinculo = Array.isArray(primaryItem?.vinculos)
+      ? (primaryItem.vinculos[0] as Record<string, unknown> | undefined)
       : undefined;
 
     return {
