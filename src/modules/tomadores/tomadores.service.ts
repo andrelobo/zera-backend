@@ -1,8 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model } from 'mongoose';
 import { CreateTomadorDto } from './dtos/create-tomador.dto';
 import { UpdateTomadorDto } from './dtos/update-tomador.dto';
+import { HubdevCpfApi } from './hubdev-cpf.api';
 import { Tomador, TomadorDocument } from './schemas/tomador.schema';
 
 function onlyDigits(value?: string): string {
@@ -38,7 +39,10 @@ function normalizeTomadorServicos(input?: TomadorServicoInput[]) {
 
 @Injectable()
 export class TomadoresService {
-  constructor(@InjectModel(Tomador.name) private readonly tomadorModel: Model<TomadorDocument>) {}
+  constructor(
+    @InjectModel(Tomador.name) private readonly tomadorModel: Model<TomadorDocument>,
+    private readonly hubdevCpfApi: HubdevCpfApi,
+  ) {}
 
   async create(dto: CreateTomadorDto) {
     const empresaCnpj = onlyDigits(dto.empresaCnpj);
@@ -154,6 +158,28 @@ export class TomadoresService {
       })
       .sort({ updatedAt: -1 })
       .limit(limit);
+  }
+
+  async lookupCpf(input: { cpf: string }) {
+    const cpf = onlyDigits(input.cpf);
+    if (cpf.length !== 11) {
+      throw new BadRequestException({
+        code: 'TOMADOR_CPF_INVALID',
+        message: 'cpf deve conter 11 dígitos',
+      });
+    }
+
+    try {
+      const raw = await this.hubdevCpfApi.consultarCpf(cpf);
+      return this.normalizeCpfLookup(cpf, raw);
+    } catch (error: any) {
+      if (error?.status === 503 || error?.response?.statusCode === 503) throw error;
+      if (error?.status === 400 || error?.response?.statusCode === 400) throw error;
+      throw new BadGatewayException({
+        code: 'TOMADOR_CPF_LOOKUP_FAILED',
+        message: 'Não foi possível consultar o CPF na fonte externa.',
+      });
+    }
   }
 
   async getById(id: string) {
@@ -308,4 +334,138 @@ export class TomadoresService {
       { upsert: true, new: true },
     );
   }
+  private normalizeCpfLookup(cpf: string, raw: Record<string, unknown>) {
+    const nome = this.pickCleanString(raw, ['nomeCompleto', 'nome_completo', 'nome']);
+    const dataNascimento = this.pickCleanString(raw, ['dataDeNascimento', 'data_nascimento', 'nascimento']);
+    const nomeMae = this.pickCleanString(raw, ['nomeDaMae', 'nome_mae', 'mae']);
+    const genero = this.pickCleanString(raw, ['genero', 'sexo']);
+    const lastUpdate = this.pickCleanString(raw, ['lastUpdate', 'last_update', 'dataAtualizacao']);
+
+    const emails = this.pickArray(raw, ['listaEmails', 'lista_emails', 'emails']);
+    const telefones = this.pickArray(raw, ['listaTelefones', 'lista_telefones', 'telefones']);
+    const enderecos = this.pickArray(raw, ['listaEnderecos', 'lista_enderecos', 'enderecos']);
+
+    const email = this.extractEmail(emails);
+    const telefone = this.extractTelefone(telefones);
+    const endereco = this.extractEndereco(enderecos);
+
+    const found = Boolean(
+      nome || dataNascimento || nomeMae || genero || lastUpdate || emails.length || telefones.length || enderecos.length,
+    );
+    const usefulAddress = Boolean(
+      endereco?.cep ||
+        endereco?.logradouro ||
+        endereco?.numero ||
+        endereco?.bairro ||
+        endereco?.complemento,
+    );
+    const usefulData = Boolean(nome || email || telefone || usefulAddress);
+
+    return {
+      cpf,
+      source: 'hubdev_cadastropf',
+      found,
+      usefulData,
+      maskedByLgpd: found && !usefulData,
+      nome,
+      dataNascimento,
+      nomeMae,
+      genero,
+      email,
+      whatsapp: telefone,
+      telefone,
+      endereco,
+      lastUpdate,
+    };
+  }
+
+  private pickArray(raw: Record<string, unknown>, keys: string[]) {
+    for (const key of keys) {
+      const value = raw[key];
+      if (Array.isArray(value)) return value as unknown[];
+    }
+    return [] as unknown[];
+  }
+
+  private pickCleanString(raw: Record<string, unknown>, keys: string[]) {
+    for (const key of keys) {
+      const cleaned = this.cleanString(raw[key]);
+      if (cleaned) return cleaned;
+    }
+    return undefined;
+  }
+
+  private cleanString(value: unknown) {
+    if (value === null || value === undefined) return undefined;
+    const normalized = String(value).trim();
+    if (!normalized) return undefined;
+    if (/[#*]/.test(normalized)) return undefined;
+    return normalized;
+  }
+
+  private cleanDigits(value: unknown, length?: number) {
+    const digits = onlyDigits(value === null || value === undefined ? '' : String(value));
+    if (!digits) return undefined;
+    if (length && digits.length < length) return undefined;
+    if (/[#*]/.test(String(value ?? ''))) return undefined;
+    return digits;
+  }
+
+  private extractEmail(items: unknown[]) {
+    for (const item of items) {
+      if (typeof item === 'string') {
+        const value = this.cleanString(item);
+        if (value && value.includes('@')) return value.toLowerCase();
+        continue;
+      }
+      if (!item || typeof item !== 'object') continue;
+      const row = item as Record<string, unknown>;
+      const value = this.cleanString(row.email ?? row.endereco ?? row.valor ?? row.value);
+      if (value && value.includes('@')) return value.toLowerCase();
+    }
+    return undefined;
+  }
+
+  private extractTelefone(items: unknown[]) {
+    for (const item of items) {
+      if (typeof item === 'string') {
+        const digits = this.cleanDigits(item, 8);
+        if (digits) return digits;
+        continue;
+      }
+      if (!item || typeof item !== 'object') continue;
+      const row = item as Record<string, unknown>;
+      const ddd = this.cleanDigits(row.ddd);
+      const numero = this.cleanDigits(row.numero ?? row.telefone ?? row.celular ?? row.valor ?? row.value, 8);
+      if (!numero) continue;
+      return `${ddd ?? ''}${numero}`;
+    }
+    return undefined;
+  }
+
+  private extractEndereco(items: unknown[]) {
+    for (const item of items) {
+      if (!item || typeof item !== 'object') continue;
+      const row = item as Record<string, unknown>;
+      const endereco = {
+        cep: this.cleanDigits(row.cep, 8),
+        logradouro: this.cleanString(row.logradouro ?? row.endereco ?? row.rua),
+        numero: this.cleanString(row.numero ?? row.numeroLogradouro),
+        complemento: this.cleanString(row.complemento),
+        bairro: this.cleanString(row.bairro),
+        municipio: this.cleanString(row.municipio ?? row.cidade ?? row.localidade),
+        uf: this.cleanString(row.uf ?? row.estado)?.toUpperCase(),
+      };
+      const usefulAddress = Boolean(
+        endereco.cep ||
+          endereco.logradouro ||
+          endereco.numero ||
+          endereco.bairro ||
+          endereco.complemento,
+      );
+      if (usefulAddress) return endereco;
+    }
+    return undefined;
+  }
+
 }

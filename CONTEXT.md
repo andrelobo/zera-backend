@@ -22,6 +22,37 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+## ATUALIZACAO RAPIDA (2026-04-16) - lookup de CPF para tomadores integrado via Hub do Desenvolvedor
+
+Fonte: `codigo local` + `testes locais` + `build local`.
+
+Leitura consolidada:
+- o backend passou a expor lookup assistido de CPF para tomadores PF
+- a integracao utiliza `cadastropf` do Hub do Desenvolvedor na borda do proprio backend
+- a nova rota aditiva e `GET /tomadores/lookup/cpf?cpf=`
+
+Regra canonica desta frente:
+1. escopo exclusivo de `tomadores`
+2. nenhum impacto em `prestador`
+3. nenhum relaxamento do fluxo atual de `CNPJ`
+4. resposta mascarada por LGPD continua sendo tratada como `found`, mas sem utilidade para autopreenchimento
+
+Campos que o backend tenta normalizar quando vierem legiveis:
+- nome
+- email
+- telefone / whatsapp
+- endereco
+- metadados basicos como data de nascimento, nome da mae e genero
+
+Leitura operacional correta agora:
+- o backend virou a camada canonica de consulta externa por CPF para tomadores
+- o frontend nao chama Hub do Desenvolvedor diretamente
+- quando os dados vierem insuficientes ou ofuscados, o fluxo deve degradar para preenchimento manual sem quebra
+
+Validacao desta rodada:
+- `yarn test --runInBand src/modules/tomadores/tomadores.service.spec.ts`
+- build do backend ok
+
 ## ATUALIZACAO RAPIDA (2026-04-09) - kit de skills local criado para desenvolvimento fiscal orientado por risco
 
 Fonte: `estrutura local em .codex/skills` + `validacao automatica das skills`.

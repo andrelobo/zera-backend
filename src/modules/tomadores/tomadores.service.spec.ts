@@ -2,11 +2,97 @@ import { BadRequestException } from '@nestjs/common';
 import { TomadoresService } from './tomadores.service';
 
 describe('TomadoresService', () => {
+  it('lookupCpf rejects invalid cpf', async () => {
+    const service = new TomadoresService({} as any, { consultarCpf: jest.fn() } as any);
+
+    await expect(service.lookupCpf({ cpf: '123' })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('lookupCpf normalizes useful data from HubDev response', async () => {
+    const hubdev = {
+      consultarCpf: jest.fn().mockResolvedValue({
+        nomeCompleto: 'Andre Lobo',
+        dataDeNascimento: '1988-01-01',
+        nomeDaMae: 'Maria Lobo',
+        genero: 'M',
+        listaEmails: [{ email: 'andre@zera.app' }],
+        listaTelefones: [{ ddd: '92', numero: '991234567' }],
+        listaEnderecos: [{
+          cep: '69010040',
+          logradouro: 'Rua Saldanha Marinho',
+          numero: '606',
+          complemento: 'Sala 255',
+          bairro: 'Centro',
+          cidade: 'Manaus',
+          uf: 'AM',
+        }],
+        lastUpdate: '2026-04-16',
+      }),
+    };
+    const service = new TomadoresService({} as any, hubdev as any);
+
+    const result = await service.lookupCpf({ cpf: '610.207.881-00' });
+
+    expect(hubdev.consultarCpf).toHaveBeenCalledWith('61020788100');
+    expect(result).toEqual({
+      cpf: '61020788100',
+      source: 'hubdev_cadastropf',
+      found: true,
+      usefulData: true,
+      maskedByLgpd: false,
+      nome: 'Andre Lobo',
+      dataNascimento: '1988-01-01',
+      nomeMae: 'Maria Lobo',
+      genero: 'M',
+      email: 'andre@zera.app',
+      whatsapp: '92991234567',
+      telefone: '92991234567',
+      endereco: {
+        cep: '69010040',
+        logradouro: 'Rua Saldanha Marinho',
+        numero: '606',
+        complemento: 'Sala 255',
+        bairro: 'Centro',
+        municipio: 'Manaus',
+        uf: 'AM',
+      },
+      lastUpdate: '2026-04-16',
+    });
+  });
+
+  it('lookupCpf flags masked LGPD payload without inventing fields', async () => {
+    const hubdev = {
+      consultarCpf: jest.fn().mockResolvedValue({
+        listaEmails: [{ email: 'an***@gm***.com' }],
+        listaTelefones: [{ ddd: '92', numero: '99*****67' }],
+        listaEnderecos: [{
+          cep: '69***040',
+          logradouro: 'Rua ***',
+          cidade: 'Manaus',
+          uf: '**',
+        }],
+      }),
+    };
+    const service = new TomadoresService({} as any, hubdev as any);
+
+    const result = await service.lookupCpf({ cpf: '61020788100' });
+
+    expect(result).toMatchObject({
+      cpf: '61020788100',
+      source: 'hubdev_cadastropf',
+      found: true,
+      usefulData: false,
+      maskedByLgpd: true,
+    });
+    expect(result.email).toBeUndefined();
+    expect(result.telefone).toBeUndefined();
+    expect(result.endereco).toBeUndefined();
+  });
   it('rejects invalid empresaCnpj', async () => {
     const model = {
       create: jest.fn(),
     };
-    const service = new TomadoresService(model as any);
+    const service = new TomadoresService(model as any, { consultarCpf: jest.fn() } as any);
 
     await expect(
       service.create({
@@ -21,7 +107,7 @@ describe('TomadoresService', () => {
     const model = {
       create: jest.fn().mockRejectedValue({ code: 11000 }),
     };
-    const service = new TomadoresService(model as any);
+    const service = new TomadoresService(model as any, { consultarCpf: jest.fn() } as any);
 
     await expect(
       service.create({
@@ -41,7 +127,7 @@ describe('TomadoresService', () => {
     const sort = jest.fn().mockReturnValue({ limit });
     const find = jest.fn().mockReturnValue({ sort });
     const model = { find };
-    const service = new TomadoresService(model as any);
+    const service = new TomadoresService(model as any, { consultarCpf: jest.fn() } as any);
 
     await service.autocomplete({
       empresaCnpj: '43.521.115/0001-34',
@@ -83,7 +169,7 @@ describe('TomadoresService', () => {
     const sort = jest.fn().mockReturnValue({ limit });
     const find = jest.fn().mockReturnValue({ sort });
     const model = { find };
-    const service = new TomadoresService(model as any);
+    const service = new TomadoresService(model as any, { consultarCpf: jest.fn() } as any);
 
     await service.autocomplete({
       empresaCnpj: '43521115000134',
@@ -105,7 +191,7 @@ describe('TomadoresService', () => {
 
   it('autocomplete rejects invalid empresaCnpj', async () => {
     const model = { find: jest.fn() };
-    const service = new TomadoresService(model as any);
+    const service = new TomadoresService(model as any, { consultarCpf: jest.fn() } as any);
 
     await expect(
       service.autocomplete({
@@ -120,7 +206,7 @@ describe('TomadoresService', () => {
     const sort = jest.fn().mockReturnValue({ limit });
     const find = jest.fn().mockReturnValue({ sort });
     const model = { find };
-    const service = new TomadoresService(model as any);
+    const service = new TomadoresService(model as any, { consultarCpf: jest.fn() } as any);
 
     await service.autocomplete({
       empresaCnpj: '43521115000134',

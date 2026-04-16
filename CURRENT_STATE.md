@@ -2,6 +2,26 @@
 
 Snapshot operacional do backend em **08/04/2026**.
 
+## 0. Atualizacao rapida (16/04/2026) - tomadores ganharam lookup CPF assistido
+
+Fonte: `codigo local` + `testes locais` + `build local`.
+
+Leitura consolidada:
+- o backend agora exibe `GET /tomadores/lookup/cpf?cpf=`
+- a rota consulta `cadastropf` do Hub do Desenvolvedor e devolve payload normalizado para o frontend
+- a regra de seguranca da rodada foi manter a frente estritamente em `tomadores`, sem tocar `prestador` ou degradar o fluxo existente de `CNPJ`
+
+Comportamento atual:
+- CPF invalido retorna erro de validacao
+- CPF encontrado com dados uteis retorna nome, contato e endereco normalizados
+- payload mascarado por LGPD retorna `found`, mas `usefulData = false` e `maskedByLgpd = true`
+
+Regra operacional correta agora:
+1. consulta externa por CPF deve passar sempre pelo backend
+2. a resposta e assistiva, nao bloqueante
+3. mascaramento LGPD nao pode ser tratado como dado bom para autopreenchimento
+4. o contrato atual nao substitui nem concorre com as fontes de PJ
+
 ## 0. Atualizacao rapida (09/04/2026) - kit local de skills criado para desenvolvimento fiscal seguro
 
 Fonte: `estrutura local em .codex/skills` + `validacao com quick_validate.py`.

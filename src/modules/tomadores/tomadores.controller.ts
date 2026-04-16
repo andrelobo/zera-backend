@@ -61,6 +61,13 @@ export class TomadoresController {
     return this.tomadores.autocomplete({ empresaCnpj, q, limit: Number(limit) });
   }
 
+  @Get('lookup/cpf')
+  @ApiOperation({ summary: 'Enriquecer tomador PF por CPF via fonte externa' })
+  @ApiQuery({ name: 'cpf', required: true, example: '61020788100' })
+  lookupCpf(@Query('cpf') cpf: string) {
+    return this.tomadores.lookupCpf({ cpf });
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Obter tomador por id' })
   getById(@Param('id') id: string) {
