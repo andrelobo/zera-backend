@@ -1755,7 +1755,9 @@ export class EmpresasService {
       )
       : await fullDocQuery;
 
-    const fullRaw = fullDoc?.toObject() as Record<string, unknown> | undefined;
+    const fullRaw = fullDoc && typeof (fullDoc as { toObject?: unknown }).toObject === 'function'
+      ? ((fullDoc as { toObject: () => Record<string, unknown> }).toObject() as Record<string, unknown>)
+      : undefined;
     const fullCertificado = ((fullRaw?.certificado as Record<string, unknown> | undefined) ?? {}) as Record<string, unknown>;
     const pfxBase64 = this.toScalarStringOrUndefined(fullCertificado.pfxBase64);
     const passwordEncrypted = this.toScalarStringOrUndefined(fullCertificado.passwordEncrypted);
