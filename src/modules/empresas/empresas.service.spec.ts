@@ -205,6 +205,62 @@ describe('EmpresasService', () => {
     );
   });
 
+  it('repairs legacy certificate expiration on normalized output when banco still lacks expiresAt', async () => {
+    const initialDoc = {
+      toObject: () => ({
+        _id: 'empresa-cert-legacy',
+        cnpj: '43521115000134',
+        razaoSocial: 'BURGUS LTDA',
+        certificado: {
+          filename: 'certificado.pfx',
+          uploadedAt: '2026-03-18T00:47:21.405Z',
+        },
+      }),
+    };
+
+    const fullDoc = {
+      toObject: () => ({
+        _id: 'empresa-cert-legacy',
+        cnpj: '43521115000134',
+        razaoSocial: 'BURGUS LTDA',
+        certificado: {
+          filename: 'certificado.pfx',
+          uploadedAt: '2026-03-18T00:47:21.405Z',
+          pfxBase64: Buffer.from('ABCD').toString('base64'),
+          passwordEncrypted: 'v1:encrypted',
+        },
+      }),
+    };
+
+    empresaModel.findById
+      .mockResolvedValueOnce(initialDoc as any)
+      .mockReturnValueOnce({
+        select: jest.fn().mockResolvedValue(fullDoc),
+      } as any);
+    empresaModel.updateOne.mockResolvedValue({ acknowledged: true });
+
+    jest.spyOn(service as any, 'decryptSecret').mockReturnValue('123456');
+    jest
+      .spyOn(service as any, 'extractCertificateExpirationFromBuffer')
+      .mockReturnValue(new Date('2027-03-18T00:00:00.000Z'));
+
+    const result = await service.getByIdNormalized('empresa-cert-legacy');
+
+    expect(empresaModel.updateOne).toHaveBeenCalledWith(
+      { _id: 'empresa-cert-legacy' },
+      { $set: { 'certificado.expiresAt': new Date('2027-03-18T00:00:00.000Z') } },
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        certificado: expect.objectContaining({
+          filename: 'certificado.pfx',
+          uploadedAt: '2026-03-18T00:47:21.405Z',
+          expiresAt: '2027-03-18T00:00:00.000Z',
+        }),
+      }),
+    );
+  });
+
   it('preserves certificate expiration in normalized outputs when present in banco', async () => {
     empresaModel.findById.mockResolvedValue({
       toObject: () => ({

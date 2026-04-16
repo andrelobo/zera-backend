@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { createCipheriv, createHash, randomBytes, X509Certificate } from 'crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes, X509Certificate } from 'crypto';
 import type { File as MulterFile } from 'multer';
 import { Model } from 'mongoose';
 import { execFileSync } from 'child_process';
@@ -616,7 +616,7 @@ export class EmpresasService {
 
   async getByIdNormalized(id: string) {
     const doc = await this.getById(id);
-    return this.toNormalizedFromDoc(doc);
+    return this.toNormalizedWithLegacyCertRepair(doc);
   }
 
   async getByCnpj(cnpj: string) {
@@ -628,7 +628,7 @@ export class EmpresasService {
 
   async getByCnpjNormalized(cnpj: string) {
     const doc = await this.getByCnpj(cnpj);
-    return this.toNormalizedFromDoc(doc);
+    return this.toNormalizedWithLegacyCertRepair(doc);
   }
 
   async findFirstWithCertificate() {
@@ -1661,14 +1661,22 @@ export class EmpresasService {
   }
 
   private extractCertificateExpiration(file: MulterFile, senhaCertificado: string): Date | null {
-    const extension = this.extractFileExtension(file.originalname) || 'pfx';
+    return this.extractCertificateExpirationFromBuffer(file.buffer, file.originalname, senhaCertificado);
+  }
+
+  private extractCertificateExpirationFromBuffer(
+    buffer: Buffer,
+    originalName: string,
+    senhaCertificado: string,
+  ): Date | null {
+    const extension = this.extractFileExtension(originalName) || 'pfx';
     const tempFile = join(
       tmpdir(),
       `zera-cert-${Date.now()}-${randomBytes(6).toString('hex')}.${extension}`,
     );
 
     try {
-      writeFileSync(tempFile, file.buffer);
+      writeFileSync(tempFile, buffer);
 
       const certificatePem = execFileSync(
         'openssl',
@@ -1691,7 +1699,7 @@ export class EmpresasService {
       return expiresAt;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`Falha ao extrair validade do certificado ${file.originalname}: ${message}`);
+      this.logger.warn(`Falha ao extrair validade do certificado ${originalName}: ${message}`);
       return null;
     } finally {
       try {
@@ -1700,6 +1708,89 @@ export class EmpresasService {
         // best-effort cleanup
       }
     }
+  }
+
+  private decryptSecret(value?: string): string | null {
+    if (!value) return null;
+    if (!value.startsWith('v1:')) return value;
+
+    const secret = process.env.EMPRESA_CERT_ENCRYPTION_KEY ?? process.env.JWT_SECRET;
+    if (!secret?.trim()) return null;
+
+    try {
+      const [, ivBase64, tagBase64, encryptedBase64] = value.split(':');
+      if (!ivBase64 || !tagBase64 || !encryptedBase64) return null;
+
+      const key = createHash('sha256').update(secret).digest();
+      const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(ivBase64, 'base64'));
+      decipher.setAuthTag(Buffer.from(tagBase64, 'base64'));
+
+      const decrypted = Buffer.concat([
+        decipher.update(Buffer.from(encryptedBase64, 'base64')),
+        decipher.final(),
+      ]);
+
+      return decrypted.toString('utf8');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Falha ao descriptografar senha do certificado: ${message}`);
+      return null;
+    }
+  }
+
+  private async hydrateLegacyCertificateExpiration(raw: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const certificadoRaw = ((raw.certificado as Record<string, unknown> | undefined) ?? {}) as Record<string, unknown>;
+    const uploadedAt = certificadoRaw.uploadedAt;
+    const expiresAt = certificadoRaw.expiresAt;
+    const id = String(raw._id ?? raw.id ?? '');
+
+    if (!id || !this.hasValue(uploadedAt) || this.hasValue(expiresAt)) return raw;
+
+    const fullDocQuery = this.empresaModel.findById(id) as {
+      select?: (projection?: string) => Promise<EmpresaDocument | null>;
+    } | Promise<EmpresaDocument | null> | null;
+    const fullDoc = fullDocQuery && typeof (fullDocQuery as { select?: unknown }).select === 'function'
+      ? await (fullDocQuery as { select: (projection?: string) => Promise<EmpresaDocument | null> }).select(
+        '+certificado.pfxBase64 +certificado.passwordEncrypted',
+      )
+      : await fullDocQuery;
+
+    const fullRaw = fullDoc?.toObject() as Record<string, unknown> | undefined;
+    const fullCertificado = ((fullRaw?.certificado as Record<string, unknown> | undefined) ?? {}) as Record<string, unknown>;
+    const pfxBase64 = this.toScalarStringOrUndefined(fullCertificado.pfxBase64);
+    const passwordEncrypted = this.toScalarStringOrUndefined(fullCertificado.passwordEncrypted);
+    const password = this.decryptSecret(passwordEncrypted);
+    const filename = this.toScalarStringOrUndefined(fullCertificado.filename) ?? 'certificado.pfx';
+
+    if (!pfxBase64 || !password) return raw;
+
+    const repairedExpiresAt = this.extractCertificateExpirationFromBuffer(
+      Buffer.from(pfxBase64, 'base64'),
+      filename,
+      password,
+    );
+
+    if (!repairedExpiresAt) return raw;
+
+    await this.empresaModel.updateOne(
+      { _id: id },
+      { $set: { 'certificado.expiresAt': repairedExpiresAt } },
+    );
+
+    return {
+      ...raw,
+      certificado: {
+        ...certificadoRaw,
+        expiresAt: repairedExpiresAt.toISOString(),
+      },
+    };
+  }
+
+  private async toNormalizedWithLegacyCertRepair(doc: EmpresaDocument | null): Promise<Record<string, unknown> | null> {
+    if (!doc) return null;
+    const raw = doc.toObject() as unknown as Record<string, unknown>;
+    const hydrated = await this.hydrateLegacyCertificateExpiration(raw);
+    return this.normalizeEmpresaOutput(hydrated);
   }
 
   private toNormalizedFromDoc(doc: EmpresaDocument | null): Record<string, unknown> | null {
