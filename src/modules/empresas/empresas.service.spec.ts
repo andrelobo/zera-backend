@@ -205,6 +205,33 @@ describe('EmpresasService', () => {
     );
   });
 
+  it('preserves certificate expiration in normalized outputs when present in banco', async () => {
+    empresaModel.findById.mockResolvedValue({
+      toObject: () => ({
+        _id: 'empresa-cert-exp',
+        cnpj: '43521115000134',
+        razaoSocial: 'BURGUS LTDA',
+        certificado: {
+          filename: 'certificado.pfx',
+          uploadedAt: '2026-03-18T00:47:21.405Z',
+          expiresAt: '2027-03-18T00:00:00.000Z',
+        },
+      }),
+    });
+
+    const result = await service.getByIdNormalized('empresa-cert-exp');
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        certificado: expect.objectContaining({
+          filename: 'certificado.pfx',
+          uploadedAt: '2026-03-18T00:47:21.405Z',
+          expiresAt: '2027-03-18T00:00:00.000Z',
+        }),
+      }),
+    );
+  });
+
   it('diagnoses banco certificate and latest provider certificate relation', async () => {
     empresaModel.findOne.mockReturnValue({
       select: jest.fn().mockReturnValue({

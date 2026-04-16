@@ -1,8 +1,12 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { createCipheriv, createHash, randomBytes } from 'crypto';
+import { createCipheriv, createHash, randomBytes, X509Certificate } from 'crypto';
 import type { File as MulterFile } from 'multer';
 import { Model } from 'mongoose';
+import { execFileSync } from 'child_process';
+import { unlinkSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { PlugNotasCnpjApi } from '../../fiscal/infra/plugnotas/cnpj.api';
 import {
   NfseEmission,
@@ -222,6 +226,7 @@ export class EmpresasService {
     const now = new Date();
     const sha256 = createHash('sha256').update(file.buffer).digest('hex');
     const encryptedPassword = this.encryptSecret(senhaCertificado);
+    const expiresAt = this.extractCertificateExpiration(file, senhaCertificado);
 
     await this.empresaModel.updateOne(
       { cnpj: normalized },
@@ -233,6 +238,7 @@ export class EmpresasService {
             size: file.size,
             sha256,
             uploadedAt: now,
+            expiresAt: expiresAt ?? undefined,
             pfxBase64: file.buffer.toString('base64'),
             passwordEncrypted: encryptedPassword,
           },
@@ -244,12 +250,17 @@ export class EmpresasService {
 
     return {
       cnpj: normalized,
+      fileName: file.originalname,
+      fileSize: file.size,
+      uploadedAt: now.toISOString(),
+      expiresAt: expiresAt?.toISOString(),
       certificado: {
         filename: file.originalname,
         mimeType: file.mimetype || 'application/x-pkcs12',
         size: file.size,
         sha256,
         uploadedAt: now.toISOString(),
+        expiresAt: expiresAt?.toISOString(),
       },
     };
   }
@@ -1647,6 +1658,48 @@ export class EmpresasService {
     const tag = cipher.getAuthTag();
 
     return `v1:${iv.toString('base64')}:${tag.toString('base64')}:${encrypted.toString('base64')}`;
+  }
+
+  private extractCertificateExpiration(file: MulterFile, senhaCertificado: string): Date | null {
+    const extension = this.extractFileExtension(file.originalname) || 'pfx';
+    const tempFile = join(
+      tmpdir(),
+      `zera-cert-${Date.now()}-${randomBytes(6).toString('hex')}.${extension}`,
+    );
+
+    try {
+      writeFileSync(tempFile, file.buffer);
+
+      const certificatePem = execFileSync(
+        'openssl',
+        [
+          'pkcs12',
+          '-in',
+          tempFile,
+          '-clcerts',
+          '-nokeys',
+          '-passin',
+          `pass:${senhaCertificado}`,
+        ],
+        { encoding: 'utf8' },
+      );
+
+      const certificate = new X509Certificate(certificatePem);
+      const expiresAt = new Date(certificate.validTo);
+
+      if (Number.isNaN(expiresAt.getTime())) return null;
+      return expiresAt;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Falha ao extrair validade do certificado ${file.originalname}: ${message}`);
+      return null;
+    } finally {
+      try {
+        unlinkSync(tempFile);
+      } catch {
+        // best-effort cleanup
+      }
+    }
   }
 
   private toNormalizedFromDoc(doc: EmpresaDocument | null): Record<string, unknown> | null {
