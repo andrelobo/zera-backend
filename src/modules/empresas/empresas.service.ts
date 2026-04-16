@@ -36,6 +36,12 @@ export interface EmpresaBiResumo {
   camposFaltantesBi: string[];
 }
 
+type CertificateExpirationResult = {
+  expiresAt: Date | null;
+  status: 'ok' | 'extract_failed' | 'openssl_missing';
+  error?: string;
+};
+
 type SimplesFaixa = {
   faixa: number;
   limiteInferior: number;
@@ -226,7 +232,8 @@ export class EmpresasService {
     const now = new Date();
     const sha256 = createHash('sha256').update(file.buffer).digest('hex');
     const encryptedPassword = this.encryptSecret(senhaCertificado);
-    const expiresAt = this.extractCertificateExpiration(file, senhaCertificado);
+    const expirationResult = this.inspectCertificateExpiration(file, senhaCertificado);
+    const expiresAt = expirationResult.expiresAt;
 
     await this.empresaModel.updateOne(
       { cnpj: normalized },
@@ -254,6 +261,8 @@ export class EmpresasService {
       fileSize: file.size,
       uploadedAt: now.toISOString(),
       expiresAt: expiresAt?.toISOString(),
+      expiresAtStatus: expirationResult.status,
+      expiresAtError: expirationResult.error ?? null,
       certificado: {
         filename: file.originalname,
         mimeType: file.mimetype || 'application/x-pkcs12',
@@ -261,6 +270,8 @@ export class EmpresasService {
         sha256,
         uploadedAt: now.toISOString(),
         expiresAt: expiresAt?.toISOString(),
+        expiresAtStatus: expirationResult.status,
+        expiresAtError: expirationResult.error ?? null,
       },
     };
   }
@@ -1664,15 +1675,19 @@ export class EmpresasService {
     return `v1:${iv.toString('base64')}:${tag.toString('base64')}:${encrypted.toString('base64')}`;
   }
 
-  private extractCertificateExpiration(file: MulterFile, senhaCertificado: string): Date | null {
-    return this.extractCertificateExpirationFromBuffer(file.buffer, file.originalname, senhaCertificado);
+  private inspectCertificateExpiration(file: MulterFile, senhaCertificado: string): CertificateExpirationResult {
+    return this.inspectCertificateExpirationFromBuffer(file.buffer, file.originalname, senhaCertificado);
   }
 
-  private extractCertificateExpirationFromBuffer(
+  private extractCertificateExpiration(file: MulterFile, senhaCertificado: string): Date | null {
+    return this.inspectCertificateExpiration(file, senhaCertificado).expiresAt;
+  }
+
+  private inspectCertificateExpirationFromBuffer(
     buffer: Buffer,
     originalName: string,
     senhaCertificado: string,
-  ): Date | null {
+  ): CertificateExpirationResult {
     const extension = this.extractFileExtension(originalName) || 'pfx';
     const tempFile = join(
       tmpdir(),
@@ -1699,12 +1714,18 @@ export class EmpresasService {
       const certificate = new X509Certificate(certificatePem);
       const expiresAt = new Date(certificate.validTo);
 
-      if (Number.isNaN(expiresAt.getTime())) return null;
-      return expiresAt;
+      if (Number.isNaN(expiresAt.getTime())) {
+        return { expiresAt: null, status: 'extract_failed', error: 'invalid_certificate_validity' };
+      }
+      return { expiresAt, status: 'ok' };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Falha ao extrair validade do certificado ${originalName}: ${message}`);
-      return null;
+      return {
+        expiresAt: null,
+        status: message.includes('spawnSync openssl ENOENT') ? 'openssl_missing' : 'extract_failed',
+        error: message,
+      };
     } finally {
       try {
         unlinkSync(tempFile);
@@ -1712,6 +1733,14 @@ export class EmpresasService {
         // best-effort cleanup
       }
     }
+  }
+
+  private extractCertificateExpirationFromBuffer(
+    buffer: Buffer,
+    originalName: string,
+    senhaCertificado: string,
+  ): Date | null {
+    return this.inspectCertificateExpirationFromBuffer(buffer, originalName, senhaCertificado).expiresAt;
   }
 
   private inspectLegacyCertificateExpiration(certificadoRaw: Record<string, unknown>) {

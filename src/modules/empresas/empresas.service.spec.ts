@@ -178,6 +178,13 @@ describe('EmpresasService', () => {
       buffer: Buffer.from('ABCD'),
     };
 
+    jest
+      .spyOn(service as any, 'inspectCertificateExpiration')
+      .mockReturnValue({
+        expiresAt: new Date('2027-03-18T00:00:00.000Z'),
+        status: 'ok',
+      });
+
     const result = await service.importCertificado('43.521.115/0001-34', '123456', file as any);
 
     expect(empresaModel.updateOne).toHaveBeenCalledWith(
@@ -197,9 +204,15 @@ describe('EmpresasService', () => {
     expect(result).toEqual(
       expect.objectContaining({
         cnpj: '43521115000134',
+        expiresAt: '2027-03-18T00:00:00.000Z',
+        expiresAtStatus: 'ok',
+        expiresAtError: null,
         certificado: expect.objectContaining({
           filename: 'certificado.pfx',
           sha256: expect.any(String),
+          expiresAt: '2027-03-18T00:00:00.000Z',
+          expiresAtStatus: 'ok',
+          expiresAtError: null,
         }),
       }),
     );
