@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 type RawServico = {
@@ -31,18 +31,23 @@ function normalizeText(value?: string): string {
 export class ServicoCatalogService {
   private readonly logger = new Logger(ServicoCatalogService.name);
   private readonly items: ServicoCatalogItem[];
+  private readonly configuredPath: string;
+  private readonly resolvedPath: string;
+  private loadError: string | null = null;
 
   constructor() {
+    this.configuredPath = process.env.NFSE_SERVICOS_CATALOGO_PATH ?? 'servicos_lc116_v2.json';
+    this.resolvedPath = resolve(process.cwd(), this.configuredPath);
     this.items = this.loadCatalog();
   }
 
   private loadCatalog(): ServicoCatalogItem[] {
-    const configuredPath = process.env.NFSE_SERVICOS_CATALOGO_PATH ?? 'servicos_lc116_v2.json';
-    const path = resolve(process.cwd(), configuredPath);
+    const path = this.resolvedPath;
 
     try {
       const raw = JSON.parse(readFileSync(path, 'utf8')) as RawServico[];
       if (!Array.isArray(raw)) {
+        this.loadError = 'Catalog file is not an array';
         this.logger.error(`Catalog file is not an array: ${path}`);
         return [];
       }
@@ -56,10 +61,12 @@ export class ServicoCatalogService {
         }))
         .filter((item) => item.codigoNacional.length === 6 && !!item.descricao);
 
+      this.loadError = null;
       this.logger.log(`NFSe service catalog loaded with ${parsed.length} items`);
       return parsed;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      this.loadError = msg;
       this.logger.error(`Failed to load NFSe service catalog from ${path}: ${msg}`);
       return [];
     }
@@ -69,6 +76,27 @@ export class ServicoCatalogService {
     const normalized = onlyDigits(codigo);
     if (normalized.length !== 6) return null;
     return this.items.find((item) => item.codigoNacional === normalized) ?? null;
+  }
+
+  getDiagnostics(codes: string[] = ['171901', '170601']) {
+    const sampleCodes = codes.map((code) => {
+      const normalized = onlyDigits(code);
+      const item = normalized.length === 6 ? this.findByCodigo(normalized) : null;
+      return {
+        codigo: normalized,
+        found: Boolean(item),
+        descricao: item?.descricao ?? null,
+      };
+    });
+
+    return {
+      configuredPath: this.configuredPath,
+      resolvedPath: this.resolvedPath,
+      fileExists: existsSync(this.resolvedPath),
+      totalItems: this.items.length,
+      loadError: this.loadError,
+      sampleCodes,
+    };
   }
 
   private searchItems(query?: string): ServicoCatalogItem[] {

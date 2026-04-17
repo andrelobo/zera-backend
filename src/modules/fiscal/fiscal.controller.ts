@@ -544,6 +544,12 @@ export class FiscalController {
     };
   }
 
+  @Get('servicos/diagnostico')
+  @ApiOperation({ summary: 'Diagnostico do catalogo nacional de servicos (LC116/NFS-e)' })
+  getServicoCatalogDiagnostico() {
+    return this.servicoCatalog.getDiagnostics();
+  }
+
   @Get('servicos/autocomplete')
   @ApiOperation({ summary: 'Autocomplete de servicos (catalogo LC116/NFS-e Nacional)' })
   @ApiQuery({ name: 'q', required: false, example: 'barbearia' })

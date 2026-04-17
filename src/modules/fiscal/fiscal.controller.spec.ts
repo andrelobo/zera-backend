@@ -9,6 +9,7 @@ describe('FiscalController', () => {
     autocomplete: jest.fn(),
     list: jest.fn(),
     findByCodigo: jest.fn(),
+    getDiagnostics: jest.fn(),
   };
   const syncNfseArtifactsService = { execute: jest.fn() };
   const webhookAudits = {
@@ -218,6 +219,32 @@ describe('FiscalController', () => {
       codigoServico: '171901',
       createdFrom: new Date('2026-02-01'),
       createdTo: new Date('2026-03-31'),
+    });
+  });
+
+  it('returns service catalog diagnostics', async () => {
+    servicoCatalog.getDiagnostics.mockReturnValue({
+      configuredPath: 'servicos_lc116_v2.json',
+      resolvedPath: '/app/servicos_lc116_v2.json',
+      fileExists: true,
+      totalItems: 335,
+      loadError: null,
+      sampleCodes: [
+        { codigo: '171901', found: true, descricao: 'Serviços de contabilidade' },
+        { codigo: '170601', found: true, descricao: 'Serviços de campanhas publicitárias' },
+      ],
+    });
+
+    expect(controller.getServicoCatalogDiagnostico()).toEqual({
+      configuredPath: 'servicos_lc116_v2.json',
+      resolvedPath: '/app/servicos_lc116_v2.json',
+      fileExists: true,
+      totalItems: 335,
+      loadError: null,
+      sampleCodes: [
+        { codigo: '171901', found: true, descricao: 'Serviços de contabilidade' },
+        { codigo: '170601', found: true, descricao: 'Serviços de campanhas publicitárias' },
+      ],
     });
   });
 
