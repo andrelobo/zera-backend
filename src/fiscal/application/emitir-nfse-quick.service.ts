@@ -192,6 +192,7 @@ export class EmitirNfseQuickService {
         },
       },
       referenciaExterna: referencia,
+      syncTomadorCadastro: false,
     };
   }
 

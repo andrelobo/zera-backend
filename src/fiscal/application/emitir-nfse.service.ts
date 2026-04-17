@@ -197,8 +197,14 @@ export class EmitirNfseService {
     let providerRequestForAudit: Record<string, any> | undefined;
 
     try {
-      await this.upsertTomadorFromEmission(enrichedInput);
-      const { parametroIssAplicado: _parametroIssAplicado, ...providerInput } = enrichedInput;
+      if (enrichedInput.syncTomadorCadastro !== false) {
+        await this.upsertTomadorFromEmission(enrichedInput);
+      }
+      const {
+        parametroIssAplicado: _parametroIssAplicado,
+        syncTomadorCadastro: _syncTomadorCadastro,
+        ...providerInput
+      } = enrichedInput;
       providerRequestForAudit = { payload: [providerInput] };
       const result = await this.provider.emitirNfse(providerInput);
 

@@ -89,6 +89,23 @@ describe('EmitirNfseQuickService', () => {
     expect(payload.prestador.regimeTributarioSn).toBeUndefined();
   });
 
+  it('marks quick emissions to skip tomador sync in cadastro principal', async () => {
+    const service = new EmitirNfseQuickService(
+      emitirNfseService as any,
+      empresasService as any,
+      servicoCatalog as any,
+    );
+
+    await service.execute({
+      cnpj: '43.521.115/0001-34',
+      cpfTomador: '61020788100',
+      valor: 125,
+    });
+
+    const payload = emitirNfseService.execute.mock.calls[0][0];
+    expect(payload.syncTomadorCadastro).toBe(false);
+  });
+
   it('rejects quick emission when valor is zero or negative', async () => {
     const service = new EmitirNfseQuickService(
       emitirNfseService as any,

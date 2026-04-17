@@ -140,6 +140,39 @@ describe('EmitirNfseService idempotency', () => {
     expect(output.emissionId).toBe('em-789');
   });
 
+  it('skips tomador sync when explicitly disabled for quick-origin emissions', async () => {
+    const created = { _id: { toString: () => 'em-789-skip' } };
+    const repository = {
+      findByReference: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue(created),
+      updateEmission: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = {
+      providerName: 'PLUGNOTAS',
+      emitirNfse: jest.fn().mockResolvedValue({
+        status: NfseEmissionStatus.PENDING,
+        provider: 'PLUGNOTAS',
+        externalId: 'ext-789-skip',
+      }),
+    };
+
+    const empresasService = makeEmpresasServiceMock();
+    const tomadoresService = makeTomadoresServiceMock();
+    const service = new EmitirNfseService(
+      provider as any,
+      repository as any,
+      empresasService as any,
+      tomadoresService as any,
+    );
+
+    const input = { ...makeInput(), syncTomadorCadastro: false };
+    await service.execute(input as any);
+
+    expect(tomadoresService.upsertFromEmission).not.toHaveBeenCalled();
+    const providerPayload = provider.emitirNfse.mock.calls[0][0];
+    expect(providerPayload.syncTomadorCadastro).toBeUndefined();
+  });
+
   it('enriches prestador.regimeTributarioSn in normal flow when missing', async () => {
     const created = { _id: { toString: () => 'em-790' } };
     const repository = {
