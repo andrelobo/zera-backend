@@ -41,6 +41,8 @@ export class TomadorServico {
 
 const TomadorServicoSchema = SchemaFactory.createForClass(TomadorServico);
 
+export type TomadorOrigemCadastro = 'manual' | 'emissao_normal' | 'emissao_rapida';
+
 @Schema({ timestamps: true })
 export class Tomador {
   @Prop({ required: true, index: true })
@@ -75,6 +77,9 @@ export class Tomador {
 
   @Prop({ type: TomadorEnderecoSchema })
   endereco?: TomadorEndereco;
+
+  @Prop({ enum: ['manual', 'emissao_normal', 'emissao_rapida'] })
+  origemCadastro?: TomadorOrigemCadastro;
 
   @Prop({ type: [TomadorServicoSchema], default: [] })
   servicos?: TomadorServico[];

@@ -4,7 +4,7 @@ import { isValidObjectId, Model } from 'mongoose';
 import { CreateTomadorDto } from './dtos/create-tomador.dto';
 import { UpdateTomadorDto } from './dtos/update-tomador.dto';
 import { HubdevCpfApi } from './hubdev-cpf.api';
-import { Tomador, TomadorDocument } from './schemas/tomador.schema';
+import { Tomador, TomadorDocument, type TomadorOrigemCadastro } from './schemas/tomador.schema';
 
 function onlyDigits(value?: string): string {
   return (value ?? '').replace(/\D+/g, '');
@@ -75,6 +75,7 @@ export class TomadoresService {
         whatsapp: dto.whatsapp,
         email: dto.email?.toLowerCase().trim(),
         endereco: dto.endereco,
+        origemCadastro: 'manual',
         servicos: normalizeTomadorServicos(dto.servicos),
       });
     } catch (error: any) {
@@ -278,6 +279,7 @@ export class TomadoresService {
       codigoServico?: string;
       descricaoServico?: string;
     };
+    origemCadastro?: TomadorOrigemCadastro;
   }) {
     const empresaCnpj = onlyDigits(input.empresaCnpj);
     const cpfCnpj = onlyDigits(input.cpfCnpj);
@@ -329,6 +331,7 @@ export class TomadoresService {
         $setOnInsert: {
           empresaCnpj,
           cpfCnpj,
+          origemCadastro: input.origemCadastro ?? 'emissao_normal',
         },
       },
       { upsert: true, new: true },

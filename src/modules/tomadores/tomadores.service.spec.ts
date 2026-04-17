@@ -146,6 +146,27 @@ describe('TomadoresService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('stamps manual provenance when creating tomador directly', async () => {
+    const model = {
+      create: jest.fn().mockResolvedValue({ id: 't-1' }),
+    };
+    const service = new TomadoresService(model as any, { consultarCpf: jest.fn() } as any);
+
+    await service.create({
+      empresaCnpj: '43521115000134',
+      cpfCnpj: '61020788100',
+      razaoSocial: 'Cliente',
+    });
+
+    expect(model.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        empresaCnpj: '43521115000134',
+        cpfCnpj: '61020788100',
+        origemCadastro: 'manual',
+      }),
+    );
+  });
+
   it('maps duplicate key error to business code', async () => {
     const model = {
       create: jest.fn().mockRejectedValue({ code: 11000 }),
@@ -230,6 +251,27 @@ describe('TomadoresService', () => {
       expect.any(Object),
     );
     expect(limit).toHaveBeenCalledWith(10);
+  });
+
+  it('upsertFromEmission stamps normal-emission provenance on insert', async () => {
+    const model = {
+      findOneAndUpdate: jest.fn().mockResolvedValue({ id: 't-emit' }),
+    };
+    const service = new TomadoresService(model as any, { consultarCpf: jest.fn() } as any);
+
+    await service.upsertFromEmission({
+      empresaCnpj: '43521115000134',
+      cpfCnpj: '61020788100',
+      razaoSocial: 'Cliente da Emissao',
+    });
+
+    expect(model.findOneAndUpdate).toHaveBeenCalledWith(
+      { empresaCnpj: '43521115000134', cpfCnpj: '61020788100' },
+      expect.objectContaining({
+        $setOnInsert: expect.objectContaining({ origemCadastro: 'emissao_normal' }),
+      }),
+      { upsert: true, new: true },
+    );
   });
 
   it('autocomplete rejects invalid empresaCnpj', async () => {
