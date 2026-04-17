@@ -335,23 +335,34 @@ export class TomadoresService {
     );
   }
   private normalizeCpfLookup(cpf: string, raw: Record<string, unknown>) {
-    const nome = this.pickCleanString(raw, ['nomeCompleto', 'nome_completo', 'nome']);
-    const dataNascimento = this.pickCleanString(raw, ['dataDeNascimento', 'data_nascimento', 'nascimento']);
-    const nomeMae = this.pickCleanString(raw, ['nomeDaMae', 'nome_mae', 'mae']);
-    const genero = this.pickCleanString(raw, ['genero', 'sexo']);
-    const lastUpdate = this.pickCleanString(raw, ['lastUpdate', 'last_update', 'dataAtualizacao']);
+    const candidate = this.unwrapCpfLookupPayload(raw);
 
-    const emails = this.pickArray(raw, ['listaEmails', 'lista_emails', 'emails']);
-    const telefones = this.pickArray(raw, ['listaTelefones', 'lista_telefones', 'telefones']);
-    const enderecos = this.pickArray(raw, ['listaEnderecos', 'lista_enderecos', 'enderecos']);
+    const nome = this.pickCleanString(candidate, ['nomeCompleto', 'nome_completo', 'nome']);
+    const dataNascimento = this.pickCleanString(candidate, ['dataDeNascimento', 'data_nascimento', 'nascimento']);
+    const nomeMae = this.pickCleanString(candidate, ['nomeDaMae', 'nome_mae', 'mae']);
+    const genero = this.pickCleanString(candidate, ['genero', 'sexo']);
+    const lastUpdate = this.pickCleanString(candidate, ['lastUpdate', 'last_update', 'dataAtualizacao', 'data_atualizacao']);
+
+    const emails = this.pickArray(candidate, ['listaEmails', 'lista_emails', 'emails', 'email']);
+    const telefones = this.pickArray(candidate, ['listaTelefones', 'lista_telefones', 'telefones', 'telefone', 'celular']);
+    const enderecos = this.pickArray(candidate, ['listaEnderecos', 'lista_enderecos', 'enderecos', 'endereco']);
 
     const email = this.extractEmail(emails);
     const telefone = this.extractTelefone(telefones);
     const endereco = this.extractEndereco(enderecos);
 
-    const found = Boolean(
-      nome || dataNascimento || nomeMae || genero || lastUpdate || emails.length || telefones.length || enderecos.length,
-    );
+    const providerReturn = this.pickCleanString(raw, ['return', 'status']) ?? this.pickCleanString(candidate, ['return', 'retorno', 'status', 'resultado']);
+    const providerMessage = this.pickCleanString(raw, ['message', 'mensagem', 'msg']) ?? this.pickCleanString(candidate, ['message', 'mensagem', 'msg']);
+    const providerOk = providerReturn ? /^(ok|success|sucesso)$/i.test(providerReturn) : false;
+    const providerNotFound = providerMessage
+      ? /(nao encontrado|não encontrado|cpf invalido|cpf inválido|cpf nao encontrado)/i.test(providerMessage)
+      : false;
+
+    const found = providerNotFound
+      ? false
+      : Boolean(
+          providerOk || nome || dataNascimento || nomeMae || genero || lastUpdate || emails.length || telefones.length || enderecos.length,
+        );
     const usefulAddress = Boolean(
       endereco?.cep ||
         endereco?.logradouro ||
@@ -379,10 +390,23 @@ export class TomadoresService {
     };
   }
 
+  private unwrapCpfLookupPayload(raw: Record<string, unknown>) {
+    const nestedKeys = ['result', 'data', 'retorno', 'body', 'value'];
+    for (const key of nestedKeys) {
+      const value = raw[key];
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        return value as Record<string, unknown>;
+      }
+    }
+    return raw;
+  }
+
   private pickArray(raw: Record<string, unknown>, keys: string[]) {
     for (const key of keys) {
       const value = raw[key];
       if (Array.isArray(value)) return value as unknown[];
+      if (value && typeof value === 'object') return [value as Record<string, unknown>];
+      if (typeof value === 'string') return [value];
     }
     return [] as unknown[];
   }

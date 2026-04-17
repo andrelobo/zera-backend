@@ -88,6 +88,49 @@ describe('TomadoresService', () => {
     expect(result.telefone).toBeUndefined();
     expect(result.endereco).toBeUndefined();
   });
+  it('lookupCpf unwraps nested provider payload and honors return OK', async () => {
+    const hubdev = {
+      consultarCpf: jest.fn().mockResolvedValue({
+        return: 'OK',
+        result: {
+          nome: 'Andre Lobo',
+          email: 'andre@zera.app',
+          telefone: { ddd: '92', numero: '991234567' },
+          endereco: {
+            cep: '69010040',
+            rua: 'Rua Saldanha Marinho',
+            numero: '606',
+            bairro: 'Centro',
+            cidade: 'Manaus',
+            estado: 'AM',
+          },
+        },
+      }),
+    };
+    const service = new TomadoresService({} as any, hubdev as any);
+
+    const result = await service.lookupCpf({ cpf: '61020788100' });
+
+    expect(result).toMatchObject({
+      cpf: '61020788100',
+      source: 'hubdev_cadastropf',
+      found: true,
+      usefulData: true,
+      maskedByLgpd: false,
+      nome: 'Andre Lobo',
+      email: 'andre@zera.app',
+      telefone: '92991234567',
+      whatsapp: '92991234567',
+      endereco: {
+        cep: '69010040',
+        logradouro: 'Rua Saldanha Marinho',
+        numero: '606',
+        bairro: 'Centro',
+        municipio: 'Manaus',
+        uf: 'AM',
+      },
+    });
+  });
   it('rejects invalid empresaCnpj', async () => {
     const model = {
       create: jest.fn(),
