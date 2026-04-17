@@ -9,7 +9,7 @@
     "node": "20.x"
   },
   "scripts": {
-    "build": "nest build",
+    "build": "nest build && node scripts/copy-servicos-catalog.mjs",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",

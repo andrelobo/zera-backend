@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 
 type RawServico = {
   codigo_nacional?: string;
@@ -32,44 +32,67 @@ export class ServicoCatalogService {
   private readonly logger = new Logger(ServicoCatalogService.name);
   private readonly items: ServicoCatalogItem[];
   private readonly configuredPath: string;
+  private readonly candidatePaths: string[];
   private readonly resolvedPath: string;
   private loadError: string | null = null;
 
   constructor() {
     this.configuredPath = process.env.NFSE_SERVICOS_CATALOGO_PATH ?? 'servicos_lc116_v2.json';
-    this.resolvedPath = resolve(process.cwd(), this.configuredPath);
-    this.items = this.loadCatalog();
+    this.candidatePaths = this.buildCandidatePaths(this.configuredPath);
+    const { items, resolvedPath } = this.loadCatalog();
+    this.items = items;
+    this.resolvedPath = resolvedPath;
   }
 
-  private loadCatalog(): ServicoCatalogItem[] {
-    const path = this.resolvedPath;
-
-    try {
-      const raw = JSON.parse(readFileSync(path, 'utf8')) as RawServico[];
-      if (!Array.isArray(raw)) {
-        this.loadError = 'Catalog file is not an array';
-        this.logger.error(`Catalog file is not an array: ${path}`);
-        return [];
-      }
-
-      const parsed = raw
-        .map((item) => ({
-          codigoNacional: onlyDigits(item.codigo_nacional),
-          itemLc116: (item.item_lc116 ?? '').trim(),
-          sequencial: Number(item.sequencial ?? 0),
-          descricao: (item.descricao ?? '').trim(),
-        }))
-        .filter((item) => item.codigoNacional.length === 6 && !!item.descricao);
-
-      this.loadError = null;
-      this.logger.log(`NFSe service catalog loaded with ${parsed.length} items`);
-      return parsed;
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      this.loadError = msg;
-      this.logger.error(`Failed to load NFSe service catalog from ${path}: ${msg}`);
-      return [];
+  private buildCandidatePaths(configuredPath: string): string[] {
+    if (isAbsolute(configuredPath)) {
+      return [configuredPath];
     }
+
+    return Array.from(
+      new Set([
+        resolve(process.cwd(), configuredPath),
+        resolve(process.cwd(), 'dist', configuredPath),
+        resolve(__dirname, '..', '..', configuredPath),
+        resolve(__dirname, '..', '..', '..', configuredPath),
+      ]),
+    );
+  }
+
+  private loadCatalog(): { items: ServicoCatalogItem[]; resolvedPath: string } {
+    let lastError = 'Catalog file could not be loaded';
+
+    for (const path of this.candidatePaths) {
+      try {
+        const raw = JSON.parse(readFileSync(path, 'utf8')) as RawServico[];
+        if (!Array.isArray(raw)) {
+          lastError = 'Catalog file is not an array';
+          continue;
+        }
+
+        const parsed = raw
+          .map((item) => ({
+            codigoNacional: onlyDigits(item.codigo_nacional),
+            itemLc116: (item.item_lc116 ?? '').trim(),
+            sequencial: Number(item.sequencial ?? 0),
+            descricao: (item.descricao ?? '').trim(),
+          }))
+          .filter((item) => item.codigoNacional.length === 6 && !!item.descricao);
+
+        this.loadError = null;
+        this.logger.log(`NFSe service catalog loaded with ${parsed.length} items from ${path}`);
+        return { items: parsed, resolvedPath: path };
+      } catch (e) {
+        lastError = e instanceof Error ? e.message : String(e);
+      }
+    }
+
+    const fallbackPath = this.candidatePaths[0] ?? this.configuredPath;
+    this.loadError = lastError;
+    this.logger.error(
+      `Failed to load NFSe service catalog. Tried: ${this.candidatePaths.join(', ')}. Last error: ${lastError}`,
+    );
+    return { items: [], resolvedPath: fallbackPath };
   }
 
   findByCodigo(codigo: string): ServicoCatalogItem | null {
