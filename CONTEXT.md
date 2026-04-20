@@ -22,6 +22,45 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+
+## ATUALIZACAO RAPIDA (2026-04-20) - emissao rapida isolada, origem de tomador e catalogo LC116 em runtime
+
+Fonte: `codigo local` + `testes locais` + `diagnostico em producao`.
+
+Leitura consolidada:
+- a Emissao Rapida (`POST /nfse/quick`) continua emitindo NFSe com payload minimo
+- ela deixou de sincronizar tomador no cadastro principal para nao poluir o seletor da DANFSE
+- o isolamento e feito por flag interna `syncTomadorCadastro: false`
+- essa flag nao deve ser enviada ao provider fiscal; ela e somente controle interno do ZERA
+
+Tomadores:
+- `Tomador` ganhou campo de proveniencia `origemCadastro`
+- novos cadastros manuais passam a nascer como `manual`
+- upsert de emissao normal passa a marcar insercao como `emissao_normal`
+- emissao rapida, no comportamento atual, nao deve criar novo tomador cadastral
+- registros antigos criados antes dessa regra continuam sendo legado de banco e devem ser tratados em limpeza separada
+
+Catalogo LC116:
+- o erro `QUICK_CODIGO_SERVICO_INVALIDO` com codigo valido como `171901` foi diagnosticado como ausencia do arquivo `servicos_lc116_v2.json` no runtime do Render
+- o build agora copia o catalogo para `dist/servicos_lc116_v2.json`
+- `ServicoCatalogService` passou a resolver caminhos candidatos para funcionar no ambiente compilado
+- `GET /nfse/servicos/diagnostico` deve ser usado para confirmar:
+  - caminho configurado
+  - caminho resolvido
+  - existencia do arquivo
+  - total de itens carregados
+  - erro de carga quando houver
+
+Validacao local desta rodada:
+- testes focados de `emitir-nfse`, `emitir-nfse-quick`, `tomadores.service` e `fiscal.controller`
+- build com copia do catalogo LC116
+
+Regra operacional:
+1. nao mexer no fluxo fiscal normal para resolver sujeira de dados
+2. separar correcao futura de legado de banco da regra nova de emissao rapida
+3. diagnosticar catalogo LC116 pelo endpoint antes de culpar payload valido
+4. preservar o mantra: sem quebrar, sem regredir, uma coisa de cada vez
+
 ## ATUALIZACAO RAPIDA (2026-04-17) - lookup de CPF em producao confirmado, parser corrigido e retorno parcial do provider
 
 Fonte: `codigo local` + `curl em producao` + `validacao funcional real`.

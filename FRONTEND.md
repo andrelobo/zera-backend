@@ -268,6 +268,37 @@ Behavior:
 
 ---
 
+
+### 4.8 Lookup assistido de CPF para tomador
+
+Request:
+- GET /tomadores/lookup/cpf?cpf=61020788100
+- Header: Authorization: Bearer <JWT>
+
+Behavior:
+- Consulta o Hub do Desenvolvedor (`cadastropf`) pela borda do backend.
+- Escopo exclusivo de tomadores PF.
+- Nao deve ser usado para prestador.
+- Resposta parcial e valida: o provider pode devolver apenas nome/data/genero.
+- Dados ausentes por LGPD/cobertura nao devem ser inventados pelo frontend.
+
+Response example:
+```json
+{
+  "cpf": "61020788100",
+  "source": "hubdev_cadastropf",
+  "found": true,
+  "usefulData": true,
+  "maskedByLgpd": false,
+  "nome": "NOME DO TOMADOR",
+  "dataNascimento": "10/05/1973",
+  "genero": "Masculino",
+  "lastUpdate": "24/03/2026"
+}
+```
+
+---
+
 ## 5. NFSe (Fiscal) – PlugNotas (NFSe Nacional)
 
 ### 5.1 Emitir NFSe
@@ -342,6 +373,37 @@ Notas importantes:
 - GET /nfse/:id/pdf
 - GET /nfse/:id/remote/xml (download direto do provider usando idNota)
 - GET /nfse/:id/remote/pdf (download direto do provider usando idNota)
+
+---
+
+
+### 5.3 Emissao Rapida
+
+- POST /nfse/quick
+- Body minimo esperado:
+```json
+{
+  "cnpj": "43521115000134",
+  "cpfTomador": "61020788100",
+  "valor": 1,
+  "codigoServico": "171901"
+}
+```
+
+Notas importantes:
+- `codigoServico` deve existir no catalogo LC116 carregado pelo backend.
+- O fluxo quick e para emissao com payload minimo.
+- O fluxo quick nao deve criar cadastro de tomador para o seletor da DANFSE.
+- Se um tomador antigo aparecer no seletor apos quick, tratar como legado de banco anterior a regra atual.
+
+### 5.4 Diagnostico do catalogo de servicos
+
+- GET /nfse/servicos/diagnostico
+
+Uso recomendado:
+- confirmar se `servicos_lc116_v2.json` foi carregado no runtime
+- investigar erro `QUICK_CODIGO_SERVICO_INVALIDO` quando o codigo informado parece valido
+- conferir `fileExists`, `totalItems`, `loadError` e amostras de codigo
 
 ---
 

@@ -2,6 +2,28 @@
 
 Snapshot operacional do backend em **08/04/2026**.
 
+
+## 0. Atualizacao rapida (20/04/2026) - quick sem cadastro de tomador e catalogo LC116 protegido no build
+
+Fonte: `codigo local` + `testes locais` + `diagnostico em producao`.
+
+Leitura consolidada:
+- `POST /nfse/quick` continua sendo o fluxo de emissao rapida com payload minimo
+- a quick agora envia controle interno `syncTomadorCadastro: false` para o service de emissao
+- `EmitirNfseService` respeita essa flag e nao chama o upsert de tomador quando ela vem falsa
+- a flag e removida antes do payload final enviado ao provider fiscal
+- novos tomadores manuais/por emissao normal passam a ter `origemCadastro` para rastreabilidade futura
+
+Catalogo LC116:
+- o runtime do Render pode nao ter o arquivo do catalogo na raiz se ele nao for copiado no build
+- o build copia `servicos_lc116_v2.json` para `dist`
+- `GET /nfse/servicos/diagnostico` expõe a saude do catalogo carregado
+
+Regra operacional correta:
+1. quick emite, mas nao cadastra tomador no seletor da DANFSE
+2. tomadores antigos vindos da quick sao legado de dados, nao regressao da regra nova
+3. erro de codigo valido na quick deve primeiro checar `/nfse/servicos/diagnostico`
+
 ## 0. Atualizacao rapida (16/04/2026) - tomadores ganharam lookup CPF assistido
 
 Fonte: `codigo local` + `testes locais` + `build local`.
