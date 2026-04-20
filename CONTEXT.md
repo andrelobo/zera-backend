@@ -22,6 +22,41 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+## ATUALIZACAO RAPIDA (2026-04-17) - lookup de CPF em producao confirmado, parser corrigido e retorno parcial do provider
+
+Fonte: `codigo local` + `curl em producao` + `validacao funcional real`.
+
+Leitura consolidada:
+- a rota `GET /tomadores/lookup/cpf?cpf=` esta efetivamente exposta em producao
+- a configuracao do token do Hub do Desenvolvedor foi validada em runtime
+- o parser de normalizacao foi ajustado para aceitar payload aninhado e formatos mais soltos do provider
+- o retorno real para CPF valido confirmou `found: true`, mas com payload parcial
+
+Evidencia funcional desta rodada:
+- o backend deixou de falhar por `Cannot GET`
+- o backend deixou de falhar por `CPF_LOOKUP_NOT_CONFIGURED` apos configuracao do token
+- o payload observado em producao trouxe:
+  - `nome`
+  - `dataNascimento`
+  - `genero`
+  - `lastUpdate`
+- o mesmo payload nao trouxe:
+  - `email`
+  - `telefone`
+  - `endereco`
+
+Leitura canonica correta agora:
+1. a borda do backend para CPF de tomador esta funcional
+2. o parser atual nao deve mais reduzir automaticamente payload parcial a `not found`
+3. quando o provider devolver pouco dado, o backend deve refletir isso com honestidade e sem inventar campos
+4. o proximo gargalo mais provavel saiu do codigo e foi para LGPD/cobertura/permissao da conta no provider
+
+Regra operacional:
+- manter o endpoint aditivo e nao quebrar a trilha canonica de `CNPJ`
+- seguir tratando resposta mascarada por LGPD como `found`, mas sem utilidade para autopreenchimento
+- tratar resposta parcial legivel como sucesso parcial, nao como erro de integracao
+
+
 ## ATUALIZACAO RAPIDA (2026-04-16) - lookup de CPF para tomadores integrado via Hub do Desenvolvedor
 
 Fonte: `codigo local` + `testes locais` + `build local`.
