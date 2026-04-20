@@ -5,6 +5,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/guards/roles.decorator';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
+import { InviteUserDto } from './dtos/invite-user.dto';
 import { UsersService } from './users.service';
 
 @ApiTags('users')
@@ -39,6 +40,14 @@ export class UsersController {
       dto.role ?? 'user',
       dto.status ?? 'active',
     );
+  }
+
+  @Post('invite')
+  @ApiOperation({ summary: 'Invite user for first access' })
+  @ApiBody({ type: InviteUserDto })
+  @ApiResponse({ status: 201 })
+  invite(@Body() dto: InviteUserDto) {
+    return this.users.invite(dto.name, dto.email, dto.role ?? 'user');
   }
 
   @Patch(':id')

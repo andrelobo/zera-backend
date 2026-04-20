@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import { hashPassword } from '../auth/password';
 import { User, UserDocument } from '../auth/schemas/user.schema';
+import { buildInviteUrl, generateInviteToken, getInviteTtlMs, hashInviteToken } from '../auth/invite-token';
 
 type PublicUser = {
   id: string;
@@ -10,8 +11,20 @@ type PublicUser = {
   email: string;
   role: string;
   status: string;
+  onboardingStatus?: string;
+  invitedAt?: Date;
+  inviteExpiresAt?: Date;
+  inviteAcceptedAt?: Date;
+  welcomeEmailSentAt?: Date;
+  lastLoginAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
+};
+
+type InviteUserResult = {
+  user: PublicUser;
+  inviteToken: string;
+  inviteUrl: string | null;
 };
 
 @Injectable()
@@ -20,7 +33,20 @@ export class UsersService {
 
   async list(): Promise<PublicUser[]> {
     const users = await this.userModel
-      .find({}, { name: 1, email: 1, role: 1, status: 1, createdAt: 1, updatedAt: 1 })
+      .find({}, {
+        name: 1,
+        email: 1,
+        role: 1,
+        status: 1,
+        onboardingStatus: 1,
+        invitedAt: 1,
+        inviteExpiresAt: 1,
+        inviteAcceptedAt: 1,
+        welcomeEmailSentAt: 1,
+        lastLoginAt: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      })
       .sort({ createdAt: -1 });
     return users.map((user) => this.toPublic(user));
   }
@@ -31,6 +57,12 @@ export class UsersService {
       email: 1,
       role: 1,
       status: 1,
+      onboardingStatus: 1,
+      invitedAt: 1,
+      inviteExpiresAt: 1,
+      inviteAcceptedAt: 1,
+      welcomeEmailSentAt: 1,
+      lastLoginAt: 1,
       createdAt: 1,
       updatedAt: 1,
     });
@@ -55,6 +87,7 @@ export class UsersService {
         passwordHash,
         role,
         status,
+        onboardingStatus: 'manual',
       });
 
       return this.toPublic(user);
@@ -63,6 +96,39 @@ export class UsersService {
         throw new BadRequestException('Email already exists');
       }
       throw new BadRequestException('Unable to create user');
+    }
+  }
+
+  async invite(name: string, email: string, role = 'user'): Promise<InviteUserResult> {
+    const normalized = email.trim().toLowerCase();
+    const inviteToken = generateInviteToken();
+    const now = new Date();
+    const inviteExpiresAt = new Date(now.getTime() + getInviteTtlMs());
+    const passwordHash = await hashPassword(generateInviteToken());
+
+    try {
+      const user = await this.userModel.create({
+        name: name.trim(),
+        email: normalized,
+        passwordHash,
+        role,
+        status: 'inactive',
+        onboardingStatus: 'invited',
+        invitedAt: now,
+        inviteExpiresAt,
+        inviteTokenHash: hashInviteToken(inviteToken),
+      });
+
+      return {
+        user: this.toPublic(user),
+        inviteToken,
+        inviteUrl: buildInviteUrl(inviteToken),
+      };
+    } catch (e: any) {
+      if (e?.code === 11000) {
+        throw new BadRequestException('Email already exists');
+      }
+      throw new BadRequestException('Unable to invite user');
     }
   }
 
@@ -86,7 +152,20 @@ export class UsersService {
     try {
       const user = await this.userModel.findByIdAndUpdate(id, update, {
         new: true,
-        fields: { name: 1, email: 1, role: 1, status: 1, createdAt: 1, updatedAt: 1 },
+        fields: {
+          name: 1,
+          email: 1,
+          role: 1,
+          status: 1,
+          onboardingStatus: 1,
+          invitedAt: 1,
+          inviteExpiresAt: 1,
+          inviteAcceptedAt: 1,
+          welcomeEmailSentAt: 1,
+          lastLoginAt: 1,
+          createdAt: 1,
+          updatedAt: 1,
+        },
       });
       if (!user) throw new NotFoundException('User not found');
       return this.toPublic(user);
@@ -112,6 +191,12 @@ export class UsersService {
       email: user.email,
       role: user.role,
       status: user.status,
+      onboardingStatus: (user as any).onboardingStatus,
+      invitedAt: (user as any).invitedAt,
+      inviteExpiresAt: (user as any).inviteExpiresAt,
+      inviteAcceptedAt: (user as any).inviteAcceptedAt,
+      welcomeEmailSentAt: (user as any).welcomeEmailSentAt,
+      lastLoginAt: (user as any).lastLoginAt,
       createdAt: (user as any).createdAt,
       updatedAt: (user as any).updatedAt,
     };

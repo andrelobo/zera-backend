@@ -3,6 +3,7 @@ import type { HydratedDocument } from 'mongoose';
 
 export type UserRole = 'admin' | 'manager' | 'user';
 export type UserStatus = 'active' | 'inactive';
+export type UserOnboardingStatus = 'manual' | 'invited' | 'accepted';
 
 @Schema({ timestamps: true })
 export class User {
@@ -20,6 +21,27 @@ export class User {
 
   @Prop({ required: true, type: String, enum: ['active', 'inactive'], default: 'active' })
   status: UserStatus;
+
+  @Prop({ type: String, enum: ['manual', 'invited', 'accepted'], default: 'manual' })
+  onboardingStatus?: UserOnboardingStatus;
+
+  @Prop()
+  invitedAt?: Date;
+
+  @Prop()
+  inviteExpiresAt?: Date;
+
+  @Prop()
+  inviteAcceptedAt?: Date;
+
+  @Prop()
+  welcomeEmailSentAt?: Date;
+
+  @Prop()
+  lastLoginAt?: Date;
+
+  @Prop({ select: false })
+  inviteTokenHash?: string;
 }
 
 export type UserDocument = HydratedDocument<User>;

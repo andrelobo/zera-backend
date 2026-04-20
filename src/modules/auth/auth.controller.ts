@@ -14,6 +14,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dtos/login.dto';
 import { BootstrapAdminDto } from './dtos/bootstrap-admin.dto';
 import { ResetAdminPasswordDto } from './dtos/reset-admin-password.dto';
+import { AcceptInviteDto } from './dtos/accept-invite.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { Request } from 'express';
 
@@ -52,6 +53,14 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Access token' })
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto.email, dto.password);
+  }
+
+  @Post('accept-invite')
+  @ApiOperation({ summary: 'Accept user invite and set first password' })
+  @ApiBody({ type: AcceptInviteDto })
+  @ApiResponse({ status: 201, description: 'Invite accepted and access token returned' })
+  acceptInvite(@Body() dto: AcceptInviteDto) {
+    return this.auth.acceptInvite(dto.token, dto.password);
   }
 
   @Post('bootstrap')
