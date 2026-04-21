@@ -2,6 +2,27 @@
 
 Snapshot operacional do backend em **21/04/2026**.
 
+## 0. Atualizacao rapida (21/04/2026) - controle de cadastro do tomador na emissao padrao
+
+Fonte: `codigo local` + `testes locais` + `build local`.
+
+Estado atual:
+- `POST /nfse/emitir` aceita `syncTomadorCadastro?: boolean`
+- `syncTomadorCadastro: false` impede o upsert do tomador no cadastro principal
+- `syncTomadorCadastro: true` ou ausencia da flag preserva o comportamento de sincronizacao da emissao normal
+- a flag e removida antes do payload enviado ao provider fiscal
+- `POST /nfse/quick` continua usando `syncTomadorCadastro: false` por padrao interno
+
+Leitura operacional:
+- a DANFSE padrao pode emitir para tomador manual sem necessariamente criar cadastro
+- a decisao de cadastrar ou nao cadastrar o tomador fica na UI
+- o backend continua exigindo dados fiscais completos do tomador para emissao normal
+- a regra nao altera PlugNotas, calculos de ISS, webhook, polling ou cadastro de prestador
+
+Validacao:
+- `npm test -- src/modules/fiscal/dtos/emitir-nfse.dto.spec.ts src/fiscal/application/emitir-nfse.service.spec.ts src/fiscal/application/emitir-nfse-quick.service.spec.ts`
+- `npm run build`
+
 ## 0. Atualizacao rapida (21/04/2026) - onboarding seguro por convite
 
 Fonte: `codigo local` + `git log local`.

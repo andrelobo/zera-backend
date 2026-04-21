@@ -22,6 +22,39 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+## ATUALIZACAO RAPIDA (2026-04-21) - emissao padrao aceita controle explicito de sincronizacao do tomador
+
+Fonte: `codigo local` + `testes locais` + `build local`.
+
+Leitura consolidada:
+- o backend ja possuia controle interno `syncTomadorCadastro` no `EmitirNfseInput`
+- `EmitirNfseService` ja respeitava `syncTomadorCadastro: false` para nao chamar `upsertTomadorFromEmission`
+- a flag tambem ja era removida antes de montar o payload enviado ao provider fiscal
+- a mudanca desta rodada foi expor oficialmente essa flag no DTO da emissao padrao
+
+Contrato atualizado:
+- `POST /nfse/emitir` agora aceita `syncTomadorCadastro?: boolean`
+- quando ausente ou `true`, a emissao padrao pode sincronizar o tomador no cadastro principal
+- quando `false`, a emissao ocorre sem cadastrar/atualizar o tomador no cadastro principal
+- essa flag e somente controle interno do ZERA e nao deve ir para a PlugNotas
+
+Relacao com os fluxos:
+- `POST /nfse/quick` continua enviando `syncTomadorCadastro: false` por regra propria
+- a DANFSE padrao agora pode enviar a escolha do usuario:
+  - `false` para tomador manual avulso
+  - `true` quando o usuario quer salvar no cadastro de tomadores
+- o backend continua exigindo os dados fiscais obrigatorios do tomador para emissao normal, especialmente endereco completo
+
+Regra operacional:
+1. nao criar tomador cadastral por efeito colateral quando a UI mandar `syncTomadorCadastro: false`
+2. nao enviar `syncTomadorCadastro` ao provider fiscal
+3. manter quick isolada do cadastro formal de tomadores
+4. preservar emissao normal completa, sem relaxar validacao de endereco
+
+Validacao desta rodada:
+- `npm test -- src/modules/fiscal/dtos/emitir-nfse.dto.spec.ts src/fiscal/application/emitir-nfse.service.spec.ts src/fiscal/application/emitir-nfse-quick.service.spec.ts`
+- `npm run build`
+
 ## ATUALIZACAO RAPIDA (2026-04-21) - onboarding por convite de usuario e contrato admin
 
 Fonte: `codigo local` + `git log local`.
