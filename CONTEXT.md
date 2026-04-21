@@ -22,6 +22,52 @@ Regra de interpretacao deste documento:
 - melhorias em webhook, polling, cadastro, BI e UX devem ser lidas como evolucoes sobre uma base ja produtiva
 - homologacao descrita aqui nao significa "produto fora de producao"; significa ajuste controlado de uma frente especifica dentro de operacao real
 
+## ATUALIZACAO RAPIDA (2026-04-21) - onboarding por convite de usuario e contrato admin
+
+Fonte: `codigo local` + `git log local`.
+
+Leitura consolidada:
+- o backend passou a suportar onboarding seguro de usuarios por convite
+- a criacao manual de usuario foi preservada para compatibilidade operacional
+- a frente e admin-only e nao altera regras fiscais, emissao, tomadores ou prestadores
+
+Contrato atual de usuarios:
+- `GET /users`
+- `GET /users/:id`
+- `POST /users`
+- `POST /users/invite`
+- `PATCH /users/:id`
+- `DELETE /users/:id`
+- todas as rotas de `/users` exigem JWT valido e role `admin`
+
+Contrato atual de aceite de convite:
+- `POST /auth/accept-invite`
+- payload esperado:
+  - `token`
+  - `password`
+- retorno segue o contrato de login com `accessToken` e `user`
+
+Regra canonica do convite:
+- `POST /users/invite` cria usuario inicialmente inativo
+- o status de onboarding nasce como `invited`
+- o token bruto e retornado apenas na resposta de criacao do convite
+- no banco fica apenas `inviteTokenHash`
+- o token expira por `USER_INVITE_TTL_HOURS`, com default de 72 horas
+- `inviteUrl` e montado quando `FRONTEND_APP_URL` ou `FRONTEND_URL` estiver configurado
+- se o backend nao conseguir montar URL, o frontend pode montar localmente a partir do token
+- ao aceitar convite:
+  - senha e hashada
+  - usuario vira `active`
+  - `onboardingStatus` vira `accepted`
+  - `inviteAcceptedAt` e registrado
+  - `inviteTokenHash` e removido
+
+Regra operacional:
+1. nao enviar senha por e-mail
+2. convite e o fluxo recomendado para primeiro acesso
+3. usuario manual continua existindo como fallback administrativo
+4. nao expor token de convite em listagem/consulta de usuario
+5. manter essa frente isolada de emissao fiscal
 
 ## ATUALIZACAO RAPIDA (2026-04-20) - emissao rapida isolada, origem de tomador e catalogo LC116 em runtime
 

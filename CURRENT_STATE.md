@@ -1,7 +1,31 @@
 # ZERA Backend – Current State
 
-Snapshot operacional do backend em **08/04/2026**.
+Snapshot operacional do backend em **21/04/2026**.
 
+## 0. Atualizacao rapida (21/04/2026) - onboarding seguro por convite
+
+Fonte: `codigo local` + `git log local`.
+
+Estado atual:
+- administradores podem gerenciar usuarios pelas rotas `/users`
+- `/users` permanece protegido por JWT + `RolesGuard` com role `admin`
+- existem dois modos de criacao:
+  - manual, preservando o fluxo antigo com senha definida pelo admin
+  - convite, recomendado para primeiro acesso
+
+Fluxo de convite:
+- `POST /users/invite` cria usuario `inactive` com `onboardingStatus = invited`
+- o backend gera token aleatorio, salva somente `inviteTokenHash` e retorna `inviteToken`
+- `inviteUrl` e retornado quando `FRONTEND_APP_URL` ou `FRONTEND_URL` estiver configurado
+- TTL padrao do convite: 72 horas via `USER_INVITE_TTL_HOURS`
+- `POST /auth/accept-invite` valida token, expiracao e status
+- ao aceitar, o usuario define senha propria, vira `active` e recebe `accessToken`
+
+Regra operacional correta:
+1. senha nao trafega por e-mail
+2. convite e de uso unico
+3. token bruto nao deve aparecer em listagem/consulta posterior
+4. o fluxo de usuarios nao interfere em emissao fiscal
 
 ## 0. Atualizacao rapida (20/04/2026) - quick sem cadastro de tomador e catalogo LC116 protegido no build
 
