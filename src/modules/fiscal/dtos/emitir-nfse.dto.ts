@@ -302,6 +302,15 @@ export class EmitirNfseDto {
   idNotaSubstituida?: string;
 
   @ApiProperty({
+    required: false,
+    description: 'Quando false, a emissão não sincroniza o tomador no cadastro principal.',
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  syncTomadorCadastro?: boolean;
+
+  @ApiProperty({
     example: {
       cnpj: '43521115000134',
       inscricaoMunicipal: '51754301',
