@@ -167,6 +167,27 @@ describe('TomadoresService', () => {
     );
   });
 
+  it('forces substituto tributario false when creating cpf tomador', async () => {
+    const model = {
+      create: jest.fn().mockResolvedValue({ id: 't-1' }),
+    };
+    const service = new TomadoresService(model as any, { consultarCpf: jest.fn() } as any);
+
+    await service.create({
+      empresaCnpj: '43521115000134',
+      cpfCnpj: '61020788100',
+      razaoSocial: 'Cliente CPF',
+      substitutoTributario: true,
+    });
+
+    expect(model.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cpfCnpj: '61020788100',
+        substitutoTributario: false,
+      }),
+    );
+  });
+
   it('maps duplicate key error to business code', async () => {
     const model = {
       create: jest.fn().mockRejectedValue({ code: 11000 }),
@@ -271,6 +292,48 @@ describe('TomadoresService', () => {
         $setOnInsert: expect.objectContaining({ origemCadastro: 'emissao_normal' }),
       }),
       { upsert: true, new: true },
+    );
+  });
+
+  it('forces substituto tributario false when upserting cpf tomador from emission', async () => {
+    const model = {
+      findOneAndUpdate: jest.fn().mockResolvedValue({ id: 't-emit' }),
+    };
+    const service = new TomadoresService(model as any, { consultarCpf: jest.fn() } as any);
+
+    await service.upsertFromEmission({
+      empresaCnpj: '43521115000134',
+      cpfCnpj: '61020788100',
+      razaoSocial: 'Cliente da Emissao',
+      substitutoTributario: true,
+    });
+
+    expect(model.findOneAndUpdate).toHaveBeenCalledWith(
+      { empresaCnpj: '43521115000134', cpfCnpj: '61020788100' },
+      expect.objectContaining({
+        $set: expect.objectContaining({ substitutoTributario: false }),
+      }),
+      { upsert: true, new: true },
+    );
+  });
+
+  it('forces substituto tributario false when updating existing cpf tomador', async () => {
+    const lean = jest.fn().mockResolvedValue({ cpfCnpj: '61020788100' });
+    const model = {
+      findById: jest.fn().mockReturnValue({ lean }),
+      findByIdAndUpdate: jest.fn().mockResolvedValue({ id: 't-1' }),
+    };
+    const service = new TomadoresService(model as any, { consultarCpf: jest.fn() } as any);
+
+    await service.update('507f1f77bcf86cd799439011', {
+      razaoSocial: 'Cliente CPF',
+      substitutoTributario: true,
+    });
+
+    expect(model.findByIdAndUpdate).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      expect.objectContaining({ substitutoTributario: false }),
+      { new: true },
     );
   });
 

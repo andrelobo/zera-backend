@@ -10,6 +10,10 @@ function onlyDigits(value?: string): string {
   return (value ?? '').replace(/\D+/g, '');
 }
 
+function isCpf(value?: string): boolean {
+  return onlyDigits(value).length === 11;
+}
+
 function nonEmpty(value?: string): string | undefined {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
@@ -71,7 +75,7 @@ export class TomadoresService {
         inscricaoMunicipal: dto.inscricaoMunicipal,
         inscricaoEstadual: dto.inscricaoEstadual,
         suframa: dto.suframa,
-        substitutoTributario: dto.substitutoTributario,
+        substitutoTributario: isCpf(cpfCnpj) ? false : dto.substitutoTributario,
         whatsapp: dto.whatsapp,
         email: dto.email?.toLowerCase().trim(),
         endereco: dto.endereco,
@@ -209,15 +213,28 @@ export class TomadoresService {
     }
 
     try {
+      const existing = await this.tomadorModel.findById(id).lean();
+      if (!existing) {
+        throw new NotFoundException({
+          code: 'TOMADOR_NOT_FOUND',
+          message: 'Tomador não encontrado',
+        });
+      }
+
+      const updatePayload = {
+        ...dto,
+        razaoSocial: dto.razaoSocial?.trim(),
+        nomeFantasia: dto.nomeFantasia?.trim(),
+        email: dto.email?.toLowerCase().trim(),
+        servicos: dto.servicos ? normalizeTomadorServicos(dto.servicos) : undefined,
+      };
+      if (isCpf(existing.cpfCnpj)) {
+        updatePayload.substitutoTributario = false;
+      }
+
       const tomador = await this.tomadorModel.findByIdAndUpdate(
         id,
-        {
-          ...dto,
-          razaoSocial: dto.razaoSocial?.trim(),
-          nomeFantasia: dto.nomeFantasia?.trim(),
-          email: dto.email?.toLowerCase().trim(),
-          servicos: dto.servicos ? normalizeTomadorServicos(dto.servicos) : undefined,
-        },
+        updatePayload,
         { new: true },
       );
 
@@ -296,8 +313,9 @@ export class TomadoresService {
       inscricaoMunicipal: nonEmpty(input.inscricaoMunicipal),
       inscricaoEstadual: nonEmpty(input.inscricaoEstadual),
       suframa: nonEmpty(input.suframa),
-      substitutoTributario:
-        typeof input.substitutoTributario === 'boolean' ? input.substitutoTributario : undefined,
+      substitutoTributario: isCpf(cpfCnpj)
+        ? false
+        : typeof input.substitutoTributario === 'boolean' ? input.substitutoTributario : undefined,
       email: nonEmpty(input.email)?.toLowerCase(),
       whatsapp: nonEmpty(input.whatsapp),
       endereco: input.endereco,
