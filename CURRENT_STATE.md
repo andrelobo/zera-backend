@@ -2,6 +2,56 @@
 
 Snapshot operacional do backend em **21/04/2026**.
 
+## 0. Atualizacao rapida (11/05/2026) - primeira camada oficial de IA entrou como diagnostico read-only
+
+Fonte: `codigo local` + `teste local focado` + `build local`.
+
+Estado atual:
+- foi criada a primeira camada `src/ai/*` no backend
+- a frente inicial nao toca no motor fiscal nem em regras tributarias
+- o primeiro agente oficial implementado foi o `DiagnoseAgent`
+- o comportamento atual e totalmente deterministico, sem dependencia de provider LLM em runtime
+- o endpoint inicial exposto e:
+  - `POST /ai/diagnostics/emission`
+- o endpoint aceita:
+  - `emissionId?`
+  - `externalId?`
+- a resposta segue o formato estruturado definido no `AI_CONTEXT.md`, incluindo:
+  - `severity`
+  - `probableLayer`
+  - `probableCause`
+  - `summary`
+  - `recommendedActions`
+  - `confidence`
+  - `evidence`
+  - `references`
+
+Leitura operacional correta:
+- esta primeira entrega deve ser lida como camada de triagem e explicacao operacional
+- ela reutiliza apenas dados ja existentes do sistema:
+  - emissao
+  - timeline de observabilidade
+  - polling
+  - auditoria de webhook
+  - artefatos
+- ela nao altera emissao, nao aciona provider fiscal e nao grava efeito colateral operacional
+- e uma implementacao alinhada ao `AI_CONTEXT.md`:
+  - IA como copiloto operacional
+  - engine fiscal continua sendo a verdade
+  - nenhuma regra tributaria foi movida para IA
+
+Heuristicas iniciais cobertas:
+1. emissao saudavel fechada por webhook
+2. emissao autorizada, mas fechada por polling
+3. indisponibilidade transitoria da cadeia externa NFS-e / provider
+4. divergencia de segredo compartilhado no webhook (`invalid_shared_secret`)
+5. artefatos incompletos apos autorizacao
+6. emissao pendente ainda em processamento
+
+Validacao:
+- `npm test -- --runInBand src/ai/agents/diagnose.agent.spec.ts src/ai/ai.controller.spec.ts`
+- `npm run build`
+
 ## 0. Atualizacao rapida (21/04/2026) - controle de cadastro do tomador na emissao padrao
 
 Fonte: `codigo local` + `testes locais` + `build local`.

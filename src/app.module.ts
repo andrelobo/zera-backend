@@ -13,6 +13,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { EmpresasModule } from './modules/empresas/empresas.module';
 import { UsersModule } from './modules/users/users.module';
 import { TomadoresModule } from './modules/tomadores/tomadores.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { TomadoresModule } from './modules/tomadores/tomadores.module';
     TomadoresModule,
     FiscalModule,
     WebhooksModule,
+    AiModule,
   ],
 })
 export class AppModule {}

@@ -1,7 +1,67 @@
 # ZERA Backend – Project Context
 
-> Leitura rápida operacional: veja `CURRENT_STATE.md` (snapshot atual).
-> Este documento (`CONTEXT.md`) permanece como histórico completo e linha do tempo.
+> Leitura rapida operacional: veja `CURRENT_STATE.md` (snapshot atual).
+> Este documento (`CONTEXT.md`) permanece como historico completo e linha do tempo.
+
+## ATUALIZACAO RAPIDA (2026-05-11) - primeira camada oficial de IA entrou como diagnostico read-only
+
+Fonte: `codigo local` + `teste local focado` + `build local`.
+
+Leitura consolidada:
+- a primeira camada `src/ai/*` passou a existir no backend
+- a entrada foi deliberadamente pequena, isolada e sem acoplamento ao core fiscal
+- o primeiro agente oficial implementado foi o `DiagnoseAgent`
+- nesta rodada, o agente opera em modo:
+  - `deterministic`
+  - `read-only`
+  - `sem LLM em runtime`
+- isso respeita a hierarquia definida no `AI_CONTEXT.md`:
+  - IA como interpretacao
+  - engine fiscal como verdade
+  - observabilidade como fonte primaria de diagnostico
+
+Contrato inicial da frente:
+- `POST /ai/diagnostics/emission`
+- payload aceito:
+  - `emissionId?`
+  - `externalId?`
+- resposta estruturada atual:
+  - `agent`
+  - `mode`
+  - `severity`
+  - `probableLayer`
+  - `probableCause`
+  - `summary`
+  - `recommendedActions`
+  - `confidence`
+  - `evidence`
+  - `references`
+
+Camadas de dado reutilizadas nesta rodada:
+- `NfseEmissionRepository`
+- auditoria de webhook
+- timeline de observabilidade
+- estado de polling
+- presenca de artefatos XML/PDF
+
+Casos iniciais que o agente classifica:
+1. emissao saudavel com fechamento por webhook
+2. emissao autorizada, mas fechada por polling
+3. indisponibilidade transitoria do provider / Ambiente Nacional
+4. webhook com `invalid_shared_secret`
+5. sincronizacao incompleta de artefatos
+6. emissao ainda pendente em processamento
+
+Regra canonica desta frente:
+1. nao acoplar IA em controllers fiscais existentes
+2. nao mover regra tributaria para IA
+3. nao permitir que a camada de IA emita, altere ou cancele notas
+4. usar IA primeiro como triagem, explicacao e troubleshooting
+5. evoluir provider LLM somente depois da camada deterministica estar estavel
+
+Validacao desta rodada:
+- `npm test -- --runInBand src/ai/agents/diagnose.agent.spec.ts src/ai/ai.controller.spec.ts`
+- `npm run build`
 
 ## PREMISSA CANONICA DE OPERACAO
 
