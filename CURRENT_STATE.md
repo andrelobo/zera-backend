@@ -2,6 +2,24 @@
 
 Snapshot operacional do backend em **21/04/2026**.
 
+## 0. Atualizacao rapida (12/05/2026) - auditoria das integracoes externas excluindo PlugNotas
+
+Fonte: `codigo local` + `docs locais`.
+
+Estado atual:
+- o backend centraliza a trilha principal de integracoes externas para:
+  - CPF de tomadores PF via Hub do Desenvolvedor
+  - CNPJ via CNPJá, com apoio de BrasilAPI e ReceitaWS
+  - CEP via ViaCEP
+  - municipios por UF via IBGE Localidades
+- a direcao canonica continua sendo manter o backend do ZERA como fachada unica dessas integracoes
+
+Leitura operacional correta:
+1. CPF, CNPJ e CEP ja estao centralizados pelo backend
+2. municipios por UF tambem ja possuem borda interna no backend
+3. a centralizacao ainda nao esta completa na pratica porque o frontend mantem duas chamadas diretas ao IBGE no fluxo ativo da emissao
+4. qualquer movimento para fornecedor principal unico deve preservar essa fachada interna do backend
+
 ## 0. Atualizacao rapida (11/05/2026) - primeira camada oficial de IA entrou como diagnostico read-only
 
 Fonte: `codigo local` + `teste local focado` + `build local`.

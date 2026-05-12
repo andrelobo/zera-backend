@@ -3,6 +3,36 @@
 > Leitura rapida operacional: veja `CURRENT_STATE.md` (snapshot atual).
 > Este documento (`CONTEXT.md`) permanece como historico completo e linha do tempo.
 
+## ATUALIZACAO RAPIDA (2026-05-12) - auditoria das integracoes externas excluindo PlugNotas
+
+Fonte: `codigo local` + `docs locais`.
+
+Leitura consolidada:
+- o backend ja centraliza o caminho principal das integracoes externas abaixo, excluindo PlugNotas:
+  - `Hub do Desenvolvedor` para CPF de tomadores PF
+  - `CNPJá` como fonte primaria de CNPJ
+  - `BrasilAPI` como fonte complementar de CNPJ
+  - `ReceitaWS` como fonte complementar de CNPJ
+  - `ViaCEP` para endereco por CEP
+  - `IBGE Localidades` para municipios por UF
+
+Ordem atual da consulta de CNPJ:
+1. `CNPJá`
+2. `BrasilAPI`
+3. `ReceitaWS`
+4. somente depois existe contingencia adicional da PlugNotas, fora do escopo desta auditoria
+
+Leitura correta da centralizacao hoje:
+- CPF, CNPJ e CEP ja passam pelo backend como trilha canonica
+- municipios por UF tambem ja possuem rota interna no backend
+- apesar disso, o frontend ainda mantem duas chamadas diretas ao `IBGE Localidades` no fluxo ativo da emissao, o que significa que a centralizacao ainda nao esta completa na pratica
+
+Regra canonica desta frente:
+1. o backend do ZERA deve seguir como fachada unica das integracoes externas
+2. o frontend nao deve depender diretamente de servicos externos para comportamento canonico
+3. qualquer movimento para fornecedor principal unico deve acontecer por dentro do backend, sem quebrar contratos internos
+4. nao remover contingencias existentes sem prova operacional de cobertura equivalente
+
 ## ATUALIZACAO RAPIDA (2026-05-11) - primeira camada oficial de IA entrou como diagnostico read-only
 
 Fonte: `codigo local` + `teste local focado` + `build local`.
