@@ -2,6 +2,22 @@
 
 Snapshot operacional do backend em **21/04/2026**.
 
+## 0. Atualizacao rapida (14/05/2026) - dominio `zera.net.br` confirmou dependencia operacional de `CORS_ORIGINS`
+
+Fonte: `execucao real` + `codigo local`.
+
+Estado atual:
+- o backend continua com CORS configurado em `src/main.ts`
+- as origens padrao nao incluem automaticamente novos dominios publicos do frontend
+- apos a publicacao de `https://zera.net.br`, o navegador passou a falhar em requests `OPTIONS` para `/health` e `/auth/login`
+- a normalizacao ocorreu apos incluir a nova origem em `CORS_ORIGINS` e redeployar o backend
+
+Leitura operacional correta:
+1. `CORS_ORIGINS` e a fonte real da allowlist de navegador neste projeto
+2. `FRONTEND_URL` e `FRONTEND_APP_URL` nao substituem CORS
+3. cada novo dominio do frontend exige alinhamento explicito da allowlist no backend
+4. o sintoma mais comum dessa divergencia e `OPTIONS` quebrando antes das rotas de negocio
+
 ## 0. Atualizacao rapida (12/05/2026) - auditoria das integracoes externas excluindo PlugNotas
 
 Fonte: `codigo local` + `docs locais`.

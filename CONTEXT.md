@@ -3,6 +3,23 @@
 > Leitura rapida operacional: veja `CURRENT_STATE.md` (snapshot atual).
 > Este documento (`CONTEXT.md`) permanece como historico completo e linha do tempo.
 
+
+## ATUALIZACAO RAPIDA (2026-05-14) - dominio `zera.net.br` e regra canonica de allowlist de CORS
+
+Fonte: `execucao real` + `codigo local`.
+
+Leitura consolidada:
+- o backend possui CORS configurado diretamente no bootstrap em `src/main.ts`
+- a entrada de um novo dominio publico do frontend (`https://zera.net.br`) evidenciou a regra operacional correta do projeto
+- mudar apenas `FRONTEND_URL` ou `FRONTEND_APP_URL` nao libera requests de navegador
+- a origem nova precisa constar em `CORS_ORIGINS`, seguida de redeploy
+- quando isso nao acontece, o navegador tende a falhar em `OPTIONS` antes mesmo de `/health` e `/auth/login`
+
+Regra canonica desta frente:
+1. qualquer novo dominio, subdominio ou alias publico do frontend exige revisao de `CORS_ORIGINS`
+2. a validacao minima apos essa mudanca deve incluir preflight `OPTIONS`, `/health` e `/auth/login`
+3. tratar erro de CORS como incidente de infraestrutura/apontamento, nao como falha funcional de regra de negocio
+
 ## ATUALIZACAO RAPIDA (2026-05-12) - auditoria das integracoes externas excluindo PlugNotas
 
 Fonte: `codigo local` + `docs locais`.
