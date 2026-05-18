@@ -56,6 +56,9 @@ export class CertificadoDigital {
   @Prop()
   expiresAt?: Date;
 
+  @Prop()
+  providerCertificadoId?: string;
+
   @Prop({ select: false })
   pfxBase64?: string;
 

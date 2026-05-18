@@ -4,6 +4,23 @@
 > Este documento (`CONTEXT.md`) permanece como historico completo e linha do tempo.
 
 
+## ATUALIZACAO RAPIDA (2026-05-18) - sincronizacao explicita de prestador com a PlugNotas para etapa multi-prestador
+
+Fonte: `codigo local` + `teste local focado` + `build local`.
+
+Leitura consolidada:
+- o backend passou a expor sincronizacao explicita de prestador com a PlugNotas por `id` e por `cnpj`
+- a nova trilha cobre upload do certificado ao provider quando necessario, persistencia local de `providerCertificadoId`, cadastro da empresa em `POST /empresa` e habilitacao complementar em `/Empresa/updateCompany`
+- essa frente nasceu para destravar o segundo prestador real sem transformar `create/update` de empresa em automacao arriscada de provider nesta mesma rodada
+- o diagnostico de certificado agora tambem considera o `providerCertificadoId` armazenado localmente, e nao apenas a ultima emissao
+
+Regra operacional desta frente:
+1. cadastrar empresa no banco do ZERA nao implica mais, por si so, prestador apto a emitir
+2. a aptidao do novo prestador depende tambem da sincronizacao explicita com a PlugNotas
+3. a automacao total de provider no salvar cadastro permanece fora desta rodada para evitar regressao fiscal/operacional
+4. a nova rota de sincronizacao e a trilha canonica para onboarding operacional de novos prestadores
+
+
 ## ATUALIZACAO RAPIDA (2026-05-14) - dominio `zera.net.br` e regra canonica de allowlist de CORS
 
 Fonte: `execucao real` + `codigo local`.

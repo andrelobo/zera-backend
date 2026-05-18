@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 
+import { PlugNotasCompanyApi } from '../../fiscal/infra/plugnotas/company.api';
 import { PlugNotasCnpjApi } from '../../fiscal/infra/plugnotas/cnpj.api';
 import { PlugNotasHttp } from '../../fiscal/infra/plugnotas/plugnotas.http';
 import {
@@ -31,6 +32,7 @@ import { Empresa, EmpresaSchema } from './schemas/empresa.schema';
     ReceitaWsCnpjApi,
     PlugNotasHttp,
     PlugNotasCnpjApi,
+    PlugNotasCompanyApi,
   ],
   exports: [EmpresasService],
 })

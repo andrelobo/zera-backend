@@ -53,6 +53,12 @@ describe('EmpresasService', () => {
     consultarCnpj: jest.fn(),
   };
 
+  const plugNotasCompanyApi = {
+    uploadCertificado: jest.fn(),
+    cadastrarEmpresa: jest.fn(),
+    habilitarEmpresaNfseNacional: jest.fn(),
+  };
+
   const empresaModel = {
     find: jest.fn(),
     findOne: jest.fn(),
@@ -77,6 +83,7 @@ describe('EmpresasService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.JWT_SECRET = 'test-secret';
+    process.env.PLUGNOTAS_API_KEY = 'test-plugnotas-key';
     service = new EmpresasService(
       empresaModel as any,
       cnaeCatalogoModel as any,
@@ -85,6 +92,7 @@ describe('EmpresasService', () => {
       brasilApiCnpjApi as any,
       receitaWsCnpjApi as any,
       plugNotasCnpjApi as any,
+      plugNotasCompanyApi as any,
     );
   });
 
@@ -165,6 +173,140 @@ describe('EmpresasService', () => {
       expect.objectContaining({
         cnpj: '43521115000134',
         razaoSocial: 'BURGUS LTDA',
+      }),
+    );
+  });
+
+  it('uploads certificate and creates empresa in PlugNotas during explicit sync by CNPJ', async () => {
+    const empresaDoc = {
+      _id: 'empresa-sync',
+      toObject: () => ({
+        _id: 'empresa-sync',
+        cnpj: '43521115000134',
+        razaoSocial: 'BURGUS LTDA',
+        nomeFantasia: 'ECONTABILIS LTDA',
+        inscricaoMunicipal: '51754301',
+        inscricaoEstadual: 'ISENTO',
+        opcaoPeloSimples: true,
+        email: 'contato@econtabilis.com',
+        fone: '(92) 99159-4210',
+        dpsNum: '49',
+        serieDpsNum: '01',
+        endereco: {
+          logradouro: 'R SALDANHA MARINHO',
+          numero: '606',
+          complemento: 'SALA 255',
+          bairro: 'CENTRO',
+          codigoMunicipio: '1302603',
+          cidade: 'Manaus',
+          uf: 'AM',
+          cep: '69010040',
+          codigoPais: '1058',
+          pais: 'Brasil',
+        },
+        certificado: {
+          filename: 'certificado.pfx',
+          mimeType: 'application/pkcs12',
+          pfxBase64: Buffer.from('ABCD').toString('base64'),
+          passwordEncrypted: 'v1:encrypted',
+        },
+      }),
+    };
+
+    empresaModel.findOne.mockReturnValue(buildSelectChain(empresaDoc));
+    empresaModel.updateOne.mockResolvedValue({ acknowledged: true });
+    plugNotasCompanyApi.uploadCertificado.mockResolvedValue({ id: 'plug-cert-1' });
+    plugNotasCompanyApi.cadastrarEmpresa.mockResolvedValue({
+      message: 'Cadastro efetuado com sucesso',
+      data: { cnpj: '43521115000134' },
+    });
+    plugNotasCompanyApi.habilitarEmpresaNfseNacional.mockResolvedValue({ ok: true });
+
+    jest.spyOn(service as any, 'decryptSecret').mockReturnValue('123456');
+
+    const result = await service.syncPlugNotasCadastroByCnpj('43.521.115/0001-34');
+
+    expect(plugNotasCompanyApi.uploadCertificado).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileName: 'certificado.pfx',
+        email: 'contato@econtabilis.com',
+      }),
+    );
+    expect(empresaModel.updateOne).toHaveBeenCalledWith(
+      { _id: 'empresa-sync' },
+      { $set: { 'certificado.providerCertificadoId': 'plug-cert-1' } },
+    );
+    expect(plugNotasCompanyApi.cadastrarEmpresa).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cpfCnpj: '43521115000134',
+        inscricaoMunicipal: '51754301',
+        certificado: 'plug-cert-1',
+      }),
+    );
+    expect(plugNotasCompanyApi.habilitarEmpresaNfseNacional).toHaveBeenCalledWith('43521115000134');
+    expect(result).toEqual(
+      expect.objectContaining({
+        synced: true,
+        certificado: expect.objectContaining({
+          providerCertificadoId: 'plug-cert-1',
+          action: 'uploaded',
+        }),
+        plugNotas: expect.objectContaining({
+          companyAction: 'created',
+        }),
+      }),
+    );
+  });
+
+  it('reuses stored provider certificate id and tolerates existing empresa in PlugNotas', async () => {
+    const empresaDoc = {
+      _id: 'empresa-sync-existing',
+      toObject: () => ({
+        _id: 'empresa-sync-existing',
+        cnpj: '43521115000134',
+        razaoSocial: 'BURGUS LTDA',
+        inscricaoMunicipal: '51754301',
+        opcaoPeloSimples: true,
+        endereco: {
+          logradouro: 'R SALDANHA MARINHO',
+          numero: '606',
+          bairro: 'CENTRO',
+          codigoMunicipio: '1302603',
+          cidade: 'Manaus',
+          uf: 'AM',
+          cep: '69010040',
+        },
+        certificado: {
+          filename: 'certificado.pfx',
+          providerCertificadoId: 'plug-cert-existing',
+        },
+      }),
+    };
+
+    empresaModel.findOne.mockReturnValue(buildSelectChain(empresaDoc));
+    plugNotasCompanyApi.cadastrarEmpresa.mockRejectedValue({
+      status: 409,
+      body: { error: { message: 'Empresa já cadastrada' } },
+    });
+    plugNotasCompanyApi.habilitarEmpresaNfseNacional.mockResolvedValue({ ok: true });
+
+    const result = await service.syncPlugNotasCadastroByCnpj('43521115000134');
+
+    expect(plugNotasCompanyApi.uploadCertificado).not.toHaveBeenCalled();
+    expect(empresaModel.updateOne).not.toHaveBeenCalledWith(
+      { _id: 'empresa-sync-existing' },
+      expect.anything(),
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        synced: true,
+        certificado: expect.objectContaining({
+          providerCertificadoId: 'plug-cert-existing',
+          action: 'reused',
+        }),
+        plugNotas: expect.objectContaining({
+          companyAction: 'already_exists',
+        }),
       }),
     );
   });

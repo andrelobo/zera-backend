@@ -1,10 +1,12 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
 import type { File as MulterFile } from 'multer';
 import { Model } from 'mongoose';
 import * as forge from 'node-forge';
+import { PlugNotasCompanyApi } from '../../fiscal/infra/plugnotas/company.api';
 import { PlugNotasCnpjApi } from '../../fiscal/infra/plugnotas/cnpj.api';
+import { getPlugNotasConfig } from '../../fiscal/infra/plugnotas/plugnotas.config';
 import {
   NfseEmission,
   NfseEmissionDocument,
@@ -129,6 +131,7 @@ export class EmpresasService {
     private readonly brasilApiCnpjApi: BrasilApiCnpjApi,
     private readonly receitaWsCnpjApi: ReceitaWsCnpjApi,
     private readonly plugNotasCnpjApi: PlugNotasCnpjApi,
+    private readonly plugNotasCompanyApi: PlugNotasCompanyApi,
   ) {}
 
   async createFromCnpj(cnpj: string, payload?: Partial<CreateEmpresaDto>) {
@@ -345,6 +348,7 @@ export class EmpresasService {
     const providerCertificadoId = this.toScalarStringOrUndefined(
       providerPrestador.certificado ?? providerPrestador.certificadoId,
     );
+    const storedProviderCertificadoId = this.toScalarStringOrUndefined(certRaw.providerCertificadoId);
 
     const legacyExpirationDiag = this.inspectLegacyCertificateExpiration(certRaw);
 
@@ -366,6 +370,7 @@ export class EmpresasService {
         size: certRaw.size ?? undefined,
         hasPfxBase64: this.hasValue(certRaw.pfxBase64),
         hasPasswordEncrypted: this.hasValue(certRaw.passwordEncrypted),
+        providerCertificadoId: storedProviderCertificadoId ?? null,
       },
       ultimaEmissao: latestEmission
         ? {
@@ -374,7 +379,7 @@ export class EmpresasService {
             status: latestEmission.status,
             createdAt: latestEmissionRaw?.createdAt,
             externalId: latestEmission.externalId ?? null,
-            providerCertificadoId: providerCertificadoId ?? null,
+            providerCertificadoId: providerCertificadoId ?? storedProviderCertificadoId ?? null,
             providerRequestPrestadorCnpj:
               this.toScalarStringOrUndefined(
                 (latestEmissionRaw?.providerRequest as Record<string, any> | undefined)
@@ -665,6 +670,328 @@ export class EmpresasService {
   async remove(id: string) {
     const doc = await this.empresaModel.findByIdAndDelete(id);
     return { deleted: Boolean(doc) };
+  }
+
+  async syncPlugNotasCadastroById(id: string) {
+    const empresa = await this.empresaModel
+      .findById(id)
+      .select('+certificado.pfxBase64 +certificado.passwordEncrypted');
+
+    if (!empresa) {
+      throw new NotFoundException({
+        code: 'EMPRESA_NOT_FOUND',
+        message: 'Empresa não encontrada para sincronização com a PlugNotas',
+      });
+    }
+
+    return this.syncPlugNotasCadastroFromDoc(empresa);
+  }
+
+  async syncPlugNotasCadastroByCnpj(cnpj: string) {
+    const normalized = this.onlyDigits(cnpj);
+    if (!normalized) {
+      throw new BadRequestException('CNPJ inválido');
+    }
+
+    const empresa = await this.empresaModel
+      .findOne({ $or: [{ cnpj: normalized }, { cpf_cnpj: normalized }] } as any)
+      .select('+certificado.pfxBase64 +certificado.passwordEncrypted');
+
+    if (!empresa) {
+      throw new NotFoundException({
+        code: 'EMPRESA_NOT_FOUND',
+        message: 'Empresa não encontrada para sincronização com a PlugNotas',
+      });
+    }
+
+    return this.syncPlugNotasCadastroFromDoc(empresa);
+  }
+
+  private async syncPlugNotasCadastroFromDoc(empresa: EmpresaDocument) {
+    const raw = empresa.toObject() as unknown as Record<string, unknown>;
+    const normalized = this.normalizeEmpresaOutput(raw) as Record<string, any>;
+    const certRaw = ((raw.certificado as Record<string, unknown> | undefined) ?? {}) as Record<
+      string,
+      unknown
+    >;
+
+    const missingFields = this.collectPlugNotasSyncMissingFields(normalized, certRaw);
+    if (missingFields.length > 0) {
+      throw new BadRequestException({
+        code: 'PLUGNOTAS_SYNC_INCOMPLETE',
+        message: 'Cadastro do prestador está incompleto para sincronização com a PlugNotas',
+        details: {
+          missingFields,
+        },
+      });
+    }
+
+    let providerCertificadoId = this.toScalarStringOrUndefined(certRaw.providerCertificadoId);
+    let certificadoAction: 'reused' | 'uploaded' = 'reused';
+
+    if (!providerCertificadoId) {
+      const pfxBase64 = this.toScalarStringOrUndefined(certRaw.pfxBase64);
+      const passwordEncrypted = this.toScalarStringOrUndefined(certRaw.passwordEncrypted);
+
+      if (!pfxBase64 || !passwordEncrypted) {
+        throw new BadRequestException({
+          code: 'PLUGNOTAS_CERTIFICADO_UNAVAILABLE',
+          message: 'Certificado digital indisponível para sincronização com a PlugNotas',
+        });
+      }
+
+      try {
+        const decryptedPassword = this.decryptSecret(passwordEncrypted);
+        if (!decryptedPassword) {
+          throw new BadRequestException({
+            code: 'PLUGNOTAS_CERTIFICADO_PASSWORD_INVALID',
+            message: 'Não foi possível recuperar a senha do certificado para sincronização com a PlugNotas',
+          });
+        }
+
+        const upload = await this.plugNotasCompanyApi.uploadCertificado({
+          buffer: Buffer.from(pfxBase64, 'base64'),
+          password: decryptedPassword,
+          fileName: this.toScalarStringOrUndefined(certRaw.filename) ?? 'certificado.pfx',
+          mimeType: this.toScalarStringOrUndefined(certRaw.mimeType) ?? 'application/x-pkcs12',
+          email: this.toScalarStringOrUndefined(normalized.email),
+        });
+
+        providerCertificadoId = upload.id;
+        if (!providerCertificadoId) {
+          throw new BadRequestException({
+            code: 'PLUGNOTAS_CERTIFICADO_ID_MISSING',
+            message: 'A PlugNotas não retornou o id do certificado após o upload',
+          });
+        }
+
+        await this.empresaModel.updateOne(
+          { _id: empresa._id },
+          { $set: { 'certificado.providerCertificadoId': providerCertificadoId } },
+        );
+        certificadoAction = 'uploaded';
+      } catch (error) {
+        this.rethrowPlugNotasSyncError('certificado', error);
+      }
+    }
+
+    const payload = this.buildPlugNotasCompanyPayload(normalized, providerCertificadoId);
+
+    let companyAction: 'created' | 'already_exists' = 'created';
+    let companyResponse: unknown = null;
+
+    try {
+      companyResponse = await this.plugNotasCompanyApi.cadastrarEmpresa(payload);
+    } catch (error: any) {
+      if (error?.status === 409) {
+        companyAction = 'already_exists';
+        companyResponse = error?.body ?? null;
+      } else {
+        this.rethrowPlugNotasSyncError('empresa', error);
+      }
+    }
+
+    let habilitacaoResponse: unknown = null;
+    try {
+      habilitacaoResponse = await this.plugNotasCompanyApi.habilitarEmpresaNfseNacional(
+        String(normalized.cnpj),
+      );
+    } catch (error) {
+      this.rethrowPlugNotasSyncError('habilitação NFSe Nacional', error);
+    }
+
+    return {
+      synced: true,
+      empresa: {
+        id: String(normalized.id ?? normalized._id ?? empresa._id ?? ''),
+        cnpj: String(normalized.cnpj ?? ''),
+        razaoSocial: this.toScalarStringOrUndefined(normalized.razaoSocial) ?? null,
+      },
+      certificado: {
+        providerCertificadoId,
+        action: certificadoAction,
+      },
+      plugNotas: {
+        companyAction,
+        companyResponse,
+        habilitacaoResponse,
+      },
+    };
+  }
+
+  private collectPlugNotasSyncMissingFields(
+    empresa: Record<string, any>,
+    certRaw: Record<string, unknown>,
+  ) {
+    const endereco = (empresa.endereco as Record<string, unknown> | undefined) ?? {};
+    const missing: string[] = [];
+    const requireField = (value: unknown, field: string) => {
+      if (!this.hasValue(value)) missing.push(field);
+    };
+
+    requireField(empresa.cnpj, 'cnpj');
+    requireField(empresa.razaoSocial, 'razaoSocial');
+    requireField(empresa.inscricaoMunicipal, 'inscricaoMunicipal');
+    requireField(endereco.logradouro, 'endereco.logradouro');
+    requireField(endereco.numero, 'endereco.numero');
+    requireField(endereco.bairro, 'endereco.bairro');
+    requireField(endereco.codigoMunicipio, 'endereco.codigoMunicipio');
+    requireField(endereco.cidade, 'endereco.cidade');
+    requireField(endereco.uf, 'endereco.uf');
+    requireField(endereco.cep, 'endereco.cep');
+    requireField(certRaw.filename, 'certificado.filename');
+
+    const hasProviderCert = this.hasValue(certRaw.providerCertificadoId);
+    const hasLocalMaterial = this.hasValue(certRaw.pfxBase64) && this.hasValue(certRaw.passwordEncrypted);
+    if (!hasProviderCert && !hasLocalMaterial) {
+      missing.push('certificado.providerCertificadoId|certificado.pfxBase64');
+      missing.push('certificado.passwordEncrypted');
+    }
+
+    return missing;
+  }
+
+  private buildPlugNotasCompanyPayload(
+    empresa: Record<string, any>,
+    providerCertificadoId: string,
+  ): Record<string, unknown> {
+    const endereco = (empresa.endereco as Record<string, any> | undefined) ?? {};
+    const regime = this.resolvePlugNotasCompanyTaxRegime(empresa);
+    const telefone = this.extractPhoneParts(empresa.fone ?? empresa.whatsapp);
+    const logradouro = this.splitLogradouro(this.toScalarStringOrUndefined(endereco.logradouro));
+    const cfg = getPlugNotasConfig();
+    const rpsNumero = Number.parseInt(this.onlyDigits(String(empresa.dpsNum ?? empresa.nfseNum ?? '1')), 10);
+
+    return this.compactObject({
+      cpfCnpj: this.onlyDigits(String(empresa.cnpj ?? '')),
+      inscricaoMunicipal: this.toScalarStringOrUndefined(empresa.inscricaoMunicipal),
+      inscricaoEstadual: this.toScalarStringOrUndefined(empresa.inscricaoEstadual),
+      razaoSocial: this.toScalarStringOrUndefined(empresa.razaoSocial),
+      nomeFantasia: this.toScalarStringOrUndefined(empresa.nomeFantasia),
+      certificado: providerCertificadoId,
+      simplesNacional: regime.simplesNacional,
+      regimeTributario: regime.regimeTributario,
+      incentivoFiscal: false,
+      incentivadorCultural: false,
+      endereco: this.compactObject({
+        tipoLogradouro: logradouro.tipoLogradouro,
+        logradouro: logradouro.logradouro,
+        numero: this.toScalarStringOrUndefined(endereco.numero),
+        complemento: this.toScalarStringOrUndefined(endereco.complemento),
+        tipoBairro: this.hasValue(endereco.bairro) ? 'Bairro' : undefined,
+        bairro: this.toScalarStringOrUndefined(endereco.bairro),
+        codigoPais: this.toScalarStringOrUndefined(endereco.codigoPais) ?? '1058',
+        descricaoPais: this.toScalarStringOrUndefined(endereco.pais) ?? 'Brasil',
+        codigoCidade: this.toScalarStringOrUndefined(endereco.codigoMunicipio),
+        descricaoCidade: this.toScalarStringOrUndefined(endereco.cidade),
+        estado: this.toScalarStringOrUndefined(endereco.uf),
+        cep: this.onlyDigits(this.toScalarStringOrUndefined(endereco.cep) ?? ''),
+      }),
+      telefone,
+      email: this.toScalarStringOrUndefined(empresa.email),
+      nfse: {
+        ativo: true,
+        tipoContrato: 0,
+        config: {
+          producao: cfg.environment === 'production',
+          rps: {
+            serie: this.toScalarStringOrUndefined(empresa.serieDpsNum) ?? '01',
+            numero: Number.isFinite(rpsNumero) && rpsNumero > 0 ? rpsNumero : 1,
+            lote: 0,
+          },
+          email: { envio: false },
+        },
+      },
+    });
+  }
+
+  private resolvePlugNotasCompanyTaxRegime(empresa: Record<string, any>) {
+    const regimeTributario = this.toScalarStringOrUndefined(empresa.regimeTributario)?.trim();
+    const providerData = (empresa.providerData as Record<string, unknown> | undefined) ?? {};
+    const simplesValue =
+      empresa.opcaoPeloSimples ??
+      (providerData.company as Record<string, any> | undefined)?.simples?.optant ??
+      (providerData.simples as Record<string, any> | undefined)?.optante ??
+      providerData.simples;
+    const simplesNacional = this.toBooleanOrUndefined(simplesValue);
+
+    if (regimeTributario === 'simples_nacional' || simplesNacional === true) {
+      return {
+        simplesNacional: true,
+        regimeTributario: 1,
+      };
+    }
+
+    return {
+      simplesNacional: simplesNacional ?? false,
+      regimeTributario: undefined,
+    };
+  }
+
+  private extractPhoneParts(value: unknown) {
+    const digits = this.onlyDigits(this.toScalarStringOrUndefined(value) ?? '');
+    if (digits.length < 10) return undefined;
+
+    return {
+      ddd: digits.slice(0, 2),
+      numero: digits.slice(2, 11),
+    };
+  }
+
+  private splitLogradouro(value?: string) {
+    const normalized = (value ?? '').trim();
+    if (!normalized) return { logradouro: undefined, tipoLogradouro: undefined };
+
+    const [first, ...rest] = normalized.split(/\s+/);
+    const aliases: Record<string, string> = {
+      R: 'RUA',
+      RUA: 'RUA',
+      AV: 'AVENIDA',
+      AVENIDA: 'AVENIDA',
+      AL: 'ALAMEDA',
+      ALAMEDA: 'ALAMEDA',
+      TV: 'TRAVESSA',
+      TRAVESSA: 'TRAVESSA',
+      EST: 'ESTRADA',
+      ESTRADA: 'ESTRADA',
+      ROD: 'RODOVIA',
+      RODOVIA: 'RODOVIA',
+    };
+
+    const key = first.replace(/\./g, '').toUpperCase();
+    const mapped = aliases[key];
+    if (!mapped || rest.length === 0) {
+      return {
+        tipoLogradouro: undefined,
+        logradouro: normalized,
+      };
+    }
+
+    return {
+      tipoLogradouro: mapped,
+      logradouro: rest.join(' '),
+    };
+  }
+
+  private rethrowPlugNotasSyncError(stage: string, error: unknown): never {
+    if (error instanceof BadRequestException || error instanceof NotFoundException) {
+      throw error;
+    }
+
+    const status = typeof (error as any)?.status === 'number' ? (error as any).status : null;
+    const body = (error as any)?.body ?? null;
+    const message = error instanceof Error ? error.message : String(error);
+
+    throw new BadRequestException({
+      code: 'PLUGNOTAS_SYNC_FAILED',
+      message: `Falha ao sincronizar ${stage} com a PlugNotas`,
+      details: {
+        stage,
+        status,
+        body,
+        message,
+      },
+    });
   }
 
   private async fetchProviderData(cnpj: string) {

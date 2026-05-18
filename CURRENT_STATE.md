@@ -2,6 +2,23 @@
 
 Snapshot operacional do backend em **21/04/2026**.
 
+## 0. Atualizacao rapida (18/05/2026) - onboarding operacional de novo prestador via PlugNotas
+
+Fonte: `codigo local` + `teste local focado` + `build local`.
+
+Estado atual:
+- o backend ganhou `POST /empresas/:id/plugnotas/sync`
+- o backend ganhou `POST /empresas/cnpj/:cnpj/plugnotas/sync`
+- a sincronizacao sobe o certificado para a PlugNotas quando ainda nao existe `providerCertificadoId` local
+- apos isso, tenta cadastrar a empresa no provider e faz a habilitacao complementar de NFSe Nacional
+- o diagnostico de certificado por CNPJ agora tambem informa o `providerCertificadoId` armazenado localmente
+
+Leitura operacional correta:
+1. multi-prestador funcional exige banco + certificado + sincronizacao PlugNotas
+2. a nova rota explicita de sincronizacao e a borda segura desta rodada
+3. `create/update` de empresa continuam locais; a automacao total de provider ficou deliberadamente adiada
+4. o objetivo imediato e homologar com 2 prestadores antes de escalar para 4
+
 ## 0. Atualizacao rapida (14/05/2026) - dominio `zera.net.br` confirmou dependencia operacional de `CORS_ORIGINS`
 
 Fonte: `execucao real` + `codigo local`.

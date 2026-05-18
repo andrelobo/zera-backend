@@ -104,6 +104,20 @@ export class EmpresasController {
     return this.empresas.diagnosticarCertificadoByCnpj(cnpj);
   }
 
+  @Post(':id/plugnotas/sync')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Sincronizar prestador e certificado com a PlugNotas por id' })
+  syncPlugNotasById(@Param('id') id: string) {
+    return this.empresas.syncPlugNotasCadastroById(id);
+  }
+
+  @Post('cnpj/:cnpj/plugnotas/sync')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Sincronizar prestador e certificado com a PlugNotas por CNPJ' })
+  syncPlugNotasByCnpj(@Param('cnpj') cnpj: string) {
+    return this.empresas.syncPlugNotasCadastroByCnpj(cnpj);
+  }
+
   @Get()
   @Roles('admin', 'manager', 'user')
   @ApiOperation({ summary: 'List empresas' })
