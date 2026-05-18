@@ -800,12 +800,38 @@ export class EmpresasService {
     }
 
     let habilitacaoResponse: unknown = null;
+    let habilitacaoStatus: 'configured' | 'manual_required' = 'configured';
+    let habilitacaoMessage: string | null = null;
+    let habilitacaoManualSteps: string[] = [];
     try {
       habilitacaoResponse = await this.plugNotasCompanyApi.habilitarEmpresaNfseNacional(
         String(normalized.cnpj),
       );
     } catch (error) {
-      this.rethrowPlugNotasSyncError('habilitação NFSe Nacional', error);
+      if (this.shouldTreatPlugNotasHabilitacaoAsManual(error)) {
+        habilitacaoStatus = 'manual_required';
+        habilitacaoResponse = (error as any)?.body ?? null;
+        habilitacaoMessage =
+          'Cadastro e certificado foram sincronizados, mas a configuração operacional da aba NFS-e ainda precisa ser concluída manualmente na PlugNotas.';
+        habilitacaoManualSteps = [
+          'Ativar emissão de NFS-e Nacional',
+          'Ativar consulta automática de DF-e',
+          'Marcar consultas de DF-e por Prestador, Tomador e Intermediário',
+          'Configurar série e numeração inicial de RPS',
+        ];
+        this.logger.warn(
+          {
+            event: 'plugnotas_sync_manual_habilitacao_required',
+            empresaId: String(normalized.id ?? normalized._id ?? empresa._id ?? ''),
+            cnpj: String(normalized.cnpj ?? ''),
+            providerStatus: typeof (error as any)?.status === 'number' ? (error as any).status : null,
+            providerBody: (error as any)?.body ?? null,
+          },
+          'Cadastro na PlugNotas concluído com pendência manual na aba NFS-e',
+        );
+      } else {
+        this.rethrowPlugNotasSyncError('habilitação NFSe Nacional', error);
+      }
     }
 
     return {
@@ -822,6 +848,9 @@ export class EmpresasService {
       plugNotas: {
         companyAction,
         companyResponse,
+        habilitacaoStatus,
+        habilitacaoMessage,
+        habilitacaoManualSteps,
         habilitacaoResponse,
       },
     };
@@ -1026,6 +1055,34 @@ export class EmpresasService {
       tipoLogradouro: mapped,
       logradouro: rest.join(' '),
     };
+  }
+
+  private shouldTreatPlugNotasHabilitacaoAsManual(error: unknown) {
+    const status = typeof (error as any)?.status === 'number' ? (error as any).status : null;
+    if (status !== 404) {
+      return false;
+    }
+
+    const body = (error as any)?.body ?? null;
+    const messageCandidates = [
+      (body as any)?.message,
+      (body as any)?.error?.message,
+      (body as any)?.error,
+      (error as any)?.message,
+    ]
+      .map((value) => this.toScalarStringOrUndefined(value)?.trim())
+      .filter((value): value is string => Boolean(value));
+
+    if (messageCandidates.length === 0) {
+      return false;
+    }
+
+    const normalized = messageCandidates.join(' ').toLowerCase();
+    return (
+      normalized.includes('not found')
+      || normalized.includes('rota não existe')
+      || normalized.includes('rota nao existe')
+    );
   }
 
   private rethrowPlugNotasSyncError(stage: string, error: unknown): never {

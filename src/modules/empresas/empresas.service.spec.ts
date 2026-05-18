@@ -311,6 +311,63 @@ describe('EmpresasService', () => {
     );
   });
 
+  it('keeps sync successful when PlugNotas requires manual NFS-e setup in the provider panel', async () => {
+    const empresaDoc = {
+      _id: 'empresa-sync-manual-nfse',
+      toObject: () => ({
+        _id: 'empresa-sync-manual-nfse',
+        cnpj: '46363208000176',
+        razaoSocial: 'NOVA EMPRESA LTDA',
+        inscricaoMunicipal: '54305001',
+        opcaoPeloSimples: true,
+        endereco: {
+          logradouro: 'R MIRANDA LEAO',
+          numero: '82',
+          bairro: 'CENTRO',
+          codigoMunicipio: '1302603',
+          cidade: 'Manaus',
+          uf: 'AM',
+          cep: '69005040',
+        },
+        certificado: {
+          filename: 'certificado.pfx',
+          providerCertificadoId: 'plug-cert-existing',
+        },
+      }),
+    };
+
+    empresaModel.findOne.mockReturnValue(buildSelectChain(empresaDoc));
+    plugNotasCompanyApi.cadastrarEmpresa.mockResolvedValue({
+      message: 'Cadastro efetuado com sucesso',
+      data: { cnpj: '46363208000176' },
+    });
+    plugNotasCompanyApi.habilitarEmpresaNfseNacional.mockRejectedValue({
+      status: 404,
+      body: { error: 'Not Found', message: 'Esta rota não existe no serviço' },
+      message: 'PlugNotas API error: 404',
+    });
+
+    const result = await service.syncPlugNotasCadastroByCnpj('46363208000176');
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        synced: true,
+        plugNotas: expect.objectContaining({
+          companyAction: 'created',
+          habilitacaoStatus: 'manual_required',
+          habilitacaoMessage: expect.stringContaining('configuração operacional da aba NFS-e'),
+          habilitacaoManualSteps: expect.arrayContaining([
+            'Ativar emissão de NFS-e Nacional',
+            'Configurar série e numeração inicial de RPS',
+          ]),
+          habilitacaoResponse: expect.objectContaining({
+            message: 'Esta rota não existe no serviço',
+          }),
+        }),
+      }),
+    );
+  });
+
   it('imports certificate metadata and encrypted secrets into banco', async () => {
     empresaModel.updateOne.mockResolvedValue({ acknowledged: true });
     const file = {

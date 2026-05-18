@@ -21,6 +21,7 @@ Leitura consolidada:
   - consultas de DF-e por papel (prestador, tomador e intermediario)
   - serie e numeracao inicial de RPS
 - apos essa configuracao manual complementar no provider, o novo prestador emitiu nota com sucesso
+- quando a rota automatica da aba `NFS-e` nao existir no provider, o backend agora deve tratar isso como pendencia manual de configuracao e nao como falha total do onboarding
 
 Regra operacional desta frente:
 1. sincronizar prestador com a PlugNotas nao significa, ainda, prestador totalmente pronto para emitir
