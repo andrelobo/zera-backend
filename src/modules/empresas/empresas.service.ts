@@ -824,6 +824,7 @@ export class EmpresasService {
     certRaw: Record<string, unknown>,
   ) {
     const endereco = (empresa.endereco as Record<string, unknown> | undefined) ?? {};
+    const codigoMunicipio = this.resolvePlugNotasCodigoMunicipio(empresa);
     const missing: string[] = [];
     const requireField = (value: unknown, field: string) => {
       if (!this.hasValue(value)) missing.push(field);
@@ -835,7 +836,7 @@ export class EmpresasService {
     requireField(endereco.logradouro, 'endereco.logradouro');
     requireField(endereco.numero, 'endereco.numero');
     requireField(endereco.bairro, 'endereco.bairro');
-    requireField(endereco.codigoMunicipio, 'endereco.codigoMunicipio');
+    requireField(codigoMunicipio, 'endereco.codigoMunicipio');
     requireField(endereco.cidade, 'endereco.cidade');
     requireField(endereco.uf, 'endereco.uf');
     requireField(endereco.cep, 'endereco.cep');
@@ -856,6 +857,7 @@ export class EmpresasService {
     providerCertificadoId: string,
   ): Record<string, unknown> {
     const endereco = (empresa.endereco as Record<string, any> | undefined) ?? {};
+    const codigoMunicipio = this.resolvePlugNotasCodigoMunicipio(empresa);
     const regime = this.resolvePlugNotasCompanyTaxRegime(empresa);
     const telefone = this.extractPhoneParts(empresa.fone ?? empresa.whatsapp);
     const logradouro = this.splitLogradouro(this.toScalarStringOrUndefined(endereco.logradouro));
@@ -882,7 +884,7 @@ export class EmpresasService {
         bairro: this.toScalarStringOrUndefined(endereco.bairro),
         codigoPais: this.toScalarStringOrUndefined(endereco.codigoPais) ?? '1058',
         descricaoPais: this.toScalarStringOrUndefined(endereco.pais) ?? 'Brasil',
-        codigoCidade: this.toScalarStringOrUndefined(endereco.codigoMunicipio),
+        codigoCidade: codigoMunicipio,
         descricaoCidade: this.toScalarStringOrUndefined(endereco.cidade),
         estado: this.toScalarStringOrUndefined(endereco.uf),
         cep: this.onlyDigits(this.toScalarStringOrUndefined(endereco.cep) ?? ''),
@@ -903,6 +905,30 @@ export class EmpresasService {
         },
       },
     });
+  }
+
+  private resolvePlugNotasCodigoMunicipio(empresa: Record<string, any>) {
+    const endereco = (empresa.endereco as Record<string, unknown> | undefined) ?? {};
+    const providerData = (empresa.providerData as Record<string, any> | undefined) ?? {};
+
+    const directCode = this.toScalarStringOrUndefined(endereco.codigoMunicipio)?.trim();
+    if (directCode) {
+      return directCode;
+    }
+
+    const providerIbgeCode = this.toScalarStringOrUndefined(
+      providerData.endereco?.municipio?.codigo_ibge,
+    )?.trim();
+    if (providerIbgeCode) {
+      return providerIbgeCode;
+    }
+
+    const providerCityCode = this.toScalarStringOrUndefined(providerData.endereco?.codigoCidade)?.trim();
+    if (providerCityCode) {
+      return providerCityCode;
+    }
+
+    return undefined;
   }
 
   private resolvePlugNotasCompanyTaxRegime(empresa: Record<string, any>) {

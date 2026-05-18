@@ -11,6 +11,7 @@ Fonte: `codigo local` + `teste local focado` + `build local`.
 Leitura consolidada:
 - o backend passou a expor sincronizacao explicita de prestador com a PlugNotas por `id` e por `cnpj`
 - a nova trilha cobre upload do certificado ao provider quando necessario, persistencia local de `providerCertificadoId`, cadastro da empresa em `POST /empresa` e habilitacao complementar em `/Empresa/updateCompany`
+- a sincronizacao agora aceita `codigoMunicipio` vindo do proprio endereco salvo ou, em contingencia segura, do `providerData.endereco.municipio.codigo_ibge` quando esse campo ainda nao foi materializado no endereco local
 - essa frente nasceu para destravar o segundo prestador real sem transformar `create/update` de empresa em automacao arriscada de provider nesta mesma rodada
 - o diagnostico de certificado agora tambem considera o `providerCertificadoId` armazenado localmente, e nao apenas a ultima emissao
 
