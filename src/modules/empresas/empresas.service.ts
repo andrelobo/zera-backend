@@ -715,6 +715,14 @@ export class EmpresasService {
       unknown
     >;
 
+    const resolvedCodigoMunicipio = await this.resolvePlugNotasCodigoMunicipio(normalized);
+    if (resolvedCodigoMunicipio) {
+      normalized.endereco = {
+        ...((normalized.endereco as Record<string, unknown> | undefined) ?? {}),
+        codigoMunicipio: resolvedCodigoMunicipio,
+      };
+    }
+
     const missingFields = this.collectPlugNotasSyncMissingFields(normalized, certRaw);
     if (missingFields.length > 0) {
       throw new BadRequestException({
@@ -824,7 +832,6 @@ export class EmpresasService {
     certRaw: Record<string, unknown>,
   ) {
     const endereco = (empresa.endereco as Record<string, unknown> | undefined) ?? {};
-    const codigoMunicipio = this.resolvePlugNotasCodigoMunicipio(empresa);
     const missing: string[] = [];
     const requireField = (value: unknown, field: string) => {
       if (!this.hasValue(value)) missing.push(field);
@@ -836,7 +843,7 @@ export class EmpresasService {
     requireField(endereco.logradouro, 'endereco.logradouro');
     requireField(endereco.numero, 'endereco.numero');
     requireField(endereco.bairro, 'endereco.bairro');
-    requireField(codigoMunicipio, 'endereco.codigoMunicipio');
+    requireField(endereco.codigoMunicipio, 'endereco.codigoMunicipio');
     requireField(endereco.cidade, 'endereco.cidade');
     requireField(endereco.uf, 'endereco.uf');
     requireField(endereco.cep, 'endereco.cep');
@@ -857,7 +864,6 @@ export class EmpresasService {
     providerCertificadoId: string,
   ): Record<string, unknown> {
     const endereco = (empresa.endereco as Record<string, any> | undefined) ?? {};
-    const codigoMunicipio = this.resolvePlugNotasCodigoMunicipio(empresa);
     const regime = this.resolvePlugNotasCompanyTaxRegime(empresa);
     const telefone = this.extractPhoneParts(empresa.fone ?? empresa.whatsapp);
     const logradouro = this.splitLogradouro(this.toScalarStringOrUndefined(endereco.logradouro));
@@ -884,7 +890,7 @@ export class EmpresasService {
         bairro: this.toScalarStringOrUndefined(endereco.bairro),
         codigoPais: this.toScalarStringOrUndefined(endereco.codigoPais) ?? '1058',
         descricaoPais: this.toScalarStringOrUndefined(endereco.pais) ?? 'Brasil',
-        codigoCidade: codigoMunicipio,
+        codigoCidade: this.toScalarStringOrUndefined(endereco.codigoMunicipio),
         descricaoCidade: this.toScalarStringOrUndefined(endereco.cidade),
         estado: this.toScalarStringOrUndefined(endereco.uf),
         cep: this.onlyDigits(this.toScalarStringOrUndefined(endereco.cep) ?? ''),
@@ -907,7 +913,7 @@ export class EmpresasService {
     });
   }
 
-  private resolvePlugNotasCodigoMunicipio(empresa: Record<string, any>) {
+  private async resolvePlugNotasCodigoMunicipio(empresa: Record<string, any>) {
     const endereco = (empresa.endereco as Record<string, unknown> | undefined) ?? {};
     const providerData = (empresa.providerData as Record<string, any> | undefined) ?? {};
 
@@ -928,7 +934,30 @@ export class EmpresasService {
       return providerCityCode;
     }
 
-    return undefined;
+    const cidade = this.toScalarStringOrUndefined(endereco.cidade)?.trim();
+    const uf = this.toScalarStringOrUndefined(endereco.uf)?.trim().toUpperCase();
+    if (!cidade || !uf) {
+      return undefined;
+    }
+
+    try {
+      const municipios = await this.listMunicipiosByUf(uf);
+      const normalizedCidade = this.normalizeMunicipioName(cidade);
+      const found = municipios.find(
+        (item) => this.normalizeMunicipioName(item.nome) === normalizedCidade,
+      );
+      return found ? String(found.id) : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private normalizeMunicipioName(value: string) {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Za-z0-9]/g, '')
+      .toUpperCase();
   }
 
   private resolvePlugNotasCompanyTaxRegime(empresa: Record<string, any>) {
