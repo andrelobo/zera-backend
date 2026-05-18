@@ -2,6 +2,27 @@
 
 Snapshot operacional do backend em **21/04/2026**.
 
+## 0. Atualizacao rapida (18/05/2026) - segundo prestador validado com emissao real e lacuna operacional restante no provider
+
+Fonte: `execucao real` + `codigo local` + `teste local focado`.
+
+Estado atual:
+- o novo prestador conseguiu atravessar cadastro local, sincronizacao com a PlugNotas e emissao real autorizada
+- o bloqueio `PLUGNOTAS_SYNC_INCOMPLETE` por `endereco.codigoMunicipio` foi superado com resolucao progressiva por endereco local, `providerData` e `cidade + UF` via IBGE
+- a chamada de habilitacao automatica de NFS-e Nacional por rota dedicada no provider retornou `404`, indicando que essa etapa nao esta disponivel do jeito atualmente tentado
+- a empresa apareceu no painel da PlugNotas e so ficou operacional apos configuracao manual da aba `NFS-e`
+- os itens manuais observados como necessarios foram:
+  - ativar emissao de NFSe Nacional
+  - ativar consulta automatica de DF-e
+  - marcar consultas por prestador, tomador e intermediario
+  - configurar serie e numeracao inicial de RPS
+
+Leitura operacional correta:
+1. o ZERA ja prova onboarding multi-prestador ate a emissao real
+2. ainda falta absorver no produto a configuracao operacional da aba `NFS-e` da PlugNotas
+3. erro de rota inexistente nessa etapa nao deve ser lido como falha total do cadastro da empresa
+4. a proxima frente canonica e modelar ou assumir explicitamente essa configuracao operacional do provider
+
 ## 0. Atualizacao rapida (18/05/2026) - onboarding operacional de novo prestador via PlugNotas
 
 Fonte: `codigo local` + `teste local focado` + `build local`.

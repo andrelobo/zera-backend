@@ -4,6 +4,32 @@
 > Este documento (`CONTEXT.md`) permanece como historico completo e linha do tempo.
 
 
+## ATUALIZACAO RAPIDA (2026-05-18) - segundo prestador homologado ponta a ponta com lacuna operacional remanescente na PlugNotas
+
+Fonte: `execucao real` + `codigo local` + `teste local focado`.
+
+Leitura consolidada:
+- o onboarding do novo prestador avancou de cadastro local para emissao real autorizada
+- a sincronizacao explicita do ZERA com a PlugNotas ja consegue:
+  - subir certificado quando necessario
+  - cadastrar a empresa no provider
+  - resolver `codigoMunicipio` por endereco local, `providerData` ou contingencia `cidade + UF` via IBGE
+- a etapa que ainda nao ficou automatizada e a configuracao operacional da aba `NFS-e` da PlugNotas
+- na pratica, foi necessario ativar manualmente no painel da PlugNotas:
+  - emissao de NFSe Nacional
+  - consulta automatica de DF-e
+  - consultas de DF-e por papel (prestador, tomador e intermediario)
+  - serie e numeracao inicial de RPS
+- apos essa configuracao manual complementar no provider, o novo prestador emitiu nota com sucesso
+
+Regra operacional desta frente:
+1. sincronizar prestador com a PlugNotas nao significa, ainda, prestador totalmente pronto para emitir
+2. hoje existem duas camadas distintas de onboarding:
+   - cadastro/sincronizacao da empresa
+   - configuracao operacional NFS-e no provider
+3. a automacao da segunda camada continua pendente e precisa ser tratada como frente especifica de produto
+4. a partir deste marco, multi-prestador deixou de ser hipotese arquitetural e passou a ser capacidade validada em producao assistida
+
 ## ATUALIZACAO RAPIDA (2026-05-18) - sincronizacao explicita de prestador com a PlugNotas para etapa multi-prestador
 
 Fonte: `codigo local` + `teste local focado` + `build local`.
