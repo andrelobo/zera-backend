@@ -115,6 +115,38 @@ class UpdateEmpresaConfigOperacionalItemDto {
   descricao?: string;
 }
 
+class UpdateEmpresaPlugNotasNfseDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  ativoNfseNacional?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  consultaAutomaticaDfe?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  consultarDfePrestador?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  consultarDfeTomador?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  consultarDfeIntermediario?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  emailAutomatico?: boolean;
+}
+
 export class UpdateEmpresaDto {
   @ApiPropertyOptional()
   @IsOptional()
@@ -281,6 +313,13 @@ export class UpdateEmpresaDto {
   @IsOptional()
   @IsString()
   serieDpsNum?: string;
+
+  @ApiPropertyOptional({ type: UpdateEmpresaPlugNotasNfseDto })
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => UpdateEmpresaPlugNotasNfseDto)
+  plugNotasNfse?: UpdateEmpresaPlugNotasNfseDto;
 
   @ApiPropertyOptional()
   @IsOptional()

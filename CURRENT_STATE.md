@@ -9,7 +9,7 @@ Fonte: `execucao real` + `codigo local` + `teste local focado`.
 Estado atual:
 - o novo prestador conseguiu atravessar cadastro local, sincronizacao com a PlugNotas e emissao real autorizada
 - o bloqueio `PLUGNOTAS_SYNC_INCOMPLETE` por `endereco.codigoMunicipio` foi superado com resolucao progressiva por endereco local, `providerData` e `cidade + UF` via IBGE
-- a chamada de habilitacao automatica de NFS-e Nacional por rota dedicada no provider retornou `404`, indicando que essa etapa nao esta disponivel do jeito atualmente tentado
+- a tentativa antiga por rota dedicada retornou `404`, por isso a automacao passou a usar `PATCH /empresa/{CNPJ}` com a configuracao minima documentada para NFS-e Nacional
 - a empresa apareceu no painel da PlugNotas e so ficou operacional apos configuracao manual da aba `NFS-e`
 - a sincronizacao explicita do ZERA agora deve tratar esse cenario como sucesso com pendencia manual, e nao como falha total do cadastro da empresa
 - os itens manuais observados como necessarios foram:

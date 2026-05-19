@@ -115,6 +115,38 @@ class CreateEmpresaConfigOperacionalItemDto {
   descricao?: string;
 }
 
+class CreateEmpresaPlugNotasNfseDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  ativoNfseNacional?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  consultaAutomaticaDfe?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  consultarDfePrestador?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  consultarDfeTomador?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  consultarDfeIntermediario?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  emailAutomatico?: boolean;
+}
+
 export class CreateEmpresaDto {
   @ApiProperty({ example: '43521115000134' })
   @IsString()
@@ -286,6 +318,13 @@ export class CreateEmpresaDto {
   @IsOptional()
   @IsString()
   serieDpsNum?: string;
+
+  @ApiPropertyOptional({ type: CreateEmpresaPlugNotasNfseDto })
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => CreateEmpresaPlugNotasNfseDto)
+  plugNotasNfse?: CreateEmpresaPlugNotasNfseDto;
 
   @ApiPropertyOptional()
   @IsOptional()

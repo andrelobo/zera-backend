@@ -67,7 +67,7 @@ export function getPlugNotasConfig(): PlugNotasConfig {
   );
   const prereqCityPathTemplate =
     process.env.PLUGNOTAS_PREREQ_CITY_PATH ?? '/Auxiliares/getCidadeById?id={ibge}';
-  const prereqCompanyPath = process.env.PLUGNOTAS_PREREQ_COMPANY_PATH ?? '/Empresa/updateCompany';
+  const prereqCompanyPath = process.env.PLUGNOTAS_PREREQ_COMPANY_PATH ?? '/empresa/{cnpj}';
   const prereqCacheTtlMs = parsePositiveInt(process.env.PLUGNOTAS_PREREQ_CACHE_TTL_MS, 3600000);
 
   if (!apiKey) {

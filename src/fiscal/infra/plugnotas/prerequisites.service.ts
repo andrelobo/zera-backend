@@ -150,12 +150,14 @@ export class PlugNotasPrerequisitesService {
 
     try {
       await this.http.request<any>({
-        method: 'PUT',
-        path: cfg.prereqCompanyPath,
+        method: 'PATCH',
+        path: cfg.prereqCompanyPath.replace('{cnpj}', cnpj),
         body: {
-          cnpj,
-          cpfCnpj: cnpj,
-          nfseNacional: true,
+          nfse: {
+            config: {
+              nfseNacional: true,
+            },
+          },
         },
       });
       this.markCached(cacheKey);

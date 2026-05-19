@@ -806,6 +806,7 @@ export class EmpresasService {
     try {
       habilitacaoResponse = await this.plugNotasCompanyApi.habilitarEmpresaNfseNacional(
         String(normalized.cnpj),
+        this.buildPlugNotasNfseOperationalPayload(normalized),
       );
     } catch (error) {
       if (this.shouldTreatPlugNotasHabilitacaoAsManual(error)) {
@@ -886,6 +887,39 @@ export class EmpresasService {
     }
 
     return missing;
+  }
+
+  private buildPlugNotasNfseOperationalPayload(
+    empresa: Record<string, any>,
+  ): Record<string, unknown> {
+    const cfg = getPlugNotasConfig();
+    const rpsNumero = Number.parseInt(this.onlyDigits(String(empresa.dpsNum ?? empresa.nfseNum ?? '1')), 10);
+    const serie = this.toScalarStringOrUndefined(empresa.serieDpsNum) ?? '01';
+    const plugNotasNfse = this.normalizePlugNotasNfseConfig(empresa.plugNotasNfse) ?? {};
+
+    return {
+      nfse: {
+        config: this.compactObject({
+          nfseNacional: plugNotasNfse.ativoNfseNacional ?? true,
+          producao: cfg.environment === 'production',
+          email: {
+            envio: plugNotasNfse.emailAutomatico ?? false,
+          },
+          dfe: {
+            ativo: plugNotasNfse.consultaAutomaticaDfe ?? true,
+          },
+          rps: {
+            lote: 1,
+            numeracao: [
+              {
+                numero: Number.isFinite(rpsNumero) && rpsNumero > 0 ? rpsNumero : 1,
+                serie,
+              },
+            ],
+          },
+        }),
+      },
+    };
   }
 
   private buildPlugNotasCompanyPayload(
@@ -1632,6 +1666,7 @@ export class EmpresasService {
       nfseNum: this.toStringOrUndefined(payload.nfseNum),
       dpsNum: this.toStringOrUndefined(payload.dpsNum),
       serieDpsNum: this.toStringOrUndefined(payload.serieDpsNum),
+      plugNotasNfse: this.normalizePlugNotasNfseConfig(payload.plugNotasNfse),
       endereco: Object.keys(endereco ?? {}).length > 0 ? endereco : undefined,
     });
   }
@@ -1820,6 +1855,29 @@ export class EmpresasService {
     return normalized;
   }
 
+  private normalizePlugNotasNfseConfig(value: unknown):
+    | {
+        ativoNfseNacional?: boolean;
+        consultaAutomaticaDfe?: boolean;
+        consultarDfePrestador?: boolean;
+        consultarDfeTomador?: boolean;
+        consultarDfeIntermediario?: boolean;
+        emailAutomatico?: boolean;
+      }
+    | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    const raw = value as Record<string, unknown>;
+    const normalized = this.compactObject({
+      ativoNfseNacional: this.toBooleanOrUndefined(raw.ativoNfseNacional),
+      consultaAutomaticaDfe: this.toBooleanOrUndefined(raw.consultaAutomaticaDfe),
+      consultarDfePrestador: this.toBooleanOrUndefined(raw.consultarDfePrestador),
+      consultarDfeTomador: this.toBooleanOrUndefined(raw.consultarDfeTomador),
+      consultarDfeIntermediario: this.toBooleanOrUndefined(raw.consultarDfeIntermediario),
+      emailAutomatico: this.toBooleanOrUndefined(raw.emailAutomatico),
+    });
+    return Object.keys(normalized).length > 0 ? normalized : undefined;
+  }
+
   private normalizeConfigOperacionais(value: unknown):
     | Array<{
         id?: string;
@@ -1958,6 +2016,9 @@ export class EmpresasService {
       nfseNum: pick('nfseNum', 'nfse_num'),
       dpsNum: pick('dpsNum', 'dps_num'),
       serieDpsNum: pick('serieDpsNum', 'serie_dps_num'),
+      plugNotasNfse: this.normalizePlugNotasNfseConfig(
+        pick('plugNotasNfse', 'plug_notas_nfse', 'plugnotas_nfse'),
+      ),
       endereco: Object.keys(endereco).length > 0 ? endereco : undefined,
       statusCadastro: cadastroResumo.statusCadastro,
       prontoParaEmitir: cadastroResumo.prontoParaEmitir,

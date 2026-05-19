@@ -137,6 +137,29 @@ export class SimplesSnapshot {
 
 const SimplesSnapshotSchema = SchemaFactory.createForClass(SimplesSnapshot);
 
+@Schema({ _id: false })
+export class PlugNotasNfseConfig {
+  @Prop()
+  ativoNfseNacional?: boolean;
+
+  @Prop()
+  consultaAutomaticaDfe?: boolean;
+
+  @Prop()
+  consultarDfePrestador?: boolean;
+
+  @Prop()
+  consultarDfeTomador?: boolean;
+
+  @Prop()
+  consultarDfeIntermediario?: boolean;
+
+  @Prop()
+  emailAutomatico?: boolean;
+}
+
+const PlugNotasNfseConfigSchema = SchemaFactory.createForClass(PlugNotasNfseConfig);
+
 @Schema({ timestamps: true })
 export class Empresa {
   @Prop({ required: true, unique: true, index: true })
@@ -240,6 +263,9 @@ export class Empresa {
 
   @Prop()
   serieDpsNum?: string;
+
+  @Prop({ type: PlugNotasNfseConfigSchema, default: undefined })
+  plugNotasNfse?: PlugNotasNfseConfig;
 
   @Prop({ type: EnderecoSchema })
   endereco?: Endereco;

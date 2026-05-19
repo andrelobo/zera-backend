@@ -14,7 +14,9 @@ Leitura consolidada:
   - subir certificado quando necessario
   - cadastrar a empresa no provider
   - resolver `codigoMunicipio` por endereco local, `providerData` ou contingencia `cidade + UF` via IBGE
-- a etapa que ainda nao ficou automatizada e a configuracao operacional da aba `NFS-e` da PlugNotas
+- a etapa que ainda nao ficou totalmente automatizada e a configuracao operacional completa da aba `NFS-e` da PlugNotas
+- a automacao agora passou a tentar a configuracao minima documentada via `PATCH /empresa/{CNPJ}`, ativando `nfse.config.nfseNacional`, `dfe.ativo` e numeracao inicial de RPS
+- os toggles operacionais mais finos da PlugNotas agora ficam persistidos no cadastro da empresa no ZERA; somente os campos com contrato oficial confirmado entram na chamada automatizada ao provider nesta rodada
 - na pratica, foi necessario ativar manualmente no painel da PlugNotas:
   - emissao de NFSe Nacional
   - consulta automatica de DF-e

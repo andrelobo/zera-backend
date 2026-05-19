@@ -243,7 +243,23 @@ describe('EmpresasService', () => {
         certificado: 'plug-cert-1',
       }),
     );
-    expect(plugNotasCompanyApi.habilitarEmpresaNfseNacional).toHaveBeenCalledWith('43521115000134');
+    expect(plugNotasCompanyApi.habilitarEmpresaNfseNacional).toHaveBeenCalledWith(
+      '43521115000134',
+      expect.objectContaining({
+        nfse: expect.objectContaining({
+          config: expect.objectContaining({
+            nfseNacional: true,
+            dfe: expect.objectContaining({ ativo: true }),
+            rps: expect.objectContaining({
+              lote: 1,
+              numeracao: expect.arrayContaining([
+                expect.objectContaining({ numero: 49, serie: '01' }),
+              ]),
+            }),
+          }),
+        }),
+      }),
+    );
     expect(result).toEqual(
       expect.objectContaining({
         synced: true,

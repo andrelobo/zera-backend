@@ -109,15 +109,11 @@ export class PlugNotasCompanyApi {
     });
   }
 
-  habilitarEmpresaNfseNacional(cnpj: string) {
+  habilitarEmpresaNfseNacional(cnpj: string, body: Record<string, unknown>) {
     return this.http.request<any>({
-      method: 'PUT',
-      path: '/Empresa/updateCompany',
-      body: {
-        cnpj,
-        cpfCnpj: cnpj,
-        nfseNacional: true,
-      },
+      method: 'PATCH',
+      path: `/empresa/${cnpj}`,
+      body,
     });
   }
 }
