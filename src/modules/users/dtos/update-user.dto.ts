@@ -19,10 +19,10 @@ export class UpdateUserDto {
   @IsString()
   password?: string;
 
-  @ApiPropertyOptional({ example: 'manager', enum: ['admin', 'manager', 'user'] })
+  @ApiPropertyOptional({ example: 'manager', enum: ['admin', 'manager', 'user', 'readonly'] })
   @IsOptional()
   @IsString()
-  @IsIn(['admin', 'manager', 'user'])
+  @IsIn(['admin', 'manager', 'user', 'readonly'])
   role?: UserRole;
 
   @ApiPropertyOptional({ example: 'active', enum: ['active', 'inactive'] })

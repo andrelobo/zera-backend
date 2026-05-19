@@ -119,28 +119,28 @@ export class EmpresasController {
   }
 
   @Get()
-  @Roles('admin', 'manager', 'user')
+  @Roles('admin', 'manager', 'user', 'readonly')
   @ApiOperation({ summary: 'List empresas' })
   list(@Query('q') q?: string, @Query('limit') limit?: number) {
     return this.empresas.list({ q, limit });
   }
 
   @Get('lookup/municipios')
-  @Roles('admin', 'manager', 'user')
+  @Roles('admin', 'manager', 'user', 'readonly')
   @ApiOperation({ summary: 'List municípios por UF (autocomplete)' })
   lookupMunicipios(@Query('uf') uf?: string) {
     return this.empresas.listMunicipiosByUf(uf ?? '');
   }
 
   @Get('lookup/cep/:cep')
-  @Roles('admin', 'manager', 'user')
+  @Roles('admin', 'manager', 'user', 'readonly')
   @ApiOperation({ summary: 'Consultar endereço por CEP (autocomplete)' })
   lookupCep(@Param('cep') cep: string) {
     return this.empresas.lookupCep(cep);
   }
 
   @Get('lookup/cnae-anexo')
-  @Roles('admin', 'manager', 'user')
+  @Roles('admin', 'manager', 'user', 'readonly')
   @ApiOperation({ summary: 'Consultar anexo do Simples por código CNAE' })
   lookupCnaeAnexo(@Query('codigo') codigo?: string, @Query('codes') codes?: string) {
     const batch = String(codes ?? '')
@@ -170,7 +170,7 @@ export class EmpresasController {
   }
 
   @Get('cnpj/:cnpj')
-  @Roles('admin', 'manager', 'user')
+  @Roles('admin', 'manager', 'user', 'readonly')
   @ApiOperation({ summary: 'Get empresa by CNPJ' })
   async getByCnpj(@Param('cnpj') cnpj: string) {
     const doc = await this.empresas.getByCnpjNormalized(cnpj);
@@ -179,7 +179,7 @@ export class EmpresasController {
   }
 
   @Get(':id')
-  @Roles('admin', 'manager', 'user')
+  @Roles('admin', 'manager', 'user', 'readonly')
   @ApiOperation({ summary: 'Get empresa by id' })
   async getById(@Param('id') id: string) {
     const doc = await this.empresas.getByIdNormalized(id);

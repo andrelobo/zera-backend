@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import type { HydratedDocument } from 'mongoose';
 
-export type UserRole = 'admin' | 'manager' | 'user';
+export type UserRole = 'admin' | 'manager' | 'user' | 'readonly';
 export type UserStatus = 'active' | 'inactive';
 export type UserOnboardingStatus = 'manual' | 'invited' | 'accepted';
 
@@ -16,7 +16,7 @@ export class User {
   @Prop({ required: true })
   passwordHash: string;
 
-  @Prop({ required: true, type: String, enum: ['admin', 'manager', 'user'] })
+  @Prop({ required: true, type: String, enum: ['admin', 'manager', 'user', 'readonly'] })
   role: UserRole;
 
   @Prop({ required: true, type: String, enum: ['active', 'inactive'], default: 'active' })

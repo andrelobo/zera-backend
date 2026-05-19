@@ -2,6 +2,31 @@
 
 Snapshot operacional do backend em **21/04/2026**.
 
+## 0. Atualizacao rapida (19/05/2026) - nova role `readonly` entrou para testes de visualizacao segura
+
+Fonte: `codigo local` + `teste local focado` + `build local`.
+
+Estado atual:
+- o backend reconhece `readonly` como role valida de usuario
+- `readonly` pode fazer login e consumir apenas rotas de leitura
+- `readonly` nao pode:
+  - emitir NFSe normal
+  - emitir NFSe rapida
+  - substituir/cancelar
+  - sincronizar artifacts
+  - criar/editar/excluir tomadores
+  - criar/editar/excluir prestadoras
+  - importar certificado
+  - sincronizar PlugNotas
+  - gerenciar usuarios
+- DTOs de criacao, convite e edicao de usuario passaram a aceitar esse novo perfil
+
+Leitura operacional correta:
+1. investidor/teste visual nao deve mais usar `user`
+2. `user` segue operacional
+3. `readonly` virou a role canonica de visualizacao segura
+4. o fechamento de permissao acontece primeiro no backend e depois na UI
+
 ## 0. Atualizacao rapida (18/05/2026) - segundo prestador validado com emissao real e lacuna operacional restante no provider
 
 Fonte: `execucao real` + `codigo local` + `teste local focado`.

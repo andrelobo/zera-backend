@@ -4,6 +4,24 @@
 > Este documento (`CONTEXT.md`) permanece como historico completo e linha do tempo.
 
 
+## ATUALIZACAO RAPIDA (2026-05-19) - role `readonly` criada para visualizacao segura do produto
+
+Fonte: `codigo local` + `teste local focado` + `build local`.
+
+Leitura consolidada:
+- o backend ganhou a role canonica `readonly` para acesso de visualizacao segura
+- a nova role pode autenticar e consumir somente trilhas de leitura
+- em `empresas`, `readonly` pode listar/consultar/lookups, mas nao pode criar, editar, excluir, importar certificado nem sincronizar PlugNotas
+- em `tomadores`, `readonly` pode listar, autocomplete, lookup CPF e consultar por id, mas nao pode criar, editar ou excluir
+- em `nfse`, `readonly` pode listar, ver detalhe, BI, observabilidade, artifacts e downloads, mas nao pode emitir, substituir, cancelar nem sincronizar artifacts manualmente
+- a criacao/convite de usuarios agora tambem aceita `readonly` como perfil valido
+
+Regra operacional desta frente:
+1. `readonly` existe para demonstracao, auditoria visual e acompanhamento seguro
+2. esconder botao no frontend nao substitui travamento no backend; a permissao real passou a ser garantida nas rotas
+3. `user` continua sendo perfil operacional; `readonly` e a nova role de visualizacao
+4. multi-prestador continua valendo: a role nova nao recoloca nenhuma logica mono-prestador
+
 ## ATUALIZACAO RAPIDA (2026-05-18) - segundo prestador homologado ponta a ponta com lacuna operacional remanescente na PlugNotas
 
 Fonte: `execucao real` + `codigo local` + `teste local focado`.

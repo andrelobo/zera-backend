@@ -28,11 +28,12 @@ import { TomadoresService } from './tomadores.service';
 @ApiBearerAuth()
 @Controller('tomadores')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin', 'manager', 'user')
+@Roles('admin', 'manager', 'user', 'readonly')
 export class TomadoresController {
   constructor(private readonly tomadores: TomadoresService) {}
 
   @Post()
+  @Roles('admin', 'manager', 'user')
   @ApiOperation({ summary: 'Cadastrar tomador' })
   @ApiBody({ type: CreateTomadorDto })
   @ApiResponse({ status: 201 })
@@ -75,6 +76,7 @@ export class TomadoresController {
   }
 
   @Patch(':id')
+  @Roles('admin', 'manager', 'user')
   @ApiOperation({ summary: 'Atualizar tomador' })
   @ApiBody({ type: UpdateTomadorDto })
   update(@Param('id') id: string, @Body() dto: UpdateTomadorDto) {
@@ -82,6 +84,7 @@ export class TomadoresController {
   }
 
   @Delete(':id')
+  @Roles('admin', 'manager', 'user')
   @ApiOperation({ summary: 'Remover tomador' })
   remove(@Param('id') id: string) {
     return this.tomadores.remove(id);

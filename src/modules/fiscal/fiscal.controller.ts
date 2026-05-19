@@ -102,7 +102,7 @@ function appendTimeline(
 @ApiBearerAuth()
 @Controller('nfse')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin', 'manager', 'user')
+@Roles('admin', 'manager', 'user', 'readonly')
 export class FiscalController {
   constructor(
     private readonly emitirNfseService: EmitirNfseService,
@@ -203,6 +203,7 @@ export class FiscalController {
   }
 
   @Post('emitir')
+  @Roles('admin', 'manager', 'user')
   @ApiOperation({ summary: 'Emitir NFSe (DPS)' })
   @ApiBody({ type: EmitirNfseDto })
   @ApiResponse({ status: 201, type: EmitirNfseResponseDto })
@@ -211,6 +212,7 @@ export class FiscalController {
   }
 
   @Post('quick')
+  @Roles('admin', 'manager', 'user')
   @ApiOperation({
     summary: 'Emitir NFSe de forma ultra-simplificada (quick)',
     description:
@@ -223,6 +225,7 @@ export class FiscalController {
   }
 
   @Post(':id/substituicao')
+  @Roles('admin', 'manager', 'user')
   @ApiOperation({
     summary: 'Emitir nota substituta por emissão interna',
     description:
@@ -260,6 +263,7 @@ export class FiscalController {
   }
 
   @Post(':id/cancelamento')
+  @Roles('admin', 'manager', 'user')
   @ApiOperation({
     summary: 'Solicitar cancelamento da NFSe por emissão interna',
     description:
@@ -633,6 +637,7 @@ export class FiscalController {
   }
 
   @Post(':id/sync-artifacts')
+  @Roles('admin', 'manager', 'user')
   @ApiOperation({
     summary: 'Sync XML/PDF artifacts on demand',
     description:

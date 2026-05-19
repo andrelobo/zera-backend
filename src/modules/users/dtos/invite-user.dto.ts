@@ -14,9 +14,9 @@ export class InviteUserDto {
   @IsEmail()
   email!: string;
 
-  @ApiPropertyOptional({ example: 'user', enum: ['admin', 'manager', 'user'] })
+  @ApiPropertyOptional({ example: 'user', enum: ['admin', 'manager', 'user', 'readonly'] })
   @IsOptional()
   @IsString()
-  @IsIn(['admin', 'manager', 'user'])
+  @IsIn(['admin', 'manager', 'user', 'readonly'])
   role?: UserRole;
 }
