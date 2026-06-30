@@ -1,0 +1,17 @@
+.git
+.gitignore
+.codex
+.vscode
+dist
+node_modules
+coverage
+.env
+.env.local
+.env.*.local
+*.log
+docs
+evidencias-suporte
+*.pdf
+*.xml
+*.tmp
+*.temp

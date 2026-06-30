@@ -94,47 +94,19 @@ src/
 
 ## ⚙️ Configuração do Ambiente
 
-Crie um arquivo `.env` na raiz do projeto (baseado em `.env.example`):
+Crie um arquivo `.env` na raiz do projeto com base em [`./.env.example`](./.env.example).
 
-```env
-NODE_ENV=development
-APP_PORT=3000
-CORS_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
+O `.env.example` agora lista as variaveis usadas pelo backend em runtime, integracoes externas e fluxos auxiliares.
 
-MONGO_URI=mongodb+srv://<user>:<password>@<cluster>/<database>?retryWrites=true&w=majority&appName=zera
-
-PLUGNOTAS_BASE_URL=https://api.sandbox.plugnotas.com.br
-PLUGNOTAS_API_KEY=
-PLUGNOTAS_CNPJ_PATH=/cnpj/{cnpj}
-PLUGNOTAS_NFSE_XML_PATH=/nfse/xml/{id}
-PLUGNOTAS_NFSE_PDF_PATH=/nfse/pdf/{id}
-PLUGNOTAS_NFSE_CANCEL_PATH=/nfse/{id}/cancelamento
-PLUGNOTAS_NFSE_CANCEL_STATUS_PATH=/nfse/cancelamento/{protocol}
-PLUGNOTAS_PREREQ_MODE=off
-PLUGNOTAS_PREREQ_CHECK_CITY=true
-PLUGNOTAS_PREREQ_ENABLE_COMPANY=false
-PLUGNOTAS_PREREQ_CITY_PATH=/Auxiliares/getCidadeById?id={ibge}
-PLUGNOTAS_PREREQ_COMPANY_PATH=/Empresa/updateCompany
-PLUGNOTAS_PREREQ_CACHE_TTL_MS=3600000
-
-JWT_SECRET=
-JWT_EXPIRES_IN=7d
-ADMIN_SETUP_TOKEN=
-BOOTSTRAP_ENABLED=true
-ADMIN_RESET_ENABLED=true
-
-NFSE_POLLING_ENABLED=true
-NFSE_POLLING_INTERVAL_MS=300000
-NFSE_POLLING_JITTER_MS=15000
-NFSE_POLLING_LIMIT=50
-NFSE_POLLING_OLDER_THAN_MS=30000
-
-NFSE_STORE_ARTIFACTS=true
-NFSE_CMUN_IBGE=1302603
-
-WEBHOOK_SHARED_SECRET=
-WEBHOOK_SHARED_SECRET_HEADER=x-webhook-token
-```
+Para deploy, revise obrigatoriamente:
+- `MONGO_URI`
+- `JWT_SECRET`
+- `ADMIN_SETUP_TOKEN`
+- `PLUGNOTAS_API_KEY`
+- `WEBHOOK_SHARED_SECRET`
+- `CORS_ORIGINS`
+- `FRONTEND_APP_URL`
+- `FRONTEND_URL`
 
 Pré-requisitos NFSe Nacional (modo seguro):
 - `PLUGNOTAS_PREREQ_MODE=off` mantém o comportamento atual de produção (sem bloqueio).
@@ -142,6 +114,8 @@ Pré-requisitos NFSe Nacional (modo seguro):
 - `enforce` bloqueia emissão se o check de cidade falhar, e também se a habilitação da empresa estiver ativa e falhar.
 - A habilitação da empresa é controlada por `PLUGNOTAS_PREREQ_ENABLE_COMPANY` e vem `false` por padrão para evitar efeito colateral inesperado.
 
+Observacao importante:
+- se o banco estiver vazio, `POST /auth/bootstrap` nao responde com `NODE_ENV=production`; faca o bootstrap inicial antes de travar o ambiente em producao ou use uma base ja inicializada.
 
 ---
 
@@ -177,7 +151,8 @@ Este repositório inclui `render.yaml` para provisionar o serviço web.
 ## 🐳 Executando com Docker
 
 ```bash
-docker compose up --build
+cp .env.example .env
+docker compose up -d --build
 ```
 
 API disponível em:
@@ -185,6 +160,12 @@ http://localhost:3000
 
 Health check:
 GET /health
+
+Guia do primeiro deploy na Oracle VPS:
+[`docs/DEPLOY_ORACLE_VPS.md`](./docs/DEPLOY_ORACLE_VPS.md)
+
+Deploy automatizado:
+`.github/workflows/deploy-oracle.yml`
 
 ---
 

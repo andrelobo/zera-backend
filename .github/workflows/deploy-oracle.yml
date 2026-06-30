@@ -1,0 +1,98 @@
+name: Deploy Oracle VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: zera-backend-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    env:
+      ORACLE_HOST: ${{ vars.ORACLE_HOST }}
+      ORACLE_USER: ${{ vars.ORACLE_USER }}
+      ORACLE_PORT: ${{ vars.ORACLE_PORT }}
+      ORACLE_DEPLOY_PATH: ${{ vars.ORACLE_DEPLOY_PATH }}
+      ORACLE_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
+      ZERA_BACKEND_ENV: ${{ secrets.ZERA_BACKEND_ENV }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare yarn@1.22.22 --activate
+
+      - name: Validate required settings
+        run: |
+          test -n "$ORACLE_HOST" || { echo "Missing repository variable ORACLE_HOST"; exit 1; }
+          test -n "$ORACLE_SSH_KEY" || { echo "Missing repository secret ORACLE_SSH_KEY"; exit 1; }
+          test -n "$ZERA_BACKEND_ENV" || { echo "Missing repository secret ZERA_BACKEND_ENV"; exit 1; }
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build backend
+        run: yarn build
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$ORACLE_SSH_KEY" > ~/.ssh/oracle.key
+          chmod 600 ~/.ssh/oracle.key
+          ssh-keyscan -p "${ORACLE_PORT:-22}" -H "$ORACLE_HOST" >> ~/.ssh/known_hosts
+
+      - name: Prepare production env file
+        run: |
+          printf '%s' "$ZERA_BACKEND_ENV" > /tmp/zera-backend.env
+          chmod 600 /tmp/zera-backend.env
+
+      - name: Sync project to Oracle VPS
+        run: |
+          remote_user="${ORACLE_USER:-ubuntu}"
+          remote_port="${ORACLE_PORT:-22}"
+          deploy_path="${ORACLE_DEPLOY_PATH:-/home/ubuntu/zera-backend}"
+
+          ssh -p "$remote_port" -i ~/.ssh/oracle.key "$remote_user@$ORACLE_HOST" "mkdir -p '$deploy_path'"
+
+          rsync -az --delete \
+            --exclude '.git' \
+            --exclude 'node_modules' \
+            --exclude 'dist' \
+            --exclude '.env' \
+            --exclude '.codex' \
+            --exclude '.vscode' \
+            --exclude 'coverage' \
+            --exclude '*.log' \
+            -e "ssh -p $remote_port -i ~/.ssh/oracle.key" \
+            ./ "$remote_user@$ORACLE_HOST:$deploy_path/"
+
+          scp -P "$remote_port" -i ~/.ssh/oracle.key /tmp/zera-backend.env "$remote_user@$ORACLE_HOST:$deploy_path/.env"
+
+      - name: Deploy on Oracle VPS
+        run: |
+          remote_user="${ORACLE_USER:-ubuntu}"
+          remote_port="${ORACLE_PORT:-22}"
+          deploy_path="${ORACLE_DEPLOY_PATH:-/home/ubuntu/zera-backend}"
+
+          ssh -p "$remote_port" -i ~/.ssh/oracle.key "$remote_user@$ORACLE_HOST" \
+            "cd '$deploy_path' && bash scripts/deploy-oracle-vps.sh"
