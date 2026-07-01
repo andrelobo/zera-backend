@@ -24,6 +24,17 @@ app_port="${APP_PORT:-${app_port:-3000}}"
 health_url="http://127.0.0.1:${app_port}/health"
 container_name="zera-backend-api"
 image_name="zera-backend-api:latest"
+compose_cmd=()
+
+if "${docker_cmd[@]}" compose version >/dev/null 2>&1; then
+  compose_cmd=("${docker_cmd[@]}" compose)
+elif command -v docker-compose >/dev/null 2>&1; then
+  if [[ "${docker_cmd[0]}" == "sudo" ]]; then
+    compose_cmd=(sudo docker-compose)
+  else
+    compose_cmd=(docker-compose)
+  fi
+fi
 
 run_health_check() {
   local health_ok=0
@@ -49,15 +60,9 @@ run_health_check() {
 }
 
 print_runtime_logs() {
-  if "${docker_cmd[@]}" compose version >/dev/null 2>&1; then
-    "${docker_cmd[@]}" compose ps || true
-    "${docker_cmd[@]}" compose logs --tail=200 api || true
-    return
-  fi
-
-  if command -v docker-compose >/dev/null 2>&1; then
-    docker-compose ps || true
-    docker-compose logs --tail=200 api || true
+  if [[ "${#compose_cmd[@]}" -gt 0 ]]; then
+    "${compose_cmd[@]}" ps || true
+    "${compose_cmd[@]}" logs --tail=200 api || true
     return
   fi
 
@@ -88,10 +93,8 @@ deploy_with_plain_docker() {
     "$image_name"
 }
 
-if "${docker_cmd[@]}" compose version >/dev/null 2>&1; then
-  "${docker_cmd[@]}" compose up -d --build
-elif command -v docker-compose >/dev/null 2>&1; then
-  docker-compose up -d --build
+if [[ "${#compose_cmd[@]}" -gt 0 ]]; then
+  "${compose_cmd[@]}" up -d --build
 else
   deploy_with_plain_docker
 fi
