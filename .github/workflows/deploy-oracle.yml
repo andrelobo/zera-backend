@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: zera-backend-production
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -17,6 +17,7 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     environment: production
+    timeout-minutes: 15
 
     env:
       ORACLE_HOST: ${{ vars.ORACLE_HOST }}
