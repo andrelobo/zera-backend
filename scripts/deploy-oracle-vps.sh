@@ -19,41 +19,85 @@ if ! docker info >/dev/null 2>&1; then
   fi
 fi
 
-if ! "${docker_cmd[@]}" compose version >/dev/null 2>&1; then
-  if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
-    sudo apt-get update
-    sudo apt-get install -y docker-compose-plugin
-  else
-    echo "Docker Compose plugin is unavailable and cannot be installed automatically."
-    exit 1
-  fi
-fi
-
-"${docker_cmd[@]}" compose up -d --build
-
 app_port="$(sed -n 's/^APP_PORT=//p' .env | head -n 1)"
 app_port="${APP_PORT:-${app_port:-3000}}"
 health_url="http://127.0.0.1:${app_port}/health"
+container_name="zera-backend-api"
+image_name="zera-backend-api:latest"
 
-health_ok=0
-for _attempt in $(seq 1 30); do
-  if command -v curl >/dev/null 2>&1; then
-    if curl -fsS "$health_url" >/dev/null; then
+run_health_check() {
+  local health_ok=0
+
+  for _attempt in $(seq 1 30); do
+    if command -v curl >/dev/null 2>&1; then
+      if curl -fsS "$health_url" >/dev/null; then
+        health_ok=1
+        break
+      fi
+    elif wget -qO- "$health_url" >/dev/null 2>&1; then
       health_ok=1
       break
     fi
-  elif wget -qO- "$health_url" >/dev/null 2>&1; then
-    health_ok=1
-    break
+
+    sleep 2
+  done
+
+  if [[ "$health_ok" -ne 1 ]]; then
+    echo "Health check failed for $health_url"
+    return 1
+  fi
+}
+
+print_runtime_logs() {
+  if "${docker_cmd[@]}" compose version >/dev/null 2>&1; then
+    "${docker_cmd[@]}" compose ps || true
+    "${docker_cmd[@]}" compose logs --tail=200 api || true
+    return
   fi
 
-  sleep 2
-done
+  if command -v docker-compose >/dev/null 2>&1; then
+    docker-compose ps || true
+    docker-compose logs --tail=200 api || true
+    return
+  fi
 
-if [[ "$health_ok" -ne 1 ]]; then
-  echo "Health check failed for $health_url"
-  "${docker_cmd[@]}" compose ps || true
-  "${docker_cmd[@]}" compose logs --tail=200 api || true
+  "${docker_cmd[@]}" ps --filter "name=$container_name" || true
+  "${docker_cmd[@]}" logs --tail=200 "$container_name" || true
+}
+
+deploy_with_plain_docker() {
+  "${docker_cmd[@]}" build --target runner -t "$image_name" .
+  "${docker_cmd[@]}" rm -f "$container_name" >/dev/null 2>&1 || true
+
+  "${docker_cmd[@]}" run -d \
+    --name "$container_name" \
+    --restart unless-stopped \
+    --init \
+    --env-file .env \
+    -e NODE_ENV=production \
+    -e APP_PORT="$app_port" \
+    -p "${app_port}:${app_port}" \
+    --health-cmd "wget -qO- http://127.0.0.1:${app_port}/health >/dev/null 2>&1 || exit 1" \
+    --health-interval 30s \
+    --health-timeout 5s \
+    --health-retries 5 \
+    --health-start-period 40s \
+    --log-driver json-file \
+    --log-opt max-size=10m \
+    --log-opt max-file=3 \
+    "$image_name"
+}
+
+if "${docker_cmd[@]}" compose version >/dev/null 2>&1; then
+  "${docker_cmd[@]}" compose up -d --build
+elif command -v docker-compose >/dev/null 2>&1; then
+  docker-compose up -d --build
+else
+  deploy_with_plain_docker
+fi
+
+if ! run_health_check; then
+  print_runtime_logs
   exit 1
 fi
 
