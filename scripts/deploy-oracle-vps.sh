@@ -9,6 +9,11 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
+read_env_value() {
+  local key="$1"
+  sed -n "s/^${key}=//p" .env | head -n 1
+}
+
 docker_cmd=(docker)
 if ! docker info >/dev/null 2>&1; then
   if command -v sudo >/dev/null 2>&1 && sudo -n docker info >/dev/null 2>&1; then
@@ -21,6 +26,10 @@ fi
 
 app_port="$(sed -n 's/^APP_PORT=//p' .env | head -n 1)"
 app_port="${APP_PORT:-${app_port:-3000}}"
+docker_dns_1="$(read_env_value DOCKER_DNS_1)"
+docker_dns_1="${DOCKER_DNS_1:-${docker_dns_1:-1.1.1.1}}"
+docker_dns_2="$(read_env_value DOCKER_DNS_2)"
+docker_dns_2="${DOCKER_DNS_2:-${docker_dns_2:-8.8.8.8}}"
 health_url="http://127.0.0.1:${app_port}/health"
 container_name="zera-backend-api"
 image_name="zera-backend-api:latest"
@@ -81,6 +90,8 @@ deploy_with_plain_docker() {
     --env-file .env \
     -e NODE_ENV=production \
     -e APP_PORT="$app_port" \
+    --dns "$docker_dns_1" \
+    --dns "$docker_dns_2" \
     -p "${app_port}:${app_port}" \
     --health-cmd "wget -qO- http://127.0.0.1:${app_port}/health >/dev/null 2>&1 || exit 1" \
     --health-interval 30s \

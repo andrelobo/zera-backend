@@ -12,6 +12,9 @@ services:
     environment:
       NODE_ENV: production
       APP_PORT: ${APP_PORT:-3000}
+    dns:
+      - "${DOCKER_DNS_1:-1.1.1.1}"
+      - "${DOCKER_DNS_2:-8.8.8.8}"
     ports:
       - "${APP_PORT:-3000}:${APP_PORT:-3000}"
     init: true
