@@ -18,6 +18,8 @@ import {
 import { PlugNotasHttp } from '../../fiscal/infra/plugnotas/plugnotas.http';
 import { PlugNotasNfseApi } from '../../fiscal/infra/plugnotas/nfse.api';
 import { PlugNotasPrerequisitesService } from '../../fiscal/infra/plugnotas/prerequisites.service';
+import { SefinMtlsHttp } from '../../fiscal/infra/sefin/sefin-mtls.http';
+import { SefinNfseProvider } from '../../fiscal/infra/sefin/sefin.provider';
 import { EmpresasModule } from '../empresas/empresas.module';
 import { TomadoresModule } from '../tomadores/tomadores.module';
 import { WebhookDeliveryAuditRepository } from '../webhooks/webhook-delivery-audit.repository';
@@ -27,6 +29,14 @@ import {
 } from '../webhooks/schemas/webhook-delivery-audit.schema';
 import { ProviderDocumentParsers } from '../../fiscal/domain/provider-document-parsers';
 import { PlugNotasDocumentParser } from '../../fiscal/infra/plugnotas/plugnotas-document-parser';
+
+function envBoolean(value: string | undefined, defaultValue: boolean): boolean {
+  if (value === undefined) return defaultValue;
+  const normalized = value.trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return defaultValue;
+}
 
 @Module({
   imports: [
@@ -53,10 +63,14 @@ import { PlugNotasDocumentParser } from '../../fiscal/infra/plugnotas/plugnotas-
     PlugNotasHttp,
     PlugNotasNfseApi,
     PlugNotasPrerequisitesService,
+    SefinMtlsHttp,
+    SefinNfseProvider,
     WebhookDeliveryAuditRepository,
     {
       provide: 'FiscalProvider',
-      useClass: PlugNotasProvider,
+      inject: [SefinNfseProvider, PlugNotasProvider],
+      useFactory: (sefinProvider: SefinNfseProvider, plugNotasProvider: PlugNotasProvider) =>
+        envBoolean(process.env.SEFIN_ENABLED, false) ? sefinProvider : plugNotasProvider,
     },
   ],
   exports: [

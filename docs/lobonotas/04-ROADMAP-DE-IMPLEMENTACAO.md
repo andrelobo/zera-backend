@@ -100,14 +100,19 @@
 ## Slice 4 — Cliente HTTP do Ambiente Nacional (mTLS/A1)
 
 - **Objetivo**: transmitir DPS para Produção Restrita/homologação e consultar status/protocolo/eventos.
+- **Status**: ⏳ **parcialmente implementado** (envelope real e tabela `cStat` dependem da credencial piloto → `[PENDENTE]`).
 - **Ações**:
-  1. Cliente baseado em axios/undici com **mTLS** usando o certificado A1 do prestador.
-  2. Endpoints: envio DPS, consulta por chave/protocolo, consulta evento, cancelamento.
-  3. Timeouts explícitos e **sinalização de "transmitido sem confirmação"** para tratar pós-DPS (D5).
-  4. Mapa de erros para códigos normalizados (`LOBONOTAS_*`).
-- **Arquivos-alvo**: `fiscal/infra/lobonotas/` (client, config, errors).
-- **Testes**: mocks de resposta oficial (fixtures), integração em homologação.
-- **Aceite**: envio/consulta funcionam contra Produção Restrita com certificado do piloto.
+  1. ✅ Cliente baseado em `node:https` com **mTLS** usando o certificado A1 do prestador — `fiscal/infra/sefin/sefin-mtls.http.ts`.
+  2. ✅ Config centralizada — `fiscal/infra/sefin/sefin.config.ts` (base URLs Produção Restrita/ADN, `tpAmb` inferido, timeouts/retry, `SEFIN_NFSE_ENVELOPE=xml|json`).
+  3. ✅ Mapeador de resposta tolerante a namespace e a XML embutido em JSON — `fiscal/infra/sefin/sefin-mapper.ts` + `sefin-xml.ts`.
+  4. ✅ `SefinNfseProvider` implementando `FiscalProvider` (`emitirNfse`, `consultarNfse`, `baixarXmlNfse`, `baixarPdfNfse` stub) — `fiscal/infra/sefin/sefin.provider.ts`.
+  5. ✅ Contador atômico de DPS na `Empresa` (`dpsContador`/`dpsSerieContador`) via `findOneAndUpdate` com rollover de série — `EmpresasService.reservarNumeracaoDps`.
+  6. ✅ Wiring atrás de flag `SEFIN_ENABLED=false` (default) com PlugNotas como provider ativo — `fiscal.module.ts`.
+  7. ⏳ Endpoints de evento/cancelamento → Slice 7 (`SEFIN_EVENTO_NOT_IMPLEMENTED`).
+  8. ⏳ Envelope real do `POST /nfse` e tabela `cStat` → `[PENDENTE]` até acesso com credencial piloto.
+- **Arquivos-alvo**: `fiscal/infra/sefin/*` (implementado) — nomenclatura `sefin` no lugar de `lobonotas`.
+- **Testes**: ✅ unit verdes (config, mapper, cliente mTLS, provider, contador); fixtures de resposta oficial aguardam credencial piloto.
+- **Aceite**: envio/consulta funcionam contra Produção Restrita com certificado do piloto (ainda não exercitado).
 - **Riscos**: endpoints de homologação instáveis; documentação incompleta → `[PENDENTE]`.
 - **Dependências**: Slices 2 e 3.
 - **Rollback**: kill switch.

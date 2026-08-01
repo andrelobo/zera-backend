@@ -197,11 +197,23 @@ Linha Manaus (1302603) na tabela oficial de municípios aderentes (gov.br, atual
 - ✅ DPS assinada validada contra `DPS_v1.01.xsd` oficial (lxml; libxml2 não suporta âncoras `^`/`$` nos `xs:pattern` — removidas para a validação local, pois o XSD já é implicitamente ancorado).
 - ✅ Fix estrutural detectado na validação: `locPrest` pertence a `serv` (`TCServ`), não direto no `infDPS`.
 
+**Resolvidas no Slice 4 (01/08/2026):**
+- ✅ Cliente mTLS (A1) via `node:https` — `sefin-mtls.http.ts` (timeout → `SEFIN_REQUEST_TIMEOUT`, cert verify → `SEFIN_CERT_VERIFY_FAILED`, HTTP status → `SEFIN_HTTP_ERROR` com `retryAfterMs`).
+- ✅ Config `sefin.config.ts`: base URLs de Produção Restrita/ADN, `tpAmb` inferido (1 produção / 2 demais), `cLocEmi`, série DPS, timeouts/retry, `SEFIN_NFSE_ENVELOPE=xml|json`.
+- ✅ Mapeador `sefin-mapper.ts` + helpers `sefin-xml.ts`: extração de `cStat`/`xMotivo`/`chaveAcesso`/`dhProc`/`nNFSe`/`nDFSe`, tolerante a prefixo de namespace e a XML embutido em JSON; `cStat` 4xx/5xx ⇒ `REJECTED`, 1xx/2xx ⇒ `PENDING`, presença de `infNFSe` ⇒ `AUTHORIZED`.
+- ✅ `SefinNfseProvider`: emissão síncrona `POST /nfse` (DPS assinada), timeout pós-DPS ⇒ `PENDING` com `transmitidoSemConfirmacao` e `externalId = Id da DPS` (reconciliação D5 via `GET /dps/{id}`), consulta `GET /nfse/{chave}`, `baixarXmlNfse` na mesma trilha, `baixarPdfNfse` vazio (DANFSE = Slice 7), cancelamento/eventos ⇒ `SEFIN_EVENTO_NOT_IMPLEMENTED` (Slice 7).
+- ✅ Numeração atômica da DPS na `Empresa` (`dpsContador` + `dpsSerieContador`) com rollover de série; seed inicial a partir do campo espelho `dpsNum`.
+- ✅ Wiring atrás de `SEFIN_ENABLED` (default `false`) no `FiscalModule`; PlugNotas segue provider ativo na ausência/false.
+
+**Ainda pendentes (`[PENDENTE]`):**
+- [ ] **Envelope real do `POST /nfse`** (XML puro vs JSON com DPS) e **tabela real de `cStat`** — confirmar com credencial piloto; por isso `SEFIN_NFSE_ENVELOPE` é configurável e o mapeador aceita ambos.
+- [ ] Teste real de handshake mTLS contra Produção Restrita (certificado do piloto).
+
 ---
 
 ## 6. Implicações para os slices seguintes
 
 - **Slice 3 (DPS)**: usar `TCInfDPS` + `TSIdDPS` (XSD 1.01) e assinar `DPS` (Signature **opcional** na DPS, mas a NFS-e gerada sempre vem assinada pela Sefin; no envio por WS o **evento/pedRegEvento** exige assinatura). Validação com os XSD arquivados. **Status: concluído** (builder + signer + validação XSD — doc 04 §Slice 3).
-- **Slice 4 (cliente)**: endpoints relativos de R2 (emissão/consulta/eventos) + ADN (R3); mTLS com certificado A1 do prestador; Produção Restrita em `*.producaorestrita.nfse.gov.br`.
+- **Slice 4 (cliente)**: endpoints relativos de R2 (emissão/consulta/eventos) + ADN (R3); mTLS com certificado A1 do prestador; Produção Restrita em `*.producaorestrita.nfse.gov.br`. **Status: implementado em `fiscal/infra/sefin/*`** (cliente, config, mapper, provider, contador DPS, wiring `SEFIN_ENABLED`) — envelope real e tabela `cStat` permanecem `[PENDENTE]` até acesso com credencial piloto.
 - **Slice 7 (cancelamento/substituição)**: via **API Eventos** (`POST /nfse/{chave}/eventos`) com código `1 01 1 01` (cancelamento) e `1 05 1 02` (por substituição — gerado automaticamente no `POST /nfse` quando a DPS traz `subst/chSubstda`). Substituição é **nativa do padrão** (diferente do que se supunha no doc 04 §"Itens pendentes").
 - **Cancelamento legado vs Nacional**: o frontend expõe `POST /nfse/:id/cancelamento` e `GET /nfse/cancelamento/:cancellationProtocol` (doc 03 §1); no Nacional não há "protocolo de cancelamento" — o estado deriva dos **eventos** da chave de acesso (R5). Ponto de mapeamento a resolver no Slice 7.

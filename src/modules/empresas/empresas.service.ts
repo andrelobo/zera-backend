@@ -2139,6 +2139,123 @@ export class EmpresasService {
     return this.buildCadastroResumo(doc.toObject() as unknown as Record<string, unknown>);
   }
 
+  async obterMaterialCertificado(
+    cnpj: string,
+  ): Promise<{ pfxBase64: string; password: string } | null> {
+    const cnpjDigits = this.onlyDigits(cnpj);
+    if (cnpjDigits.length !== 14) return null;
+
+    const doc = await this.empresaModel
+      .findOne({ cnpj: cnpjDigits })
+      .select('+certificado.pfxBase64 +certificado.passwordEncrypted')
+      .lean<Record<string, any> | null>();
+
+    if (!doc) return null;
+    const cert = doc.certificado as Record<string, unknown> | undefined;
+    const pfxBase64 = this.toScalarStringOrUndefined(cert?.pfxBase64);
+    const passwordEncrypted = this.toScalarStringOrUndefined(cert?.passwordEncrypted);
+    if (!pfxBase64 || !passwordEncrypted) return null;
+
+    const password = this.decryptSecret(passwordEncrypted);
+    if (!password) return null;
+    return { pfxBase64, password };
+  }
+
+  async reservarNumeracaoDps(cnpj: string): Promise<{ serie: string; nDPS: string }> {
+    const cnpjDigits = this.onlyDigits(cnpj);
+    if (cnpjDigits.length !== 14) {
+      throw new BadRequestException({
+        code: 'PRESTADOR_CNPJ_INVALID',
+        message: 'prestador.cnpj deve conter 14 dígitos para reservar numeração da DPS',
+      });
+    }
+
+    const serieConfigurada = this.toScalarStringOrUndefined(process.env.SEFIN_DPS_SERIE) ?? '1';
+    const serieInicial = Number.parseInt(this.onlyDigits(serieConfigurada), 10);
+    if (!Number.isInteger(serieInicial) || serieInicial < 0 || serieInicial > 99999) {
+      throw new Error('SEFIN_DPS_SERIE deve conter entre 1 e 5 dígitos');
+    }
+
+    const maxDpsPorSerie = 999_999_999_999_999;
+
+    const updated = await this.empresaModel
+      .findOneAndUpdate(
+        { cnpj: cnpjDigits },
+        [
+          {
+            $set: {
+              dpsSerieContador: {
+                $cond: [
+                  { $gte: [{ $ifNull: ['$dpsContador', 0] }, maxDpsPorSerie] },
+                  { $add: [{ $ifNull: ['$dpsSerieContador', serieInicial] }, 1] },
+                  { $ifNull: ['$dpsSerieContador', serieInicial] },
+                ],
+              },
+              dpsContador: {
+                $cond: [
+                  { $gte: [{ $ifNull: ['$dpsContador', 0] }, maxDpsPorSerie] },
+                  1,
+                  {
+                    $cond: [
+                      { $gt: [{ $ifNull: ['$dpsContador', 0] }, 0] },
+                      { $add: [{ $ifNull: ['$dpsContador', 0] }, 1] },
+                      {
+                        $add: [
+                          {
+                            $cond: [
+                              {
+                                $gt: [
+                                  {
+                                    $convert: {
+                                      input: '$dpsNum',
+                                      to: 'long',
+                                      onError: 0,
+                                      onNull: 0,
+                                    },
+                                  },
+                                  0,
+                                ],
+                              },
+                              {
+                                $convert: {
+                                  input: '$dpsNum',
+                                  to: 'long',
+                                  onError: 0,
+                                  onNull: 0,
+                                },
+                              },
+                              0,
+                            ],
+                          },
+                          1,
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+        ],
+        {
+          new: true,
+          fields: { dpsContador: 1, dpsSerieContador: 1 },
+        },
+      )
+      .lean<{ dpsContador?: number; dpsSerieContador?: number }>();
+
+    if (!updated) {
+      throw new NotFoundException({
+        code: 'PRESTADOR_NOT_FOUND',
+        message: 'Empresa não encontrada para reservar numeração da DPS',
+      });
+    }
+
+    const nDPS = String(updated.dpsContador ?? 1);
+    const serie = String(updated.dpsSerieContador ?? serieInicial);
+    return { serie, nDPS };
+  }
+
   private mergeProviderData(
     primary: Record<string, unknown>,
     secondary: Record<string, unknown>,

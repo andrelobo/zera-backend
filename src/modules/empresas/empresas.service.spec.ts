@@ -1362,4 +1362,70 @@ describe('EmpresasService', () => {
       }),
     );
   });
+
+  it('obterMaterialCertificado retorna pfx + senha decifrada quando presentes', async () => {
+    empresaModel.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue({
+          cnpj: '43521115000134',
+          certificado: {
+            pfxBase64: 'cGZ4LWJhc2U2NA==',
+            passwordEncrypted: 'senha-plana',
+          },
+        }),
+      }),
+    });
+
+    const material = await service.obterMaterialCertificado('43.521.115/0001-34');
+
+    expect(material).toEqual({ pfxBase64: 'cGZ4LWJhc2U2NA==', password: 'senha-plana' });
+    expect(empresaModel.findOne).toHaveBeenCalledWith({ cnpj: '43521115000134' });
+  });
+
+  it('obterMaterialCertificado retorna null sem certificado ou sem senha decifravel', async () => {
+    empresaModel.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(null) }),
+    });
+    await expect(service.obterMaterialCertificado('43.521.115/0001-34')).resolves.toBeNull();
+
+    empresaModel.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue({
+          certificado: { pfxBase64: 'cGZ4' },
+        }),
+      }),
+    });
+    await expect(service.obterMaterialCertificado('43.521.115/0001-34')).resolves.toBeNull();
+  });
+
+  it('obterMaterialCertificado retorna null para CNPJ invalido', async () => {
+    await expect(service.obterMaterialCertificado('123')).resolves.toBeNull();
+    expect(empresaModel.findOne).not.toHaveBeenCalled();
+  });
+
+  it('reservarNumeracaoDps incrementa contador atomico e retorna serie + nDPS', async () => {
+    delete process.env.SEFIN_DPS_SERIE;
+    empresaModel.findOneAndUpdate.mockReturnValue({
+      lean: jest.fn().mockResolvedValue({ dpsContador: 3, dpsSerieContador: 1 }),
+    });
+
+    const result = await service.reservarNumeracaoDps('43.521.115/0001-34');
+
+    expect(result).toEqual({ serie: '1', nDPS: '3' });
+    expect(empresaModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { cnpj: '43521115000134' },
+      expect.any(Array),
+      expect.objectContaining({ new: true }),
+    );
+  });
+
+  it('reservarNumeracaoDps lança PRESTADOR_NOT_FOUND quando empresa não existe', async () => {
+    empresaModel.findOneAndUpdate.mockReturnValue({
+      lean: jest.fn().mockResolvedValue(null),
+    });
+
+    await expect(service.reservarNumeracaoDps('43.521.115/0001-34')).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'PRESTADOR_NOT_FOUND' }),
+    });
+  });
 });

@@ -264,6 +264,12 @@ export class Empresa {
   @Prop()
   serieDpsNum?: string;
 
+  @Prop()
+  dpsContador?: number;
+
+  @Prop()
+  dpsSerieContador?: number;
+
   @Prop({ type: PlugNotasNfseConfigSchema, default: undefined })
   plugNotasNfse?: PlugNotasNfseConfig;
 
