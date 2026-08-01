@@ -2,7 +2,7 @@
 
 > Sequência de slices para substituir o PlugNotas pelo LOBONOTAS (NFS-e Padrão Nacional) mantendo a API e as capacidades existentes.
 > Cada slice: objetivo, arquivos-alvo, testes, aceite, riscos, dependências, observações e rollback.
-> Status geral: **Slice 0 e Slice 1 IMPLEMENTADOS** — contratos canônicos de parsing e roteamento de provider no lugar; **Slice 2 EM ANDAMENTO** (pesquisa oficial coletada em doc 06; falta review do owner e validação pontual das pendências); demais slices PROPOSTOS.
+> Status geral (01/08/2026): **Slice 0 IMPLEMENTADO; Slice 1 IMPLEMENTADO; Slice 2 EM ANDAMENTO** (pesquisa oficial coletada em doc 06; falta review do owner e validação das pendências da doc 06 §5); **Slice 3 IMPLEMENTADO** (DPS builder+signer, XSD oficial); **Slice 4 PARCIALMENTE IMPLEMENTADO** (cliente mTLS/provider prontos; envelope real e tabela `cStat` dependem de credencial piloto); Slice 5–9 PROPOSTOS.
 
 ---
 

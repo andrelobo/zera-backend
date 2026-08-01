@@ -1,7 +1,7 @@
 # LOBONOTAS — 00. Handover e Contexto
 
 > Frente: **LOBONOTAS** — novo motor fiscal do ZERA para integração direta com a NFS-e Padrão Nacional / SEFIN Nacional.
-> Etapa: **Documentação as-is (etapa 1)**. Nenhum código foi alterado nesta rodada.
+> Etapa: **Documentação as-is (etapa 1) + Slices 1–4 implementados (01/08/2026)**. Código LOBONOTAS aditivo atrás de flag `SEFIN_ENABLED=false`; produção permanece em PlugNotas.
 > Data de referência: **01/08/2026**.
 > Autor: Arquiteto de Software (auditoria assistida por IA sobre os dois repositórios locais).
 
@@ -68,9 +68,10 @@ O **LOBONOTAS** será o **novo motor fiscal** do ZERA para integração **direta
 ### Escopo (entregue nesta rodada)
 
 - Leitura e verificação do estado real de backend, frontend e banco (por código).
-- Tentativa de inspeção **read-only** da VPS (resultado: **bloqueada** — ver seção 6 e `05-OPERACAO-ORACLE-VPS.md`).
+- Inspeção **read-only** da VPS (realizada em 01/08/2026 — desbloqueada; ver seção 6 e `05-OPERACAO-ORACLE-VPS.md`).
 - Auditoria de dados (Atlas) **pelo código** (schemas, índices, idempotência, acoplamentos).
-- Criação de `docs/lobonotas/00..05`.
+- Criação de `docs/lobonotas/00..06`.
+- **Slices 1–4 implementados** (parsers/provider, DPS, mTLS) — ver `04-ROADMAP-DE-IMPLEMENTACAO.md`.
 
 ### Não-escopo (proibido nesta rodada)
 
@@ -94,21 +95,19 @@ O **LOBONOTAS** será o **novo motor fiscal** do ZERA para integração **direta
 - O frontend **não chama o backend direto pelo IP**: usa proxy de função Vercel `api/proxy.ts` → `DEFAULT_UPSTREAM = http://136.248.90.172:3000`, com `VITE_API_BASE_URL=/api` em produção.
 - **Alteração de domínio exige atualização de `CORS_ORIGINS` no backend** (`src/main.ts:18-21`).
 
-### Backend (Oracle VPS) — valores **documentados/esperados, NÃO verificados em runtime**
+### Backend (Oracle VPS) — valores **verificados em runtime (01/08/2026)**
 
-| Item | Valor esperado (docs) |
+| Item | Valor verificado |
 |---|---|
 | Hostname | `lobojow` |
 | IP público | `136.248.90.172` |
-| Sistema | Ubuntu Server 20.04 |
-| Recursos | 1 OCPU, ~952 MB RAM, 2 GB swap, 45 GB SSD |
-| Container | `zera-backend-api` |
+| Sistema | Ubuntu Server 20.04.6 LTS |
+| Recursos | ~952 MB RAM, 2 GB swap, 45 GB SSD, 2 vCPU |
+| Container | `zera-backend-api` (Up healthy) |
 | Porta interna | `3000` |
-| Health check | `GET /health` |
-| Usuário SSH esperado | `ubuntu` (não confirmado — acesso bloqueado) |
-| Caminho do projeto | `/home/ubuntu/zera-backend` (documentado; não verificado) |
-
-> **BLOQUEIO**: não foi possível acessar a VPS. Detalhes em `05-OPERACAO-ORACLE-VPS.md`, seção "Estado observado".
+| Health check | `GET /health` → `{"status":"ok","env":"production"}` |
+| Usuário SSH | `ubuntu` (funcional, via chave do owner) |
+| Caminho do projeto | `/home/ubuntu/zera-backend` (sem `.git` — deploy por cópia) |
 
 ### Banco
 
@@ -125,12 +124,14 @@ O **LOBONOTAS** será o **novo motor fiscal** do ZERA para integração **direta
 
 ---
 
-## 6. Acesso à VPS — resultado da inspeção
+## 6. Acesso à VPS — resultado da inspeção (desbloqueado em 01/08/2026)
 
-- Comando tentado: `ssh ubuntu@136.248.90.172` (BatchMode, chave local padrão).
-- Resultado: `Permission denied (publickey)`.
-- Verificação local: `~/.ssh` contém **apenas `known_hosts`**; **nenhuma chave privada** (`id_ed25519`/`id_rsa`) existe no ambiente local.
-- **Decisão:** interrompida a inspeção de VPS (regra: não contornar autenticação). A documentação da VPS permanece como "esperado por documentação", com flag de não verificado.
+- **Bloqueio anterior resolvido**: o owner disponibilizou a chave privada do VPS.
+- Acesso funcional com a chave `(1)`:
+  - caminho: `/home/lobo/Área de trabalho/SSH_KEYS_ORACLE/ssh-key-2026-06-16(1).key` (RSA/PEM, perms `600`, fora do repositório)
+  - comando direto: `ssh -i "/home/lobo/Área de trabalho/SSH_KEYS_ORACLE/ssh-key-2026-06-16(1).key" ubuntu@136.248.90.172`
+  - alias configurado em `~/.ssh/config`: **`ssh lobojow`** (IdentityFile entre aspas — o path tem espaços; sem aspas o config quebra)
+- Verificação real em `01/08/2026`: host `lobojow`, Ubuntu 20.04.6, container `zera-backend-api` healthy, `GET /health` → `{"status":"ok","env":"production"}`. Detalhes em `05-OPERACAO-ORACLE-VPS.md`.
 
 ---
 

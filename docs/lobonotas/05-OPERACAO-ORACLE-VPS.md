@@ -15,7 +15,7 @@
 | IP | `136.248.90.172` | `api/proxy.ts` (`DEFAULT_UPSTREAM`), docs | configurado |
 | Usuário | `ubuntu` | SSH | **funcional** |
 | Path app | `/home/ubuntu/zera-backend` | SSH (01/08/2026) | **verificado** |
-| Container | `zera-backend-api` | `docker ps` | **Up 4 weeks (healthy)** |
+| Container | `zera-backend-api` | `docker ps` | **Up (healthy)** — redeployado 01/08/2026 via Actions |
 | Porta | `3000` (`0.0.0.0:3000->3000/tcp`) | `docker ps` | **verificado** |
 | Health | `GET /health` → `{"status":"ok","env":"production"}` | SSH/curl (01/08/2026) | **verificado** |
 | Portainer | `portainer` (`9000`, `9443`) | `docker ps` | **verificado** |
@@ -34,6 +34,11 @@
   ```bash
   ssh -i "/home/lobo/Área de trabalho/SSH_KEYS_ORACLE/ssh-key-2026-06-16(1).key" ubuntu@136.248.90.172
   ```
+- Alias configurado em `~/.ssh/config` (mais curto e sem risco de aspas):
+  ```bash
+  ssh lobojow
+  ```
+  (HostName `136.248.90.172`, User `ubuntu`, IdentityFile **entre aspas** — o path tem espaços).
 - Chave: RSA (PEM) privada, permissões `600`, na pasta `SSH_KEYS_ORACLE/` (há 3 pares: `(1)`, `(2)`, `(3)` — `(1)` confirmada funcional).
 - O bloqueio anterior (`Permission denied (publickey)`) está **resolvido** com a disponibilização da chave.
 - Observação: a chave fica fora do repositório (não versionar); documentada aqui apenas como referência operacional.
@@ -43,7 +48,7 @@
 
 - [x] Hostname/OS real: `lobojow` / Ubuntu 20.04.6 LTS.
 - [x] Path do app: `/home/ubuntu/zera-backend` (com `.env`, `docker-compose.yml`, `Dockerfile`).
-- [x] Container e estado: `zera-backend-api` Up 4 weeks (healthy); `portainer` também ativo.
+- [x] Container e estado: `zera-backend-api` Up (healthy) — redeployado 01/08/2026 via GitHub Actions; `portainer` também ativo.
 - [x] Health local: `{"status":"ok","env":"production"}`.
 - [x] Envs: sem `FISCAL_PROVIDER_ACTIVE`/`LOBONOTAS_*` (frente ainda não implementada — correto nesta fase).
 - [x] Recursos: RAM 952MB (≈508 avail), swap 2GB, disco 45GB (39GB avail), 2 vCPU.
@@ -54,8 +59,9 @@
 ## 4. Comandos operacionais padrão
 
 ```bash
-# pré-requisito: rodar via SSH com a chave do owner
-SSH="ssh -i '/home/lobo/Área de trabalho/SSH_KEYS_ORACLE/ssh-key-2026-06-16(1).key' ubuntu@136.248.90.172"
+# pré-requisito: rodar via SSH (alias lobojow ou comando com a chave do owner)
+SSH="ssh lobojow"
+# equivalente longo: SSH="ssh -i '/home/lobo/Área de trabalho/SSH_KEYS_ORACLE/ssh-key-2026-06-16(1).key' ubuntu@136.248.90.172"
 
 # status
 docker ps --filter name=zera-backend-api

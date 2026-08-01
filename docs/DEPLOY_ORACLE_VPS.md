@@ -139,3 +139,21 @@ Configure em `Settings -> Secrets and variables -> Actions -> Secrets`:
 - Sempre que entrar um novo dominio do frontend, atualize `CORS_ORIGINS` e faca redeploy.
 - Se o banco estiver vazio, `/auth/bootstrap` nao responde com `NODE_ENV=production`. Nesse caso, faca o bootstrap inicial antes de travar em producao ou use uma base ja inicializada.
 - O `docker-compose.yml` deste repo foi preparado para a Oracle VPS com `restart`, `healthcheck` e logs rotativos.
+
+### Acesso SSH (alias `lobojow`)
+
+- `~/.ssh/config` contem `Host lobojow` (HostName `136.248.90.172`, User `ubuntu`, Port `22`).
+- Importante: o `IdentityFile` precisa estar **entre aspas** porque o caminho tem espacos:
+  `/home/lobo/Área de trabalho/SSH_KEYS_ORACLE/ssh-key-2026-06-16(1).key`
+- Uso: `ssh lobojow`. A chave fica fora do repositório (não versionar).
+- O host **não tem `.git`**: o workflow sincroniza por `rsync` + copia do `.env` e roda `scripts/deploy-oracle-vps.sh` (`docker compose up -d --build` + health check local).
+
+### Troubleshooting de deploy vermelho
+
+- Build local no host com Node 22 falha em `yarn build` por engine (`engines.node = "20.x"`). Usar `npx nest build` para validacao local.
+- Se o workflow passar no build mas o container ficar em `Restarting (1)` no VPS, a causa quase sempre e erro de boot do Nest (ex.: `UnknownDependenciesException` de injecao de dependencia). Diagnosticar com:
+  ```bash
+  ssh lobojow 'docker logs --tail 200 zera-backend-api 2>&1 | sed "s/\x1b\[[0-9;]*m//g"'
+  ```
+- Registrado em 01/08/2026: apos o fix do `yarn.lock`, dois erros de DI de boot quebraram o deploy — `@Optional()` faltando em `NfseEmissionRepository` (`ProviderDocumentParsers`) e `PlugNotasProvider` nao registrado no array `providers` do `FiscalModule`. Ambos corrigidos e o deploy voltou a ficar verde.
+- O workflow usa `checkout@v5`/`setup-node@v5` (Node 20 e deprecado nos runners).

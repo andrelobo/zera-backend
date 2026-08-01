@@ -1,6 +1,40 @@
 # ZERA Backend – Current State
 
-Snapshot operacional do backend em **21/04/2026**.
+Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
+
+## 0. Atualizacao rapida (01/08/2026) - LOBONOTAS slices 1-4 implementados + deploy Oracle VPS verde
+
+Fonte: `codigo local` + `testes locais` + `build local` + `execucao real do GitHub Actions` + `VPS via SSH`.
+
+Estado atual:
+- o provider fiscal ativo em producao continua **`PLUGNOTAS`**; a frente LOBONOTAS (NFS-e Padrao Nacional / SEFIN) foi implementada como codigo aditivo atras de flag `SEFIN_ENABLED=false`, sem mudar comportamento em runtime
+- slices 1-4 do roadmap (`docs/lobonotas/04-ROADMAP-DE-IMPLEMENTACAO.md`) implementados:
+  - Slice 1: `ProviderDocumentParsers` (registry `providerName → parser`) + `GenericDocumentParser` + `PlugNotasDocumentParser`; DI unificado em `FiscalModule` (exporta `NfseEmissionRepository` e `ProviderDocumentParsers`); `nfse.mapper.ts` virou re-export de compat
+  - Slice 3: DPS builder (`src/fiscal/infra/sefin/dps-builder.ts`, DPS 1.01) e signer (`dps-signer.ts`, xml-crypto@6.1.2, c14n+RSA-SHA256) — DPS assinada validada contra `DPS_v1.01.xsd` oficial
+  - Slice 4: cliente mTLS `sefin-mtls.http.ts`, config centralizada `sefin.config.ts`, `sefin-mapper.ts`/`sefin-xml.ts` tolerantes a namespace, `SefinNfseProvider` implementando `FiscalProvider`, contador atomico de DPS (`dpsContador`/`dpsSerieContador`) em `EmpresasService.reservarNumeracaoDps`, wiring com `SEFIN_ENABLED=false`
+- Slice 2 (pesquisa oficial) consolidado em `docs/lobonotas/06-SPEC-AMBIENTE-NACIONAL.md` (XSD 1.00/1.01, Emissor Publico Nacional v1.0, ADN v1.0, 17 eventos, Manaus conveniado ativo; pendencias em doc 06 §5)
+
+CI/deploy (Oracle VPS via GitHub Actions):
+- o deploy esta **verde** (runs de 01/08/2026); container `zera-backend-api` Up healthy; `GET /health` → `{"status":"ok","env":"production"}`
+- 2 fixes de DI de boot que quebravam o deploy apos o fix do `yarn.lock`:
+  - `d211546`: `@Optional()` no `ProviderDocumentParsers` de `NfseEmissionRepository` (erro `UnknownDependenciesException` no boot)
+  - `a48e99e`: `PlugNotasProvider` adicionado ao array `providers` do `FiscalModule` (usado no factory do `FiscalProvider` mas nao registrado)
+- `d3c4ed7`: upgrade `actions/checkout@v5` + `actions/setup-node@v5` (Node 20 deprecado nos runners); sem warnings de Node 20
+- historico da main (topo→base): `d3c4ed7` → `a48e99e` → `d211546` → `b83885d` → `af02548` → `7de473f` → ...
+
+Acesso VPS (configurado nesta rodada):
+- alias SSH `lobojow` em `~/.ssh/config` (HostName `136.248.90.172`, User `ubuntu`, IdentityFile com aspas — o path tem espacos)
+- chave: `/home/lobo/Área de trabalho/SSH_KEYS_ORACLE/ssh-key-2026-06-16(1).key` (fora do repo; `(2)` e `(3)` tambem autenticam)
+- host sem `.git`: deploy e por copia de arquivos + `docker compose up -d --build`; o caminho canonico passou a ser o workflow
+
+Validacao local:
+- `npx nest build` ok (host local tem Node 22; `yarn build` falha por engine `20.x`)
+- `npx jest --runInBand` → **207 testes / 30 suites** verdes
+
+Leitura operacional correta:
+1. producao segue no PlugNotas; LOBONOTAS e aditivo protegido por flag/kill switch
+2. em deploy vermelho, olhar `docker logs zera-backend-api` (erros de DI de boot aparecem como `UnknownDependenciesException`) antes de culpar o ambiente
+3. qualquer novo dominio do frontend exige `CORS_ORIGINS` + redeploy (regra de 14/05 mantida)
 
 ## 0. Atualizacao rapida (19/05/2026) - nova role `readonly` entrou para testes de visualizacao segura
 
