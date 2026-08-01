@@ -19,7 +19,10 @@ function normalizeString(value: unknown): string | null {
 }
 
 function normalizeForSearch(value: string): string {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
 }
 
 function containsAny(text: string, terms: string[]): boolean {
@@ -123,12 +126,13 @@ export class DiagnoseAgent {
     const hasWebhookEvent = Boolean(raw.lastWebhookAt);
     const hasXml = Boolean(emission.xmlBase64);
     const hasPdf = Boolean(emission.pdfBase64);
-    const providerMessage = collectMessages([
-      emission.error,
-      emission.providerResponse,
-      raw.lastPollError,
-      audits.lastFailure?.reason,
-    ])[0] ?? null;
+    const providerMessage =
+      collectMessages([
+        emission.error,
+        emission.providerResponse,
+        raw.lastPollError,
+        audits.lastFailure?.reason,
+      ])[0] ?? null;
 
     const evidence = {
       emissionId: emission._id.toString(),
@@ -155,9 +159,7 @@ export class DiagnoseAgent {
       '/nfse/webhook/diagnostico',
     ];
 
-    const combinedText = [providerMessage, lastPollError, emission.error]
-      .filter(Boolean)
-      .join(' ');
+    const combinedText = [providerMessage, lastPollError, emission.error].filter(Boolean).join(' ');
 
     if (audits.lastFailure?.reason === 'invalid_shared_secret' && !hasWebhookEvent) {
       return {
@@ -166,7 +168,8 @@ export class DiagnoseAgent {
         severity: 'high',
         probableLayer: 'webhook',
         probableCause: 'invalid_shared_secret',
-        summary: 'O callback fiscal provavelmente está chegando com segredo divergente e não consegue atualizar a emissão.',
+        summary:
+          'O callback fiscal provavelmente está chegando com segredo divergente e não consegue atualizar a emissão.',
         recommendedActions: [
           'Conferir WEBHOOK_SHARED_SECRET no backend e o header x-webhook-token configurado no provider.',
           'Consultar /nfse/webhook/diagnostico para validar lastFailure, tokenAccepted e rota recebida.',
@@ -200,7 +203,8 @@ export class DiagnoseAgent {
         severity: 'high',
         probableLayer: 'provider',
         probableCause: 'provider_temporarily_unavailable',
-        summary: 'A emissão aparenta ter esbarrado em indisponibilidade transitória da cadeia externa da NFS-e, não em regra fiscal local.',
+        summary:
+          'A emissão aparenta ter esbarrado em indisponibilidade transitória da cadeia externa da NFS-e, não em regra fiscal local.',
         recommendedActions: [
           'Evitar reenvio cego para não correr risco de duplicidade quando o provedor normalizar.',
           'Consultar /nfse/:id/observability e a resposta do provider para confirmar se houve fila, timeout ou manutenção externa.',
@@ -219,7 +223,8 @@ export class DiagnoseAgent {
         severity: 'medium',
         probableLayer: 'artifacts',
         probableCause: 'artifact_sync_incomplete',
-        summary: 'A emissão parece autorizada, mas a sincronização de artefatos ainda está incompleta.',
+        summary:
+          'A emissão parece autorizada, mas a sincronização de artefatos ainda está incompleta.',
         recommendedActions: [
           'Consultar /nfse/:id/observability para revisar artifactSyncAudit e a timeline completa.',
           'Executar sincronização de XML/PDF apenas sobre a emissão já autorizada, sem reenviar a nota.',
@@ -255,7 +260,8 @@ export class DiagnoseAgent {
         severity: 'medium',
         probableLayer: 'webhook',
         probableCause: 'webhook_not_confirmed_for_this_emission',
-        summary: 'A emissão foi autorizada, mas o fechamento operacional desta ocorrência aconteceu por polling e não por webhook.',
+        summary:
+          'A emissão foi autorizada, mas o fechamento operacional desta ocorrência aconteceu por polling e não por webhook.',
         recommendedActions: [
           'Comparar a timeline da emissão com /nfse/webhook/diagnostico para confirmar se o callback chegou ou ficou sem match.',
           'Manter polling ativo como fallback operacional.',
@@ -285,7 +291,8 @@ export class DiagnoseAgent {
         severity: 'medium',
         probableLayer: 'payload',
         probableCause: 'payload_or_catalog_rejection',
-        summary: 'A emissão parece ter sido rejeitada por payload, catálogo fiscal ou validação determinística do fluxo.',
+        summary:
+          'A emissão parece ter sido rejeitada por payload, catálogo fiscal ou validação determinística do fluxo.',
         recommendedActions: [
           'Revisar os campos fiscais obrigatórios e o conteúdo persistido em providerRequest/providerResponse.',
           'Conferir código de serviço, endereço do tomador e demais dados exigidos pelo fluxo acionado.',
@@ -304,7 +311,8 @@ export class DiagnoseAgent {
         severity: 'medium',
         probableLayer: 'polling',
         probableCause: 'polling_fallback_active',
-        summary: 'A emissão ainda está em processamento e o backend está dependendo do polling como trilha de fechamento.',
+        summary:
+          'A emissão ainda está em processamento e o backend está dependendo do polling como trilha de fechamento.',
         recommendedActions: [
           'Acompanhar nextPollAt e lastPollError em /nfse/:id/observability antes de tentar nova emissão.',
           'Conferir /nfse/webhook/diagnostico para entender se houve ausência de callback ou apenas atraso de entrega.',
@@ -323,7 +331,8 @@ export class DiagnoseAgent {
         severity: 'low',
         probableLayer: 'unknown',
         probableCause: 'emission_still_processing',
-        summary: 'A emissão ainda parece estar dentro do ciclo normal de processamento, sem evidência forte de falha conclusiva.',
+        summary:
+          'A emissão ainda parece estar dentro do ciclo normal de processamento, sem evidência forte de falha conclusiva.',
         recommendedActions: [
           'Aguardar a evolução da timeline em /nfse/:id/observability antes de concluir incidente.',
           'Se o tempo fugir do padrão operacional, cruzar com webhook e provider diagnostics.',
@@ -340,7 +349,8 @@ export class DiagnoseAgent {
       severity: status === NfseEmissionStatus.ERROR ? 'high' : 'medium',
       probableLayer: 'unknown',
       probableCause: 'unclassified_backend_error',
-      summary: 'A emissão entrou em estado não classificado pelas heurísticas iniciais do agente e precisa de leitura assistida da observabilidade.',
+      summary:
+        'A emissão entrou em estado não classificado pelas heurísticas iniciais do agente e precisa de leitura assistida da observabilidade.',
       recommendedActions: [
         'Inspecionar providerRequest, providerResponse, timeline e auditoria de webhook antes de alterar regra de negócio.',
         'Usar este diagnóstico como triagem, não como substituto da validação fiscal determinística.',

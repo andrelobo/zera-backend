@@ -18,7 +18,10 @@ export class HubdevCpfApi {
       });
     }
 
-    const baseUrl = (process.env.HUBDEV_CADASTROPF_BASE_URL ?? 'https://ws.hubdodesenvolvedor.com.br/v2/cadastropf/').trim();
+    const baseUrl = (
+      process.env.HUBDEV_CADASTROPF_BASE_URL ??
+      'https://ws.hubdodesenvolvedor.com.br/v2/cadastropf/'
+    ).trim();
     const timeoutMs = Number(process.env.HUBDEV_CADASTROPF_TIMEOUT_MS ?? 12000);
     const url = new URL(baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`);
     url.searchParams.set('cpf', cpf);

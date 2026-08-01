@@ -3,7 +3,12 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import { hashPassword } from '../auth/password';
 import { User, UserDocument } from '../auth/schemas/user.schema';
-import { buildInviteUrl, generateInviteToken, getInviteTtlMs, hashInviteToken } from '../auth/invite-token';
+import {
+  buildInviteUrl,
+  generateInviteToken,
+  getInviteTtlMs,
+  hashInviteToken,
+} from '../auth/invite-token';
 
 type PublicUser = {
   id: string;
@@ -33,20 +38,23 @@ export class UsersService {
 
   async list(): Promise<PublicUser[]> {
     const users = await this.userModel
-      .find({}, {
-        name: 1,
-        email: 1,
-        role: 1,
-        status: 1,
-        onboardingStatus: 1,
-        invitedAt: 1,
-        inviteExpiresAt: 1,
-        inviteAcceptedAt: 1,
-        welcomeEmailSentAt: 1,
-        lastLoginAt: 1,
-        createdAt: 1,
-        updatedAt: 1,
-      })
+      .find(
+        {},
+        {
+          name: 1,
+          email: 1,
+          role: 1,
+          status: 1,
+          onboardingStatus: 1,
+          invitedAt: 1,
+          inviteExpiresAt: 1,
+          inviteAcceptedAt: 1,
+          welcomeEmailSentAt: 1,
+          lastLoginAt: 1,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      )
       .sort({ createdAt: -1 });
     return users.map((user) => this.toPublic(user));
   }

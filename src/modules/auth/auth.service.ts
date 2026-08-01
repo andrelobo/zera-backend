@@ -53,7 +53,9 @@ export class AuthService {
       throw new BadRequestException('Invalid invite token');
     }
 
-    const expiresAt = (user as any).inviteExpiresAt ? new Date((user as any).inviteExpiresAt) : null;
+    const expiresAt = (user as any).inviteExpiresAt
+      ? new Date((user as any).inviteExpiresAt)
+      : null;
     if (!expiresAt || Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
       throw new BadRequestException('Invite expired');
     }

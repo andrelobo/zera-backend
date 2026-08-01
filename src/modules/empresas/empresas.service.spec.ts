@@ -393,12 +393,10 @@ describe('EmpresasService', () => {
       buffer: Buffer.from('ABCD'),
     };
 
-    jest
-      .spyOn(service as any, 'inspectCertificateExpiration')
-      .mockReturnValue({
-        expiresAt: new Date('2027-03-18T00:00:00.000Z'),
-        status: 'ok',
-      });
+    jest.spyOn(service as any, 'inspectCertificateExpiration').mockReturnValue({
+      expiresAt: new Date('2027-03-18T00:00:00.000Z'),
+      status: 'ok',
+    });
 
     const result = await service.importCertificado('43.521.115/0001-34', '123456', file as any);
 
@@ -460,11 +458,9 @@ describe('EmpresasService', () => {
       }),
     };
 
-    empresaModel.findById
-      .mockResolvedValueOnce(initialDoc as any)
-      .mockReturnValueOnce({
-        select: jest.fn().mockResolvedValue(fullDoc),
-      } as any);
+    empresaModel.findById.mockResolvedValueOnce(initialDoc as any).mockReturnValueOnce({
+      select: jest.fn().mockResolvedValue(fullDoc),
+    } as any);
     empresaModel.updateOne.mockResolvedValue({ acknowledged: true });
 
     jest.spyOn(service as any, 'decryptSecret').mockReturnValue('123456');
@@ -1149,9 +1145,7 @@ describe('EmpresasService', () => {
         parametroMunicipal: [
           expect.objectContaining({
             codigo: '6920601',
-            vinculos: [
-              expect.objectContaining({ ctn: '171901', nbs: '1.1302.21.00' }),
-            ],
+            vinculos: [expect.objectContaining({ ctn: '171901', nbs: '1.1302.21.00' })],
           }),
           expect.objectContaining({
             codigo: '7319002',

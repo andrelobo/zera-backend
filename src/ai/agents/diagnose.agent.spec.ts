@@ -122,8 +122,8 @@ describe('DiagnoseAgent', () => {
   it('returns not found when emission does not exist', async () => {
     const { agent } = makeAgent({ emission: null });
 
-    await expect(agent.diagnoseEmission({ emissionId: '680a7fb7b68434370d8a4cd2' })).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      agent.diagnoseEmission({ emissionId: '680a7fb7b68434370d8a4cd2' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

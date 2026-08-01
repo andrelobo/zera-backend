@@ -348,7 +348,9 @@ export class EmpresasService {
     const providerCertificadoId = this.toScalarStringOrUndefined(
       providerPrestador.certificado ?? providerPrestador.certificadoId,
     );
-    const storedProviderCertificadoId = this.toScalarStringOrUndefined(certRaw.providerCertificadoId);
+    const storedProviderCertificadoId = this.toScalarStringOrUndefined(
+      certRaw.providerCertificadoId,
+    );
 
     const legacyExpirationDiag = this.inspectLegacyCertificateExpiration(certRaw);
 
@@ -753,7 +755,8 @@ export class EmpresasService {
         if (!decryptedPassword) {
           throw new BadRequestException({
             code: 'PLUGNOTAS_CERTIFICADO_PASSWORD_INVALID',
-            message: 'Não foi possível recuperar a senha do certificado para sincronização com a PlugNotas',
+            message:
+              'Não foi possível recuperar a senha do certificado para sincronização com a PlugNotas',
           });
         }
 
@@ -825,7 +828,8 @@ export class EmpresasService {
             event: 'plugnotas_sync_manual_habilitacao_required',
             empresaId: String(normalized.id ?? normalized._id ?? empresa._id ?? ''),
             cnpj: String(normalized.cnpj ?? ''),
-            providerStatus: typeof (error as any)?.status === 'number' ? (error as any).status : null,
+            providerStatus:
+              typeof (error as any)?.status === 'number' ? (error as any).status : null,
             providerBody: (error as any)?.body ?? null,
           },
           'Cadastro na PlugNotas concluído com pendência manual na aba NFS-e',
@@ -880,7 +884,8 @@ export class EmpresasService {
     requireField(certRaw.filename, 'certificado.filename');
 
     const hasProviderCert = this.hasValue(certRaw.providerCertificadoId);
-    const hasLocalMaterial = this.hasValue(certRaw.pfxBase64) && this.hasValue(certRaw.passwordEncrypted);
+    const hasLocalMaterial =
+      this.hasValue(certRaw.pfxBase64) && this.hasValue(certRaw.passwordEncrypted);
     if (!hasProviderCert && !hasLocalMaterial) {
       missing.push('certificado.providerCertificadoId|certificado.pfxBase64');
       missing.push('certificado.passwordEncrypted');
@@ -893,7 +898,10 @@ export class EmpresasService {
     empresa: Record<string, any>,
   ): Record<string, unknown> {
     const cfg = getPlugNotasConfig();
-    const rpsNumero = Number.parseInt(this.onlyDigits(String(empresa.dpsNum ?? empresa.nfseNum ?? '1')), 10);
+    const rpsNumero = Number.parseInt(
+      this.onlyDigits(String(empresa.dpsNum ?? empresa.nfseNum ?? '1')),
+      10,
+    );
     const serie = this.toScalarStringOrUndefined(empresa.serieDpsNum) ?? '01';
     const plugNotasNfse = this.normalizePlugNotasNfseConfig(empresa.plugNotasNfse) ?? {};
 
@@ -931,7 +939,10 @@ export class EmpresasService {
     const telefone = this.extractPhoneParts(empresa.fone ?? empresa.whatsapp);
     const logradouro = this.splitLogradouro(this.toScalarStringOrUndefined(endereco.logradouro));
     const cfg = getPlugNotasConfig();
-    const rpsNumero = Number.parseInt(this.onlyDigits(String(empresa.dpsNum ?? empresa.nfseNum ?? '1')), 10);
+    const rpsNumero = Number.parseInt(
+      this.onlyDigits(String(empresa.dpsNum ?? empresa.nfseNum ?? '1')),
+      10,
+    );
 
     return this.compactObject({
       cpfCnpj: this.onlyDigits(String(empresa.cnpj ?? '')),
@@ -992,7 +1003,9 @@ export class EmpresasService {
       return providerIbgeCode;
     }
 
-    const providerCityCode = this.toScalarStringOrUndefined(providerData.endereco?.codigoCidade)?.trim();
+    const providerCityCode = this.toScalarStringOrUndefined(
+      providerData.endereco?.codigoCidade,
+    )?.trim();
     if (providerCityCode) {
       return providerCityCode;
     }
@@ -1113,9 +1126,9 @@ export class EmpresasService {
 
     const normalized = messageCandidates.join(' ').toLowerCase();
     return (
-      normalized.includes('not found')
-      || normalized.includes('rota não existe')
-      || normalized.includes('rota nao existe')
+      normalized.includes('not found') ||
+      normalized.includes('rota não existe') ||
+      normalized.includes('rota nao existe')
     );
   }
 
@@ -1772,10 +1785,14 @@ export class EmpresasService {
     const orderedCodes = [
       effectiveCnaeFiscal,
       ...(Array.isArray(currentCnaesLista)
-        ? currentCnaesLista.map((item) => this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? ''))
+        ? currentCnaesLista.map((item) =>
+            this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? ''),
+          )
         : []),
       ...(Array.isArray(currentParametroMunicipal)
-        ? currentParametroMunicipal.map((item) => this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? ''))
+        ? currentParametroMunicipal.map((item) =>
+            this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? ''),
+          )
         : []),
     ].filter((codigo, index, items) => Boolean(codigo) && items.indexOf(codigo) == index);
 
@@ -1799,21 +1816,25 @@ export class EmpresasService {
           this.toScalarStringOrUndefined(matchingItem?.cnaeDescricao) ??
           this.toScalarStringOrUndefined(matchingCnae?.descricao) ??
           (codigo === effectiveCnaeFiscal
-            ? this.toScalarStringOrUndefined(patch.cnaeFiscalDescricao) ??
-              this.toScalarStringOrUndefined(existing?.cnaeFiscalDescricao)
+            ? (this.toScalarStringOrUndefined(patch.cnaeFiscalDescricao) ??
+              this.toScalarStringOrUndefined(existing?.cnaeFiscalDescricao))
             : undefined),
         lc116Descricao: this.toScalarStringOrUndefined(matchingItem?.lc116Descricao),
         lc116Item: this.toScalarStringOrUndefined(matchingItem?.lc116Item),
         vinculos: Array.isArray(matchingItem?.vinculos) ? matchingItem.vinculos : [],
         isManual: matchingItem?.isManual ?? matchingCnae?.isManual,
-        isPrincipal: matchingItem?.isPrincipal ?? matchingCnae?.isPrincipal ?? (codigo === effectiveCnaeFiscal),
+        isPrincipal:
+          matchingItem?.isPrincipal ?? matchingCnae?.isPrincipal ?? codigo === effectiveCnaeFiscal,
         vinculadoSN: matchingItem?.vinculadoSN ?? true,
       });
     });
 
-    const primaryItem = normalizedList.find(
-      (item) => this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? '') === effectiveCnaeFiscal,
-    ) ?? normalizedList[0];
+    const primaryItem =
+      normalizedList.find(
+        (item) =>
+          this.onlyDigits(this.toScalarStringOrUndefined(item.codigo) ?? '') ===
+          effectiveCnaeFiscal,
+      ) ?? normalizedList[0];
     const firstVinculo = Array.isArray(primaryItem?.vinculos)
       ? (primaryItem.vinculos[0] as Record<string, unknown> | undefined)
       : undefined;
@@ -2308,8 +2329,15 @@ export class EmpresasService {
     return `v1:${iv.toString('base64')}:${tag.toString('base64')}:${encrypted.toString('base64')}`;
   }
 
-  private inspectCertificateExpiration(file: MulterFile, senhaCertificado: string): CertificateExpirationResult {
-    return this.inspectCertificateExpirationFromBuffer(file.buffer, file.originalname, senhaCertificado);
+  private inspectCertificateExpiration(
+    file: MulterFile,
+    senhaCertificado: string,
+  ): CertificateExpirationResult {
+    return this.inspectCertificateExpirationFromBuffer(
+      file.buffer,
+      file.originalname,
+      senhaCertificado,
+    );
   }
 
   private extractCertificateExpiration(file: MulterFile, senhaCertificado: string): Date | null {
@@ -2325,7 +2353,8 @@ export class EmpresasService {
       const binary = buffer.toString('binary');
       const asn1 = forge.asn1.fromDer(binary);
       const pkcs12 = forge.pkcs12.pkcs12FromAsn1(asn1, false, senhaCertificado);
-      const bags = pkcs12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag] ?? [];
+      const bags =
+        pkcs12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag] ?? [];
       const certificateBag = bags.find((bag) => Boolean(bag.cert));
       const notAfter = certificateBag?.cert?.validity?.notAfter;
 
@@ -2350,7 +2379,8 @@ export class EmpresasService {
     originalName: string,
     senhaCertificado: string,
   ): Date | null {
-    return this.inspectCertificateExpirationFromBuffer(buffer, originalName, senhaCertificado).expiresAt;
+    return this.inspectCertificateExpirationFromBuffer(buffer, originalName, senhaCertificado)
+      .expiresAt;
   }
 
   private inspectLegacyCertificateExpiration(certificadoRaw: Record<string, unknown>) {
@@ -2417,27 +2447,39 @@ export class EmpresasService {
     }
   }
 
-  private async hydrateLegacyCertificateExpiration(raw: Record<string, unknown>): Promise<Record<string, unknown>> {
-    const certificadoRaw = ((raw.certificado as Record<string, unknown> | undefined) ?? {}) as Record<string, unknown>;
+  private async hydrateLegacyCertificateExpiration(
+    raw: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const certificadoRaw = ((raw.certificado as Record<string, unknown> | undefined) ??
+      {}) as Record<string, unknown>;
     const uploadedAt = certificadoRaw.uploadedAt;
     const expiresAt = certificadoRaw.expiresAt;
     const id = String(raw._id ?? raw.id ?? '');
 
     if (!id || !this.hasValue(uploadedAt) || this.hasValue(expiresAt)) return raw;
 
-    const fullDocQuery = this.empresaModel.findById(id) as {
-      select?: (projection?: string) => Promise<EmpresaDocument | null>;
-    } | Promise<EmpresaDocument | null> | null;
-    const fullDoc = fullDocQuery && typeof (fullDocQuery as { select?: unknown }).select === 'function'
-      ? await (fullDocQuery as { select: (projection?: string) => Promise<EmpresaDocument | null> }).select(
-        '+certificado.pfxBase64 +certificado.passwordEncrypted',
-      )
-      : await fullDocQuery;
+    const fullDocQuery = this.empresaModel.findById(id) as
+      | {
+          select?: (projection?: string) => Promise<EmpresaDocument | null>;
+        }
+      | Promise<EmpresaDocument | null>
+      | null;
+    const fullDoc =
+      fullDocQuery && typeof (fullDocQuery as { select?: unknown }).select === 'function'
+        ? await (
+            fullDocQuery as { select: (projection?: string) => Promise<EmpresaDocument | null> }
+          ).select('+certificado.pfxBase64 +certificado.passwordEncrypted')
+        : await fullDocQuery;
 
-    const fullRaw = fullDoc && typeof (fullDoc as { toObject?: unknown }).toObject === 'function'
-      ? ((fullDoc as { toObject: () => Record<string, unknown> }).toObject() as Record<string, unknown>)
-      : undefined;
-    const fullCertificado = ((fullRaw?.certificado as Record<string, unknown> | undefined) ?? {}) as Record<string, unknown>;
+    const fullRaw =
+      fullDoc && typeof (fullDoc as { toObject?: unknown }).toObject === 'function'
+        ? ((fullDoc as { toObject: () => Record<string, unknown> }).toObject() as Record<
+            string,
+            unknown
+          >)
+        : undefined;
+    const fullCertificado = ((fullRaw?.certificado as Record<string, unknown> | undefined) ??
+      {}) as Record<string, unknown>;
     const legacyExpirationDiag = this.inspectLegacyCertificateExpiration(fullCertificado);
 
     if (legacyExpirationDiag.status !== 'recoverable') return raw;
@@ -2456,7 +2498,9 @@ export class EmpresasService {
     };
   }
 
-  private async toNormalizedWithLegacyCertRepair(doc: EmpresaDocument | null): Promise<Record<string, unknown> | null> {
+  private async toNormalizedWithLegacyCertRepair(
+    doc: EmpresaDocument | null,
+  ): Promise<Record<string, unknown> | null> {
     if (!doc) return null;
     const raw = doc.toObject() as unknown as Record<string, unknown>;
     const hydrated = await this.hydrateLegacyCertificateExpiration(raw);

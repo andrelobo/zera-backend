@@ -63,9 +63,11 @@ describe('FiscalController', () => {
     await expect(controller.list('1', '20', undefined, undefined, 'UNKNOWN')).rejects.toThrow(
       BadRequestException,
     );
-    await expect(controller.list('1', '20', undefined, undefined, 'UNKNOWN')).rejects.toMatchObject({
-      response: { code: 'INVALID_STATUS' },
-    });
+    await expect(controller.list('1', '20', undefined, undefined, 'UNKNOWN')).rejects.toMatchObject(
+      {
+        response: { code: 'INVALID_STATUS' },
+      },
+    );
   });
 
   it('forwards filters with defaults and trims provider', async () => {
@@ -87,7 +89,15 @@ describe('FiscalController', () => {
       totalPages: 1,
     });
 
-    const out = await controller.list(undefined, undefined, '  plugnotas  ', undefined, undefined, undefined, undefined);
+    const out = await controller.list(
+      undefined,
+      undefined,
+      '  plugnotas  ',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
 
     expect(repo.findPaginated).toHaveBeenCalledWith({
       page: 1,
@@ -432,7 +442,9 @@ describe('FiscalController', () => {
     const out = await controller.getObservability('em-obs-1');
 
     expect(out.id).toBe('em-obs-1');
-    expect(out.observability.providerRequest).toEqual({ payload: [{ idIntegracao: 'idem-obs-1' }] });
+    expect(out.observability.providerRequest).toEqual({
+      payload: [{ idIntegracao: 'idem-obs-1' }],
+    });
     expect(out.observability.providerResponse).toEqual([{ status: 'AUTORIZADA' }]);
     expect(out.observability.poll).toEqual({
       attempts: 2,

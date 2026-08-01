@@ -17,15 +17,17 @@ describe('TomadoresService', () => {
         genero: 'M',
         listaEmails: [{ email: 'andre@zera.app' }],
         listaTelefones: [{ ddd: '92', numero: '991234567' }],
-        listaEnderecos: [{
-          cep: '69010040',
-          logradouro: 'Rua Saldanha Marinho',
-          numero: '606',
-          complemento: 'Sala 255',
-          bairro: 'Centro',
-          cidade: 'Manaus',
-          uf: 'AM',
-        }],
+        listaEnderecos: [
+          {
+            cep: '69010040',
+            logradouro: 'Rua Saldanha Marinho',
+            numero: '606',
+            complemento: 'Sala 255',
+            bairro: 'Centro',
+            cidade: 'Manaus',
+            uf: 'AM',
+          },
+        ],
         lastUpdate: '2026-04-16',
       }),
     };
@@ -65,12 +67,14 @@ describe('TomadoresService', () => {
       consultarCpf: jest.fn().mockResolvedValue({
         listaEmails: [{ email: 'an***@gm***.com' }],
         listaTelefones: [{ ddd: '92', numero: '99*****67' }],
-        listaEnderecos: [{
-          cep: '69***040',
-          logradouro: 'Rua ***',
-          cidade: 'Manaus',
-          uf: '**',
-        }],
+        listaEnderecos: [
+          {
+            cep: '69***040',
+            logradouro: 'Rua ***',
+            cidade: 'Manaus',
+            uf: '**',
+          },
+        ],
       }),
     };
     const service = new TomadoresService({} as any, hubdev as any);

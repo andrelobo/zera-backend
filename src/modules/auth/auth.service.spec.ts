@@ -24,7 +24,9 @@ describe('AuthService', () => {
     };
     const service = new AuthService(model as any, { signAsync: jest.fn() } as any);
 
-    await expect(service.login('andre@zera.app', 'qualquer-senha')).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(service.login('andre@zera.app', 'qualquer-senha')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   it('accepts valid invite, activates user and returns access token', async () => {
@@ -76,16 +78,20 @@ describe('AuthService', () => {
 
   it('rejects expired invite token', async () => {
     const model = {
-      findOne: jest.fn().mockResolvedValue(makeUserDoc({
-        status: 'inactive',
-        onboardingStatus: 'invited',
-        inviteExpiresAt: new Date(Date.now() - 60_000),
-      })),
+      findOne: jest.fn().mockResolvedValue(
+        makeUserDoc({
+          status: 'inactive',
+          onboardingStatus: 'invited',
+          inviteExpiresAt: new Date(Date.now() - 60_000),
+        }),
+      ),
       findByIdAndUpdate: jest.fn(),
     };
     const service = new AuthService(model as any, { signAsync: jest.fn() } as any);
 
-    await expect(service.acceptInvite('expired-token', 'nova-senha-forte')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.acceptInvite('expired-token', 'nova-senha-forte')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
     expect(model.findByIdAndUpdate).not.toHaveBeenCalled();
   });
 
@@ -96,7 +102,9 @@ describe('AuthService', () => {
     };
     const service = new AuthService(model as any, { signAsync: jest.fn() } as any);
 
-    await expect(service.acceptInvite('used-token', 'nova-senha-forte')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.acceptInvite('used-token', 'nova-senha-forte')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
     expect(model.findByIdAndUpdate).not.toHaveBeenCalled();
   });
 });

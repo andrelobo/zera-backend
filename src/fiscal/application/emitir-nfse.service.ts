@@ -223,13 +223,8 @@ export class EmitirNfseService {
       };
     } catch (error: any) {
       const msg = extractErrorMessage(error);
-      const providerResponse =
-        error?.providerResponse ??
-        error?.body ??
-        undefined;
-      const providerRequest =
-        error?.providerRequest ??
-        providerRequestForAudit;
+      const providerResponse = error?.providerResponse ?? error?.body ?? undefined;
+      const providerRequest = error?.providerRequest ?? providerRequestForAudit;
       await this.repository.updateEmission(emission._id.toString(), {
         status: NfseEmissionStatus.ERROR,
         error: msg,

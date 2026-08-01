@@ -1,4 +1,9 @@
-import { BadGatewayException, BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model } from 'mongoose';
 import { CreateTomadorDto } from './dtos/create-tomador.dto';
@@ -232,11 +237,7 @@ export class TomadoresService {
         updatePayload.substitutoTributario = false;
       }
 
-      const tomador = await this.tomadorModel.findByIdAndUpdate(
-        id,
-        updatePayload,
-        { new: true },
-      );
+      const tomador = await this.tomadorModel.findByIdAndUpdate(id, updatePayload, { new: true });
 
       if (!tomador) {
         throw new NotFoundException({
@@ -315,7 +316,9 @@ export class TomadoresService {
       suframa: nonEmpty(input.suframa),
       substitutoTributario: isCpf(cpfCnpj)
         ? false
-        : typeof input.substitutoTributario === 'boolean' ? input.substitutoTributario : undefined,
+        : typeof input.substitutoTributario === 'boolean'
+          ? input.substitutoTributario
+          : undefined,
       email: nonEmpty(input.email)?.toLowerCase(),
       whatsapp: nonEmpty(input.whatsapp),
       endereco: input.endereco,
@@ -359,37 +362,71 @@ export class TomadoresService {
     const candidate = this.unwrapCpfLookupPayload(raw);
 
     const nome = this.pickCleanString(candidate, ['nomeCompleto', 'nome_completo', 'nome']);
-    const dataNascimento = this.pickCleanString(candidate, ['dataDeNascimento', 'data_nascimento', 'nascimento']);
+    const dataNascimento = this.pickCleanString(candidate, [
+      'dataDeNascimento',
+      'data_nascimento',
+      'nascimento',
+    ]);
     const nomeMae = this.pickCleanString(candidate, ['nomeDaMae', 'nome_mae', 'mae']);
     const genero = this.pickCleanString(candidate, ['genero', 'sexo']);
-    const lastUpdate = this.pickCleanString(candidate, ['lastUpdate', 'last_update', 'dataAtualizacao', 'data_atualizacao']);
+    const lastUpdate = this.pickCleanString(candidate, [
+      'lastUpdate',
+      'last_update',
+      'dataAtualizacao',
+      'data_atualizacao',
+    ]);
 
     const emails = this.pickArray(candidate, ['listaEmails', 'lista_emails', 'emails', 'email']);
-    const telefones = this.pickArray(candidate, ['listaTelefones', 'lista_telefones', 'telefones', 'telefone', 'celular']);
-    const enderecos = this.pickArray(candidate, ['listaEnderecos', 'lista_enderecos', 'enderecos', 'endereco']);
+    const telefones = this.pickArray(candidate, [
+      'listaTelefones',
+      'lista_telefones',
+      'telefones',
+      'telefone',
+      'celular',
+    ]);
+    const enderecos = this.pickArray(candidate, [
+      'listaEnderecos',
+      'lista_enderecos',
+      'enderecos',
+      'endereco',
+    ]);
 
     const email = this.extractEmail(emails);
     const telefone = this.extractTelefone(telefones);
     const endereco = this.extractEndereco(enderecos);
 
-    const providerReturn = this.pickCleanString(raw, ['return', 'status']) ?? this.pickCleanString(candidate, ['return', 'retorno', 'status', 'resultado']);
-    const providerMessage = this.pickCleanString(raw, ['message', 'mensagem', 'msg']) ?? this.pickCleanString(candidate, ['message', 'mensagem', 'msg']);
+    const providerReturn =
+      this.pickCleanString(raw, ['return', 'status']) ??
+      this.pickCleanString(candidate, ['return', 'retorno', 'status', 'resultado']);
+    const providerMessage =
+      this.pickCleanString(raw, ['message', 'mensagem', 'msg']) ??
+      this.pickCleanString(candidate, ['message', 'mensagem', 'msg']);
     const providerOk = providerReturn ? /^(ok|success|sucesso)$/i.test(providerReturn) : false;
     const providerNotFound = providerMessage
-      ? /(nao encontrado|não encontrado|cpf invalido|cpf inválido|cpf nao encontrado)/i.test(providerMessage)
+      ? /(nao encontrado|não encontrado|cpf invalido|cpf inválido|cpf nao encontrado)/i.test(
+          providerMessage,
+        )
       : false;
 
     const found = providerNotFound
       ? false
       : Boolean(
-          providerOk || nome || dataNascimento || nomeMae || genero || lastUpdate || emails.length || telefones.length || enderecos.length,
+          providerOk ||
+          nome ||
+          dataNascimento ||
+          nomeMae ||
+          genero ||
+          lastUpdate ||
+          emails.length ||
+          telefones.length ||
+          enderecos.length,
         );
     const usefulAddress = Boolean(
       endereco?.cep ||
-        endereco?.logradouro ||
-        endereco?.numero ||
-        endereco?.bairro ||
-        endereco?.complemento,
+      endereco?.logradouro ||
+      endereco?.numero ||
+      endereco?.bairro ||
+      endereco?.complemento,
     );
     const usefulData = Boolean(nome || email || telefone || usefulAddress);
 
@@ -481,7 +518,10 @@ export class TomadoresService {
       if (!item || typeof item !== 'object') continue;
       const row = item as Record<string, unknown>;
       const ddd = this.cleanDigits(row.ddd);
-      const numero = this.cleanDigits(row.numero ?? row.telefone ?? row.celular ?? row.valor ?? row.value, 8);
+      const numero = this.cleanDigits(
+        row.numero ?? row.telefone ?? row.celular ?? row.valor ?? row.value,
+        8,
+      );
       if (!numero) continue;
       return `${ddd ?? ''}${numero}`;
     }
@@ -503,14 +543,13 @@ export class TomadoresService {
       };
       const usefulAddress = Boolean(
         endereco.cep ||
-          endereco.logradouro ||
-          endereco.numero ||
-          endereco.bairro ||
-          endereco.complemento,
+        endereco.logradouro ||
+        endereco.numero ||
+        endereco.bairro ||
+        endereco.complemento,
       );
       if (usefulAddress) return endereco;
     }
     return undefined;
   }
-
 }

@@ -1,8 +1,5 @@
 import { NfseEmissionStatus } from '../../../domain/types/nfse-emission-status';
-import {
-  buildExternalReferenceFilter,
-  NfseEmissionRepository,
-} from './nfse-emission.repository';
+import { buildExternalReferenceFilter, NfseEmissionRepository } from './nfse-emission.repository';
 
 describe('NfseEmissionRepository', () => {
   it('builds an external reference filter with provider response fallbacks', () => {
@@ -67,7 +64,12 @@ describe('NfseEmissionRepository', () => {
               { 'providerResponse.documents.id': 'note-id-123' },
             ]),
           }),
-          { $or: [{ status: NfseEmissionStatus.PENDING }, { status: NfseEmissionStatus.AUTHORIZED }] },
+          {
+            $or: [
+              { status: NfseEmissionStatus.PENDING },
+              { status: NfseEmissionStatus.AUTHORIZED },
+            ],
+          },
           { provider: 'PLUGNOTAS' },
         ]),
       }),

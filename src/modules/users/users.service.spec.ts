@@ -29,7 +29,13 @@ describe('UsersService', () => {
     };
     const service = new UsersService(model as any);
 
-    const result = await service.create('Andre Lobo', 'ANDRE@ZERA.APP', 'vascao26', 'user', 'active');
+    const result = await service.create(
+      'Andre Lobo',
+      'ANDRE@ZERA.APP',
+      'vascao26',
+      'user',
+      'active',
+    );
 
     expect(model.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -77,7 +83,9 @@ describe('UsersService', () => {
     expect(createPayload.invitedAt).toBeInstanceOf(Date);
     expect(createPayload.inviteExpiresAt).toBeInstanceOf(Date);
     expect(createPayload.inviteTokenHash).toBe(hashInviteToken(result.inviteToken));
-    expect(result.inviteUrl).toBe(`https://app.zera.test/accept-invite?token=${result.inviteToken}`);
+    expect(result.inviteUrl).toBe(
+      `https://app.zera.test/accept-invite?token=${result.inviteToken}`,
+    );
     expect(result.user).toMatchObject({
       id: 'user-1',
       status: 'inactive',
@@ -92,6 +100,8 @@ describe('UsersService', () => {
     };
     const service = new UsersService(model as any);
 
-    await expect(service.invite('Andre', 'andre@zera.app')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.invite('Andre', 'andre@zera.app')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 });

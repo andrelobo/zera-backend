@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { NfseEmissionRepository } from '../fiscal/infra/mongo/repositories/nfse-emission.repository';
-import { NfseEmission, NfseEmissionSchema } from '../fiscal/infra/mongo/schemas/nfse-emission.schema';
+import {
+  NfseEmission,
+  NfseEmissionSchema,
+} from '../fiscal/infra/mongo/schemas/nfse-emission.schema';
 import { WebhookDeliveryAuditRepository } from '../modules/webhooks/webhook-delivery-audit.repository';
 import {
   WebhookDeliveryAudit,
