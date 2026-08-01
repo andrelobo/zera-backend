@@ -1,0 +1,157 @@
+import { buildDps, buildDpsId, DPS_NAMESPACE, DPS_VERSION, DpsBuilderOptions } from './dps-builder';
+
+const baseInput = {
+  prestador: {
+    cnpj: '43521115000134',
+    inscricaoMunicipal: '51754301',
+    razaoSocial: 'BURGUS LTDA',
+    regimeTributarioSn: { opSimpNac: 3, regApTribSN: 1, regEspTrib: 0 },
+  },
+  tomador: {
+    cpfCnpj: '61020788100',
+    razaoSocial: 'ANDRE AUGUSTO DE HOLANDA LOBO',
+  },
+  servico: {
+    codigoNacional: '171901',
+    codigoTributacao: '100',
+    descricao: 'Consulta IR 2024',
+    valor: 150,
+    iss: { retido: false, aliquota: 5 },
+  },
+} as const;
+
+const options: DpsBuilderOptions = {
+  serie: '1',
+  nDPS: '1',
+  cLocEmi: '1302603',
+};
+
+describe('buildDpsId', () => {
+  it('monta TSIdDPS com 45 caracteres (DPS + 42 dígitos)', () => {
+    const id = buildDpsId({
+      cLocEmi: '1302603',
+      cnpjPrestador: '43521115000134',
+      serie: '1',
+      nDPS: '1',
+    });
+    expect(id).toMatch(/^DPS\d{42}$/);
+    expect(id).toBe(`DPS${'1302603'}${'1'}${'43521115000134'}${'00001'}${'000000000000001'}`);
+  });
+});
+
+describe('buildDps', () => {
+  it('gera XML DPS 1.01 com infDPS/Id e ordem dos campos do XSD', () => {
+    const xml = buildDps(baseInput as any, options);
+
+    expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true);
+    expect(xml).toContain(`<DPS xmlns="${DPS_NAMESPACE}" versao="${DPS_VERSION}">`);
+    const id = buildDpsId({
+      cLocEmi: '1302603',
+      cnpjPrestador: '43521115000134',
+      serie: '1',
+      nDPS: '1',
+    });
+    expect(xml).toContain(`<infDPS Id="${id}">`);
+
+    const infDps = xml.slice(xml.indexOf('<infDPS'), xml.indexOf('</infDPS>'));
+    const order = [
+      '<tpAmb>',
+      '<dhEmi>',
+      '<verAplic>',
+      '<serie>00001</serie>',
+      '<nDPS>1</nDPS>',
+      '<dCompet>',
+      '<tpEmit>1</tpEmit>',
+      '<cLocEmi>1302603</cLocEmi>',
+      '<prest>',
+      '<toma>',
+      '<serv><locPrest>',
+      '<cServ>',
+      '<valores>',
+    ];
+    let lastIndex = -1;
+    for (const marker of order) {
+      const index = infDps.indexOf(marker);
+      expect(index).toBeGreaterThan(lastIndex);
+      lastIndex = index;
+    }
+  });
+
+  it('monta regTrib a partir do regime do Simples e tributos', () => {
+    const xml = buildDps(baseInput as any, options);
+    expect(xml).toContain(
+      '<regTrib><opSimpNac>3</opSimpNac><regApTribSN>1</regApTribSN><regEspTrib>0</regEspTrib></regTrib>',
+    );
+    expect(xml).toContain('<cTribNac>171901</cTribNac>');
+    expect(xml).toContain('<cTribMun>100</cTribMun>');
+    expect(xml).toContain(
+      '<valores><vServPrest><vServ>150.00</vServ></vServPrest><trib><tribMun><tribISSQN>1</tribISSQN><tpRetISSQN>1</tpRetISSQN></tribMun><totTrib><indTotTrib>0</indTotTrib></totTrib></trib></valores>',
+    );
+  });
+
+  it('omite pAliq quando Simples Nacional sem retenção (E0625)', () => {
+    const xml = buildDps(baseInput as any, options);
+    expect(xml).toContain('<tribMun><tribISSQN>1</tribISSQN><tpRetISSQN>1</tpRetISSQN></tribMun>');
+    expect(xml).not.toContain('<pAliq>');
+  });
+
+  it('emite tpRetISSQN=2 quando o ISS é retido', () => {
+    const input = {
+      ...baseInput,
+      servico: {
+        ...baseInput.servico,
+        iss: { retido: true, aliquota: 5 },
+      },
+    };
+    const xml = buildDps(input as any, options);
+    expect(xml).toContain('<tpRetISSQN>2</tpRetISSQN>');
+    expect(xml).toContain('<pAliq>5.0</pAliq>');
+  });
+
+  it('aceita CPF no tomador e CNPJ no prestador', () => {
+    const xml = buildDps(baseInput as any, options);
+    expect(xml).toContain('<toma><CPF>61020788100</CPF>');
+    expect(xml).toContain('<prest><CNPJ>43521115000134</CNPJ>');
+  });
+
+  it('injeta tributos federais e substituição quando presentes', () => {
+    const input = {
+      ...baseInput,
+      substituicao: true,
+      idNotaSubstituida: 'NFS' + '1'.repeat(50),
+      servico: {
+        ...baseInput.servico,
+        retencoesFederais: { ir: 10, csll: 5, inss: 3 },
+      },
+    };
+    const xml = buildDps(input as any, options);
+    expect(xml).toContain('<subst><chSubstda>');
+    expect(xml).toContain('<cMotivo>99</cMotivo>');
+    expect(xml).toContain(
+      '<tribFed><vRetIRRF>10.00</vRetIRRF><vRetCSLL>5.00</vRetCSLL><vRetCP>3.00</vRetCP></tribFed>',
+    );
+  });
+
+  it('rejeita CNPJ de prestador com quantidade inválida de dígitos', () => {
+    const input = {
+      ...baseInput,
+      prestador: { ...baseInput.prestador, cnpj: '12345678' },
+    };
+    expect(() => buildDps(input as any, options)).toThrow('prestador.cnpj deve conter 14 dígitos');
+  });
+
+  it('rejeita nDPS com zero à esquerda', () => {
+    expect(() => buildDps(baseInput as any, { ...options, nDPS: '0001' })).toThrow(
+      'sem zeros à esquerda',
+    );
+  });
+
+  it('rejeita cLocEmi com quantidade inválida de dígitos', () => {
+    expect(() => buildDps(baseInput as any, { ...options, cLocEmi: '13026' })).toThrow('7 dígitos');
+  });
+
+  it('usa dCompet da competência quando informada', () => {
+    const xml = buildDps(baseInput as any, { ...options, dCompet: '2026-01-21' });
+    expect(xml).toContain('<dCompet>2026-01-21</dCompet>');
+  });
+});
