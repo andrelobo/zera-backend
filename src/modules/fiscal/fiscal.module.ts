@@ -63,6 +63,7 @@ function envBoolean(value: string | undefined, defaultValue: boolean): boolean {
     PlugNotasHttp,
     PlugNotasNfseApi,
     PlugNotasPrerequisitesService,
+    PlugNotasProvider,
     SefinMtlsHttp,
     SefinNfseProvider,
     WebhookDeliveryAuditRepository,
