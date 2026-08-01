@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { NfseEmission, NfseEmissionDocument } from '../schemas/nfse-emission.schema';
@@ -34,6 +34,7 @@ export class NfseEmissionRepository {
   constructor(
     @InjectModel(NfseEmission.name)
     private readonly model: Model<NfseEmissionDocument>,
+    @Optional()
     private readonly documentParsers: ProviderDocumentParsers = new ProviderDocumentParsers(),
   ) {}
 
