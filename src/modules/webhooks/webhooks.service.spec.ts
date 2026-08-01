@@ -1,6 +1,8 @@
 import { Logger } from '@nestjs/common';
 import { NfseEmissionStatus } from '../../fiscal/domain/types/nfse-emission-status';
 import { WebhooksService } from './webhooks.service';
+import { GenericDocumentParser } from '../../fiscal/domain/generic-document-parser';
+import { ProviderDocumentParsers } from '../../fiscal/domain/provider-document-parsers';
 
 describe('WebhooksService', () => {
   const emissions = {
@@ -111,7 +113,9 @@ describe('WebhooksService', () => {
 
   it('tries idIntegracao before protocol when both are present in the webhook payload', async () => {
     emissions.updateByExternalId.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
-    emissions.findByExternalId.mockResolvedValue({ _id: { toString: () => 'emission-protocol-1' } });
+    emissions.findByExternalId.mockResolvedValue({
+      _id: { toString: () => 'emission-protocol-1' },
+    });
     syncArtifacts.execute.mockResolvedValue({ found: true, synced: true, reason: 'ok' });
 
     const payload = {
@@ -152,7 +156,9 @@ describe('WebhooksService', () => {
     emissions.updateByExternalId
       .mockResolvedValueOnce({ matchedCount: 0, modifiedCount: 0 })
       .mockResolvedValueOnce({ matchedCount: 1, modifiedCount: 1 });
-    emissions.findByExternalId.mockResolvedValue({ _id: { toString: () => 'emission-doc-protocol-1' } });
+    emissions.findByExternalId.mockResolvedValue({
+      _id: { toString: () => 'emission-doc-protocol-1' },
+    });
     syncArtifacts.execute.mockResolvedValue({ found: true, synced: true, reason: 'ok' });
 
     const payload = {
@@ -400,5 +406,56 @@ describe('WebhooksService', () => {
       matchedCount: 1,
       modifiedCount: 1,
     });
+  });
+
+  it('forwards explicit provider from payload into the emission update', async () => {
+    emissions.updateByExternalId.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+
+    const payload = { externalId: 'ext-sefin', provider: 'SEFIN', status: 'AUTORIZADA' };
+
+    await service.handleFiscalWebhook(payload);
+
+    expect(emissions.updateByExternalId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        externalId: 'ext-sefin',
+        provider: 'SEFIN',
+        status: NfseEmissionStatus.AUTHORIZED,
+      }),
+    );
+  });
+
+  it('forwards provider from webhook header', async () => {
+    emissions.updateByExternalId.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+
+    const payload = { externalId: 'ext-sefin', status: 'AUTORIZADA' };
+
+    await service.handleFiscalWebhook(payload, { 'x-zera-provider': 'sefin' });
+
+    expect(emissions.updateByExternalId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        externalId: 'ext-sefin',
+        provider: 'SEFIN',
+      }),
+    );
+  });
+
+  it('applies the registered parser for an explicit provider', async () => {
+    const sefinParser = new (class extends GenericDocumentParser {
+      readonly providerName = 'SEFIN';
+    })();
+    const extractStatusSpy = jest.spyOn(sefinParser, 'extractStatus').mockReturnValue('AUTORIZADA');
+    const parsers = new ProviderDocumentParsers([sefinParser]);
+    const serviceWithParsers = new WebhooksService(emissions as any, syncArtifacts as any, parsers);
+
+    await serviceWithParsers.handleFiscalWebhook({ externalId: 'ext-sefin', provider: 'SEFIN' });
+
+    expect(extractStatusSpy).toHaveBeenCalled();
+    expect(emissions.updateByExternalId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        externalId: 'ext-sefin',
+        provider: 'SEFIN',
+        status: NfseEmissionStatus.AUTHORIZED,
+      }),
+    );
   });
 });

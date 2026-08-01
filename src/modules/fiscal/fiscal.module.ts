@@ -25,6 +25,8 @@ import {
   WebhookDeliveryAudit,
   WebhookDeliveryAuditSchema,
 } from '../webhooks/schemas/webhook-delivery-audit.schema';
+import { ProviderDocumentParsers } from '../../fiscal/domain/provider-document-parsers';
+import { PlugNotasDocumentParser } from '../../fiscal/infra/plugnotas/plugnotas-document-parser';
 
 @Module({
   imports: [
@@ -38,6 +40,10 @@ import {
   controllers: [FiscalController],
   providers: [
     NfseEmissionRepository,
+    {
+      provide: ProviderDocumentParsers,
+      useValue: new ProviderDocumentParsers([new PlugNotasDocumentParser()]),
+    },
     EmitirNfseService,
     EmitirNfseQuickService,
     ServicoCatalogService,
@@ -53,6 +59,12 @@ import {
       useClass: PlugNotasProvider,
     },
   ],
-  exports: [EmitirNfseService, PollNfseStatusService, SyncNfseArtifactsService],
+  exports: [
+    EmitirNfseService,
+    PollNfseStatusService,
+    SyncNfseArtifactsService,
+    NfseEmissionRepository,
+    ProviderDocumentParsers,
+  ],
 })
 export class FiscalModule {}

@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { NfseEmission, NfseEmissionDocument } from '../schemas/nfse-emission.schema';
 import { NfseEmissionStatus } from '../../../domain/types/nfse-emission-status';
-import { extractPlugNotasDocumentIdentifiers } from '../../plugnotas/nfse.mapper';
+import { ProviderDocumentParsers } from '../../../domain/provider-document-parsers';
 
 export function buildExternalReferenceFilter(externalId: string): Record<string, any> {
   return {
@@ -34,6 +34,7 @@ export class NfseEmissionRepository {
   constructor(
     @InjectModel(NfseEmission.name)
     private readonly model: Model<NfseEmissionDocument>,
+    private readonly documentParsers: ProviderDocumentParsers = new ProviderDocumentParsers(),
   ) {}
 
   async create(input: {
@@ -79,7 +80,9 @@ export class NfseEmissionRepository {
     providerResponse?: Record<string, any>;
   }): Promise<NfseEmissionDocument> {
     const now = new Date();
-    const identifiers = extractPlugNotasDocumentIdentifiers(input.providerResponse);
+    const identifiers = this.documentParsers
+      .resolve(input.provider)
+      .extractDocumentIdentifiers(input.providerResponse);
     return this.model.create({
       provider: input.provider,
       payload: input.payload,
@@ -151,7 +154,9 @@ export class NfseEmissionRepository {
     if (patch.externalId !== undefined) update.externalId = patch.externalId;
     if (patch.providerResponse !== undefined) {
       update.providerResponse = patch.providerResponse;
-      const identifiers = extractPlugNotasDocumentIdentifiers(patch.providerResponse);
+      const identifiers = this.documentParsers
+        .resolve(patch.provider)
+        .extractDocumentIdentifiers(patch.providerResponse);
       if (identifiers.numeroNfse !== undefined) update.numeroNfse = identifiers.numeroNfse;
       if (identifiers.dpsNum !== undefined) update.dpsNum = identifiers.dpsNum;
       if (identifiers.serieDpsNum !== undefined) update.serieDpsNum = identifiers.serieDpsNum;
@@ -206,7 +211,9 @@ export class NfseEmissionRepository {
 
     if (input.provider) filter.$and.push({ provider: input.provider });
 
-    const identifiers = extractPlugNotasDocumentIdentifiers(input.providerResponse);
+    const identifiers = this.documentParsers
+      .resolve(input.provider)
+      .extractDocumentIdentifiers(input.providerResponse);
     const update: Record<string, any> = {
       status: input.status,
       providerResponse: input.providerResponse,

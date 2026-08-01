@@ -1,11 +1,28 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { NfseEmissionRepository } from '../../fiscal/infra/mongo/repositories/nfse-emission.repository';
 import { NfseEmissionStatus } from '../../fiscal/domain/types/nfse-emission-status';
-import {
-  extractPlugNotasStatus,
-  mapPlugNotasStatusToDomain,
-} from '../../fiscal/infra/plugnotas/nfse.mapper';
+import { ProviderDocumentParsers } from '../../fiscal/domain/provider-document-parsers';
 import { SyncNfseArtifactsService } from '../../fiscal/application/sync-nfse-artifacts.service';
+
+const WEBHOOK_PROVIDER_HEADER = 'x-zera-provider';
+const DEFAULT_WEBHOOK_PROVIDER = 'PLUGNOTAS';
+
+export function extractWebhookProvider(payload: any, headers?: Record<string, unknown>): string {
+  const normalized = Array.isArray(payload) ? payload[0] : payload;
+  const fromPayload =
+    typeof normalized?.provider === 'string' && normalized.provider.trim()
+      ? normalized.provider.trim().toUpperCase()
+      : undefined;
+
+  const rawHeader = headers?.[WEBHOOK_PROVIDER_HEADER];
+  const receivedHeader = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
+  const fromHeader =
+    typeof receivedHeader === 'string' && receivedHeader.trim()
+      ? receivedHeader.trim().toUpperCase()
+      : undefined;
+
+  return fromPayload ?? fromHeader ?? DEFAULT_WEBHOOK_PROVIDER;
+}
 
 function normalizeCandidate(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
@@ -85,6 +102,7 @@ export class WebhooksService {
   constructor(
     private readonly emissions: NfseEmissionRepository,
     @Optional() private readonly syncArtifacts?: SyncNfseArtifactsService,
+    private readonly documentParsers: ProviderDocumentParsers = new ProviderDocumentParsers(),
   ) {}
 
   private async syncArtifactsIfAuthorized(externalId: string, status: NfseEmissionStatus) {
@@ -124,15 +142,17 @@ export class WebhooksService {
     }
   }
 
-  private async handleSingleFiscalWebhook(payload: any) {
+  private async handleSingleFiscalWebhook(payload: any, providerName: string) {
     const candidateExternalIds = extractWebhookExternalIdCandidates(payload);
     const externalId = candidateExternalIds[0];
-    const rawStatus = extractPlugNotasStatus(payload);
-    const status = mapPlugNotasStatusToDomain(rawStatus);
+    const parser = this.documentParsers.resolve(providerName);
+    const rawStatus = parser.extractStatus(payload);
+    const status = parser.mapStatusToDomain(rawStatus);
     const providerReference = extractWebhookProviderReference(payload);
 
     if (!externalId) {
       this.logger.warn('Webhook fiscal ignorado: externalId ausente', {
+        provider: providerName,
         status: rawStatus ?? null,
       });
       return {
@@ -153,7 +173,7 @@ export class WebhooksService {
         resolvedExternalId: providerReference,
         status: status ?? NfseEmissionStatus.PENDING,
         providerResponse: payload,
-        provider: 'PLUGNOTAS',
+        provider: providerName,
         lastWebhookAt: new Date(),
         lastUpdateSource: 'webhook',
       });
@@ -166,6 +186,7 @@ export class WebhooksService {
 
     if (!updateResult.matchedCount) {
       this.logger.warn('Webhook fiscal sem emissao elegivel para atualizar', {
+        provider: providerName,
         externalId,
         candidates: candidateExternalIds,
         status: status ?? NfseEmissionStatus.PENDING,
@@ -186,6 +207,7 @@ export class WebhooksService {
     );
 
     this.logger.log('Webhook fiscal processado', {
+      provider: providerName,
       externalId: resolvedExternalId,
       matchedBy,
       status: status ?? NfseEmissionStatus.PENDING,
@@ -203,15 +225,19 @@ export class WebhooksService {
     };
   }
 
-  async handleFiscalWebhook(payload: any) {
+  async handleFiscalWebhook(payload: any, headers?: Record<string, unknown>) {
+    const providerName = extractWebhookProvider(payload, headers);
     const items = normalizeWebhookPayloadItems(payload);
 
     if (Array.isArray(payload) && items.length > 1) {
-      const results = await Promise.all(items.map((item) => this.handleSingleFiscalWebhook(item)));
+      const results = await Promise.all(
+        items.map((item) => this.handleSingleFiscalWebhook(item, providerName)),
+      );
       const okCount = results.filter((item) => item.ok).length;
       const failedCount = results.length - okCount;
 
       this.logger.log('Webhook fiscal em lote processado', {
+        provider: providerName,
         totalReceived: items.length,
         okCount,
         failedCount,
@@ -228,9 +254,9 @@ export class WebhooksService {
     }
 
     if (Array.isArray(payload) && items.length === 1) {
-      return this.handleSingleFiscalWebhook(items[0]);
+      return this.handleSingleFiscalWebhook(items[0], providerName);
     }
 
-    return this.handleSingleFiscalWebhook(payload);
+    return this.handleSingleFiscalWebhook(payload, providerName);
   }
 }

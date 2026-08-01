@@ -43,7 +43,7 @@ describe('WebhookHandler', () => {
       mappedStatus: 'AUTHORIZED',
     });
 
-    expect(webhooksService.handleFiscalWebhook).toHaveBeenCalledWith({ externalId: 'ext-1' });
+    expect(webhooksService.handleFiscalWebhook).toHaveBeenCalledWith({ externalId: 'ext-1' }, {});
     expect(audits.create).toHaveBeenCalledWith(
       expect.objectContaining({
         route: '/webhooks/fiscal',
@@ -91,7 +91,10 @@ describe('WebhookHandler', () => {
     });
 
     await expect(
-      handler.handle({ externalId: 'ext-2', status: 'AUTORIZADO' }, { 'x-custom-token': 'segredo' }),
+      handler.handle(
+        { externalId: 'ext-2', status: 'AUTORIZADO' },
+        { 'x-custom-token': 'segredo' },
+      ),
     ).resolves.toEqual({
       received: true,
       ok: true,
@@ -102,10 +105,10 @@ describe('WebhookHandler', () => {
       mappedStatus: 'AUTHORIZED',
     });
 
-    expect(webhooksService.handleFiscalWebhook).toHaveBeenCalledWith({
-      externalId: 'ext-2',
-      status: 'AUTORIZADO',
-    });
+    expect(webhooksService.handleFiscalWebhook).toHaveBeenCalledWith(
+      { externalId: 'ext-2', status: 'AUTORIZADO' },
+      { 'x-custom-token': 'segredo' },
+    );
     expect(audits.create).toHaveBeenCalledWith(
       expect.objectContaining({
         route: '/webhooks/fiscal',

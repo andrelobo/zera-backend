@@ -3,8 +3,9 @@ import {
   WebhooksService,
   extractWebhookExternalId,
   extractWebhookExternalIdCandidates,
+  extractWebhookProvider,
 } from '../webhooks.service';
-import { extractPlugNotasStatus } from '../../../fiscal/infra/plugnotas/nfse.mapper';
+import { ProviderDocumentParsers } from '../../../fiscal/domain/provider-document-parsers';
 import { WebhookDeliveryAuditRepository } from '../webhook-delivery-audit.repository';
 
 const FISCAL_WEBHOOK_ROUTE = '/webhooks/fiscal';
@@ -16,6 +17,7 @@ export class WebhookHandler {
   constructor(
     private readonly webhooksService: WebhooksService,
     private readonly audits: WebhookDeliveryAuditRepository,
+    private readonly documentParsers: ProviderDocumentParsers = new ProviderDocumentParsers(),
   ) {}
 
   private getSharedSecretConfig() {
@@ -25,7 +27,7 @@ export class WebhookHandler {
     };
   }
 
-  private validateSharedSecret(headers: any) {
+  private validateSharedSecret(headers: Record<string, unknown> | undefined) {
     const { secret, headerName } = this.getSharedSecretConfig();
     if (!secret) {
       return {
@@ -47,6 +49,7 @@ export class WebhookHandler {
 
   private async recordAudit(input: {
     payload: any;
+    headers?: Record<string, unknown>;
     ok: boolean;
     reason?: string | null;
     mappedStatus?: string | null;
@@ -68,7 +71,7 @@ export class WebhookHandler {
         batchSize,
         requestExternalId: extractWebhookExternalId(input.payload) ?? null,
         candidateExternalIds: extractWebhookExternalIdCandidates(input.payload),
-        providerStatus: extractPlugNotasStatus(input.payload) ?? null,
+        providerStatus: extractWebhookStatus(input.payload, input.headers) ?? null,
         mappedStatus: input.mappedStatus ?? null,
         matchedBy: input.matchedBy ?? null,
         resolvedExternalId: input.resolvedExternalId ?? null,
@@ -92,7 +95,7 @@ export class WebhookHandler {
     }
   }
 
-  private async requireSharedSecret(headers: any, payload: any) {
+  private async requireSharedSecret(headers: Record<string, unknown> | undefined, payload: any) {
     const validation = this.validateSharedSecret(headers);
     if (!validation.sharedSecretConfigured || validation.tokenAccepted) {
       return validation;
@@ -100,6 +103,7 @@ export class WebhookHandler {
 
     await this.recordAudit({
       payload,
+      headers,
       ok: false,
       reason: 'invalid_shared_secret',
       sharedSecretConfigured: validation.sharedSecretConfigured,
@@ -111,22 +115,24 @@ export class WebhookHandler {
     throw new UnauthorizedException('Invalid webhook token');
   }
 
-  async handle(payload: any, headers: any) {
+  async handle(payload: any, headers?: Record<string, unknown>) {
     const secretValidation = await this.requireSharedSecret(headers, payload);
     const batchSize = Array.isArray(payload) ? payload.length : 1;
 
     this.logger.log('Webhook fiscal recebido', {
       batchSize,
+      provider: extractWebhookProvider(payload, headers),
       hasExternalId: !!extractWebhookExternalId(payload),
       externalId: extractWebhookExternalId(payload) ?? null,
-      status: extractPlugNotasStatus(payload) ?? null,
+      status: extractWebhookStatus(payload, headers) ?? null,
     });
 
     try {
-      const result = await this.webhooksService.handleFiscalWebhook(payload);
+      const result = await this.webhooksService.handleFiscalWebhook(payload, headers);
       const isBatch = Array.isArray((result as any)?.results);
       await this.recordAudit({
         payload,
+        headers,
         ok: Boolean((result as any)?.ok),
         reason: (result as any)?.reason ?? null,
         mappedStatus: isBatch ? null : ((result as any)?.mappedStatus ?? null),
@@ -146,6 +152,7 @@ export class WebhookHandler {
       const message = error instanceof Error ? error.message : String(error);
       await this.recordAudit({
         payload,
+        headers,
         ok: false,
         reason: 'handler_exception',
         sharedSecretConfigured: secretValidation.sharedSecretConfigured,
@@ -156,4 +163,10 @@ export class WebhookHandler {
       throw error;
     }
   }
+}
+
+function extractWebhookStatus(payload: any, headers?: Record<string, unknown>): string | undefined {
+  const providerName = extractWebhookProvider(payload, headers);
+  const parser = new ProviderDocumentParsers().resolve(providerName);
+  return parser.extractStatus(payload);
 }
