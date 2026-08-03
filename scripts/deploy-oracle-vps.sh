@@ -105,6 +105,7 @@ deploy_with_plain_docker() {
 }
 
 if [[ "${#compose_cmd[@]}" -gt 0 ]]; then
+  "${docker_cmd[@]}" rm -f "$container_name" >/dev/null 2>&1 || true
   "${compose_cmd[@]}" up -d --build
 else
   deploy_with_plain_docker
