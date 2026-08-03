@@ -2,6 +2,103 @@
 
 Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
 
+## 0. Atualizacao rapida (03/08/2026) - harness local do ciclo LOBONOTAS (emissao -> PENDING -> webhook -> AUTHORIZED) + stub mTLS real do SEFIN
+
+Fonte: `codigo local` + `testes locais` + `build local` + `lint local`.
+
+Estado atual:
+- entrou o **harness de integracao** `src/modules/webhooks/webhooks-lobonotas.integration.spec.ts`, provando o loop completo da frente LOBONOTAS sem depender de credencial real:
+  - `EmitirNfseService` real (resolver -> `LOBONOTAS` via CNPJ do piloto) + `LobonotasProvider` real (DPS assinada com **certificado A1 de teste autoassinado** via node-forge) + `NfseEmissionRepository` com **model Mongo in-memory**
+  - emissao fica **PENDING** com `externalId = DPS + 42 digitos` (dpsId) quando o POST `/nfse` nao confirma (mock de `SefinMtlsHttp.request` rejeita `SEFIN_REQUEST_TIMEOUT` -> caminho de reconciliacao D5 ja exercitado)
+  - **webhook forwarder** (`POST /webhooks/fiscal` com header `x-zera-provider: LOBONOTAS`) casa a emissao pelo dpsId e move para **AUTHORIZED**, persistindo a chave `NFS...` como `externalId`, `lastUpdateSource='webhook'`, `lastWebhookAt`, `nextPollAt=null`
+- entrou o **stub SEFIN com mTLS real** (`src/fiscal/test-fixtures/sefin-stub-server.ts` + `src/fiscal/infra/sefin/sefin-stub.integration.spec.ts`): servidor HTTPS localhost exigindo certificado de cliente assinado por uma CA de teste, expondo `POST /nfse`, `GET /dps/{dpsId}` e `GET /nfse/{chave}`:
+  - prova que `SefinMtlsHttp` faz **handshake TLS genuino** com o certificado A1 de teste (o stub valida o CN `ZERA SEFIN TESTE` do cliente) e que o stub rejeita request sem client cert
+  - prova `LobonotasProvider.emitirNfse` **ponta a ponta via mTLS real** (DPS assinada -> POST /nfse real -> AUTHORIZED + chave) e a **reconciliacao D5** (`GET /dps/{dpsId}` -> chave -> `GET /nfse/{chave}`) sem mock de HTTP
+  - teste negativo: `SEFIN_VERIFY_CERT=true` contra cert da CA de teste nao confiavel falha com `SEFIN_CERT_VERIFY_FAILED`
+- fixtures compartilhadas extraidas para `src/fiscal/test-fixtures/`:
+  - `test-cert.ts` — cert A1 autoassinado (`createTestCert`), PFX->PEM via `toPem` (usa `extractKeyAndCert` de producao) e PKI completa `createTestPki` (CA + cert do servidor com SAN localhost/127.0.0.1 + PFX do cliente assinado pela CA)
+  - `in-memory-nfse-model.ts` — model Mongo in-memory (movido do spec de webhook; subset de queries do `NfseEmissionRepository`)
+  - `sefin-stub-server.ts` — servidor HTTPS mTLS local (fecha sockets com `Connection: close`/`closeIdleConnections` para o Jest sair limpo)
+- **endurecimento do cliente mTLS** (`sefin-mtls.http.ts`): o mapeamento de falha de verificacao de certificado passou a incluir `SELF_SIGNED_CERT_IN_CHAIN` e `UNABLE_TO_GET_ISSUER_CERT_LOCALLY` alem de `DEPTH_ZERO_SELF_SIGNED_CERT`/`UNABLE_TO_VERIFY_LEAF_SIGNATURE` -> `SEFIN_CERT_VERIFY_FAILED` (descoberto no teste negativo do stub)
+- **correcao de hygiene de teste** (`sefin-mtls.http.spec.ts`): o mock de `https.request` passou a emitir `close` (a pos-resposta e no `destroy`), eliminando o vazamento dos timers de timeout (Jest "did not exit")
+- decisao de contrato do webhook LOBONOTAS (validada no harness): o **forwarder real deve identificar o provider** — via header `x-zera-provider: LOBONOTAS` ou `provider: 'LOBONOTAS'` no payload — porque `updateByExternalId` filtra `{ provider: input.provider }` (nfse-emission.repository.ts:213) e o fallback sem identificacao e `PLUGNOTAS`; webhook LOBONOTAS sem identificacao **nao** atualiza a emissao (fail-safe, coberto por teste)
+- `GenericDocumentParser` (fallback de LOBONOTAS) ja mapeia `AUTORIZADA`/`CONCLUIDA` -> `AUTHORIZED`, confirmado no harness
+
+Validacao local:
+- `npm test -- --runInBand` -> **234 testes / 34 suites** verdes (+6 do stub mTLS; suite sai limpa, sem "did not exit")
+- `npm run build` ok (inclui copia do catalogo LC116 para `dist`)
+- `npm run lint` -> **0 erros** (warnings pre-existentes de tipagem estrita; fixtures seguem o mesmo padrao `any` dos specs existentes)
+
+Leitura operacional correta:
+1. o ciclo LOBONOTAS esta provado localmente em duas camadas: (a) harness webhook com `SefinMtlsHttp` mockado exercitando timeout/reconciliacao D5; (b) stub SEFIN com mTLS real provando handshake, emissao e reconciliacao sem mock de HTTP
+2. para operacao real (Slice 6) continua faltando: credencial A1 real do piloto + contrato real do webhook do Ambiente Nacional (doc 06 §5 `[PENDENTE]`)
+3. o forwarder LOBONOTAS em producao deve sempre enviar `x-zera-provider: LOBONOTAS` (ou `provider` no payload), senao o webhook cai no fail-safe PLUGNOTAS
+4. producao segue no PlugNotas; LOBONOTAS continua aditivo protegido por flag/allowlist
+
+## 0. Atualizacao rapida (03/08/2026) - Slice 5 LOBONOTAS implementado: resolver de provider + piloto Manaus por CNPJ
+
+Fonte: `codigo local` + `testes locais` + `build local` + `lint local`.
+
+Estado atual:
+- o provider fiscal ativo em producao continua **`PLUGNOTAS`**; a frente LOBONOTAS avancou para o **Slice 5** do roadmap (`docs/lobonotas/04-ROADMAP-DE-IMPLEMENTACAO.md`), sem mudar comportamento em runtime por default
+- entrou o **`FiscalProviderResolver`** (`src/fiscal/application/fiscal-provider.resolver.ts`), camada unica de escolha de provider:
+  - registry `PLUGNOTAS` / `LOBONOTAS` (`src/fiscal/domain/provider-names.ts`)
+  - `FISCAL_PROVIDER_ACTIVE` define o provider ativo (valores `PLUGNOTAS|LOBONOTAS`); `SEFIN_ENABLED=true` continua aceito como forma legada de ativar LOBONOTAS
+  - fail-closed: valor desconhecido lanca `FISCAL_PROVIDER_UNKNOWN` em vez de cair para fallback
+  - `resolveProviderForCnpj(cnpj)`: CNPJ do piloto Manaus resolve para LOBONOTAS, demais caem para o provider ativo
+  - `pollingProviderNames()`: lista de providers para o polling (ativo + LOBONOTAS quando o piloto estiver ligado)
+- a classe `SefinNfseProvider` foi renomeada para **`LobonotasProvider`** (`src/fiscal/infra/sefin/sefin.provider.ts`) com `providerName='LOBONOTAS'`; os arquivos `sefin/*` seguem como infra interna do Ambiente Nacional
+- config de piloto em **`LobonotasConfig`** (`src/fiscal/infra/sefin/lobonotas.config.ts`):
+  - `LOBONOTAS_PILOT_ENABLED` (default `false`)
+  - `LOBONOTAS_CNPJS_MANAUS` (lista separada por virgula; aceita mascara, normaliza 14 digitos, ignora invalidos)
+  - `isPilotoCnpj(cnpj)` exige flag ligada + CNPJ na allowlist (fail-closed)
+- roteamento por CNPJ ligado em:
+  - `EmitirNfseService` (`providerFor`): escolhe provider pelo CNPJ do prestador
+  - `PollNfseStatusService`: polling multi-provider por `emission.provider` (via `pollingProviderNames` + dedup)
+  - `SyncNfseArtifactsService`: consulta/downloads pelo `doc.provider`
+- DI (`fiscal.module.ts`): o token `FiscalProvider` agora vem do resolver via `useFactory: (resolver) => resolver.resolve()`
+- `.env.example` documenta as novas variaveis (`FISCAL_PROVIDER_ACTIVE`, `LOBONOTAS_PILOT_ENABLED`, `LOBONOTAS_CNPJS_MANAUS`)
+- webhook LOBONOTAS continua **pendente -> Slice 6** (depende do contrato real do Ambiente Nacional, doc 06 §5); o handler atual resolve providerName dinamicamente com fallback `PLUGNOTAS`
+
+Validacao local:
+- `npm test -- --runInBand` -> **224 testes / 32 suites** verdes
+- `npm run build` ok (inclui copia do catalogo LC116 para `dist`)
+- `npm run lint` -> **0 erros** (warnings pre-existentes de tipagem estrita)
+- `npm run test:e2e` -> 16 testes verdes (nao exercita `FiscalModule`)
+
+Leitura operacional correta:
+1. producao segue no PlugNotas; LOBONOTAS e aditivo protegido por flag/kill switch + allowlist
+2. para ativar o piloto Manaus: `LOBONOTAS_PILOT_ENABLED=true` + `LOBONOTAS_CNPJS_MANAUS` com os CNPJs do piloto
+3. para ligar LOBONOTAS em geral: `FISCAL_PROVIDER_ACTIVE=LOBONOTAS` (ou `SEFIN_ENABLED=true`, legado)
+4. Slice 6 (operacao real com certificado A1, DPS -> autorizacao e webhook LOBONOTAS) depende do contrato real do Ambiente Nacional
+
+## 0. Atualizacao rapida (03/08/2026) - sub-slice seguranca: material do certificado (pfx) cifrado em repouso
+
+Fonte: `codigo local` + `testes locais` + `build local` + `lint local`.
+
+Estado atual:
+- o conteudo do certificado A1 (`certificado.pfxBase64`) passou a ser cifrado em repouso com a **mesma rotina AES-256-GCM** ja usada na senha (`encryptSecret`/`decryptSecret` em `empresas.service.ts`), eliminando o texto puro em banco
+- `importCertificado` grava `pfxBase64` no formato `v1:` (antes gravava o base64 do arquivo em texto puro)
+- **leitura retrocompativel**: certificados legados (base64 sem cifragem) continuam sendo lidos normalmente; `decryptPfxBase64` passa o valor como esta quando nao tem prefixo `v1:`
+- pontos de leitura ajustados para decifrar o material antes do uso:
+  - `obterMaterialCertificado` (material para assinatura DPS / LOBONOTAS, consumido por `LobonotasProvider`)
+  - `syncPlugNotasCadastroFromDoc` (upload do certificado na PlugNotas; novo erro `PLUGNOTAS_CERTIFICADO_PFX_INVALID` quando o material nao pode ser recuperado)
+  - `inspectLegacyCertificateExpiration` (reparo de `expiresAt` de certificado legado)
+- specs atualizadas/novas:
+  - import passou a exigir `pfxBase64: /^v1:/` (antes validava apenas a senha)
+  - novo teste de round-trip: import cifra o pfx e `obterMaterialCertificado` recupera o base64 e a senha originais
+  - teste de material com certificado legado em texto puro continua verde (retrocompatibilidade)
+
+Validacao local:
+- `npm test -- --runInBand` -> **225 testes / 32 suites** verdes
+- `npm run build` ok
+- `npm run lint` -> **0 erros** (warnings pre-existentes de tipagem estrita)
+
+Leitura operacional correta:
+1. certificados ja armazenados em producao (texto puro) continuam funcionais; novos imports ja nascem cifrados
+2. a cifragem usa `EMPRESA_CERT_ENCRYPTION_KEY` (fallback `JWT_SECRET`); trocar a chave exige reimportar certificados
+3. o sub-slice cobre o requisito de seguranca do Slice 6 (credencial A1) sem depender de credencial real
+
 ## 0. Atualizacao rapida (01/08/2026) - LOBONOTAS slices 1-4 implementados + deploy Oracle VPS verde
 
 Fonte: `codigo local` + `testes locais` + `build local` + `execucao real do GitHub Actions` + `VPS via SSH`.

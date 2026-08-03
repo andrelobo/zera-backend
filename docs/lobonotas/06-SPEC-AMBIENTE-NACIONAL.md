@@ -208,6 +208,7 @@ Linha Manaus (1302603) na tabela oficial de municípios aderentes (gov.br, atual
 **Ainda pendentes (`[PENDENTE]`):**
 - [ ] **Envelope real do `POST /nfse`** (XML puro vs JSON com DPS) e **tabela real de `cStat`** — confirmar com credencial piloto; por isso `SEFIN_NFSE_ENVELOPE` é configurável e o mapeador aceita ambos.
 - [ ] Teste real de handshake mTLS contra Produção Restrita (certificado do piloto).
+- [ ] Confirmação do prestador piloto (candidata natural: **Burgus LTDA**, CNPJ `43521115000134` — prestador Manaus com certificado A1 real no fluxo PlugNotas atual).
 
 ---
 

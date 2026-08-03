@@ -2,7 +2,7 @@
 
 > Sequência de slices para substituir o PlugNotas pelo LOBONOTAS (NFS-e Padrão Nacional) mantendo a API e as capacidades existentes.
 > Cada slice: objetivo, arquivos-alvo, testes, aceite, riscos, dependências, observações e rollback.
-> Status geral (01/08/2026): **Slice 0 IMPLEMENTADO; Slice 1 IMPLEMENTADO; Slice 2 EM ANDAMENTO** (pesquisa oficial coletada em doc 06; falta review do owner e validação das pendências da doc 06 §5); **Slice 3 IMPLEMENTADO** (DPS builder+signer, XSD oficial); **Slice 4 PARCIALMENTE IMPLEMENTADO** (cliente mTLS/provider prontos; envelope real e tabela `cStat` dependem de credencial piloto); Slice 5–9 PROPOSTOS.
+> Status geral (03/08/2026): **Slice 0 IMPLEMENTADO; Slice 1 IMPLEMENTADO; Slice 2 EM ANDAMENTO** (pesquisa oficial coletada em doc 06; falta review do owner e validação das pendências da doc 06 §5); **Slice 3 IMPLEMENTADO** (DPS builder+signer, XSD oficial); **Slice 4 PARCIALMENTE IMPLEMENTADO** (cliente mTLS/provider prontos; envelope real e tabela `cStat` dependem de credencial piloto); **Slice 5 IMPLEMENTADO** (resolver + allowlist piloto + kill switch + fail-closed; roteamento por CNPJ ligado em emissão/polling/sync-artifacts; **sub-slice de segurança concluído: material do certificado A1 cifrado em repouso com AES-256-GCM**, mesma rotina da senha, leitura compatível com certificados legados; **harness local do ciclo webhook LOBONOTAS concluído** — `webhooks-lobonotas.integration.spec.ts` — e **stub SEFIN com mTLS real concluído** — `sefin-stub.integration.spec.ts` + `sefin-stub-server.ts`, 234 testes/34 suítes; webhook LOBONOTAS real depende do contrato do Ambiente Nacional — Slice 6); Slice 6–9 PROPOSTOS.
 
 ---
 
@@ -119,7 +119,7 @@
 
 ---
 
-## Slice 5 — `LobonotasProvider` + resolver (ADR-001)
+## Slice 5 — `LobonotasProvider` + resolver (ADR-001) — IMPLEMENTADO (03/08/2026)
 
 - **Objetivo**: registrar o novo provider e implementar o `FiscalProviderResolver`.
 - **Ações**:
@@ -134,6 +134,16 @@
 - **Dependências**: Slices 1, 4.
 - **Rollback**: `FISCAL_PROVIDER_ACTIVE=PLUGNOTAS`.
 
+> **Nota de implementação (03/08/2026):** entregue conforme Opção B (ADR-001 §3).
+> - `LobonotasProvider` = rename de `SefinNfseProvider` (arquivo `fiscal/infra/sefin/sefin.provider.ts`; `sefin/*` permanece como infra interna); `providerName = 'LOBONOTAS'`.
+> - `FiscalProviderResolver` em `fiscal/application/fiscal-provider.resolver.ts`: registry por `providerName`, `resolve()` fail-closed (`FISCAL_PROVIDER_UNKNOWN`), `isActive`, `byProviderName`, `resolveProviderForCnpj` (piloto), `pollingProviderNames`.
+> - Fábrica do `FiscalModule` passou a ser `useFactory: (resolver) => resolver.resolve()`; `SEFIN_ENABLED=true` segue aceito como forma legada de ativar LOBONOTAS.
+> - Roteamento ligado em: `EmitirNfseService` (por CNPJ do prestador), `PollNfseStatusService` (polling por `emission.provider` via `pollingProviderNames`), `SyncNfseArtifactsService` (consulta por `doc.provider`).
+> - **Pendência**: webhook LOBONOTAS fica para Slice 6 — o handler atual já resolve `providerName` dinamicamente via `extractWebhookProvider` (fallback `PLUGNOTAS`) e `ProviderDocumentParsers.resolve` cai no `GenericDocumentParser`; o contrato de webhook do Ambiente Nacional ainda é `[PENDENTE]` (doc 06 §5).
+> - **Sub-slice de segurança (concluído 03/08/2026)**: `certificado.pfxBase64` passou a ser cifrado em repouso com AES-256-GCM (mesma rotina `encryptSecret`/`decryptSecret` da senha, formato `v1:`), em vez de texto puro; leitura retrocompatível via `decryptPfxBase64` (certificados legados sem cifragem continuam lendo); pontos de leitura decifram antes do uso (`obterMaterialCertificado` — material para assinatura DPS, `syncPlugNotasCadastroFromDoc` — upload PlugNotas com novo erro `PLUGNOTAS_CERTIFICADO_PFX_INVALID`, `inspectLegacyCertificateExpiration` — reparo de `expiresAt`). Validação: `npm test -- --runInBand` (225 testes / 32 suítes), `npm run build`, `npm run lint` (0 erros).
+> - **Harness local do ciclo webhook LOBONOTAS + stub mTLS real (concluído 03/08/2026)**: `src/modules/webhooks/webhooks-lobonotas.integration.spec.ts` prova o loop `EmitirNfseService real → LobonotasProvider real (DPS assinada com cert A1 de teste node-forge) → emissão PENDING com dpsId → POST /webhooks/fiscal (header `x-zera-provider: LOBONOTAS`) → AUTHORIZED com chave NFS` usando modelo Mongo in-memory. Contrato do forwarder: **identificação de provider obrigatória** (header ou `provider` no payload); sem ela o webhook cai no fail-safe `PLUGNOTAS` e não atualiza a emissão LOBONOTAS (coberto por teste). Em paralelo, `src/fiscal/infra/sefin/sefin-stub.integration.spec.ts` + `src/fiscal/test-fixtures/sefin-stub-server.ts` provam o **mTLS real** contra um servidor HTTPS localhost que exige certificado de cliente assinado por CA de teste: handshake com CN validado, `emitirNfse` ponta a ponta via POST /nfse real, reconciliação D5 (`GET /dps/{dpsId}` → chave → `GET /nfse/{chave}`) e o teste negativo `SEFIN_VERIFY_CERT=true` → `SEFIN_CERT_VERIFY_FAILED`. Fixtures compartilhadas em `src/fiscal/test-fixtures/` (`test-cert.ts` com `createTestCert`/`toPem`/`createTestPki`, `in-memory-nfse-model.ts`, `sefin-stub-server.ts`). Validação: `npm test -- --runInBand` (234 testes / 34 suítes), `npm run build`, `npm run lint` (0 erros).
+> - Validação geral do slice: `npm test -- --runInBand` (234 testes / 34 suítes), `npm run build`, `npm run lint` (0 erros).
+
 ---
 
 ## Slice 6 — Produção Restrita / piloto Manaus
@@ -144,6 +154,9 @@
   2. Emitir DPS → acompanhar até autorização (status, protocolo, nº NFS-e).
   3. **Reconciliação pós-timeout** (D5): fluxo consulta por chave DPS antes de retry.
   4. Validar contrato canônico (doc 03 §6) com dados reais.
+- **Prestador piloto** (a confirmar com o owner): **Burgus LTDA** (CNPJ `43521115000134`) é a candidata natural — é o prestador de Manaus com certificado A1 real já operando no fluxo PlugNotas atual, e é a fixture usada nos specs LOBONOTAS (`dps-builder`/`dps-signer`/`sefin.provider`/`emitir-nfse.golden`). Confirmação formal pendente (ver §3).
+- **Pré-requisito de segurança já atendido (Slice 5)**: o material do certificado A1 (`pfxBase64`) já é cifrado em repouso (AES-256-GCM, formato `v1:`) com leitura compatível com certificados legados — sem pendência de código para essa parte.
+- **Harness local já validado (Slice 5)**: o ciclo `emissão → PENDING (dpsId) → webhook forwarder → AUTHORIZED` está provado por teste de integração com cert A1 de teste (`webhooks-lobonotas.integration.spec.ts`); o **mTLS real** (handshake com certificado de cliente, emissão e reconciliação D5) está provado contra o stub SEFIN local (`sefin-stub.integration.spec.ts` + `sefin-stub-server.ts`). Para o ambiente real falta apenas a **credencial A1 do piloto** e o **contrato real do webhook do Ambiente Nacional** (doc 06 §5 `[PENDENTE]`).
 - **Arquivos-alvo**: ajustes incrementais.
 - **Testes**: E2E no ambiente oficial; checklist de aceite.
 - **Aceite**: emissões autorizadas ponta-a-ponta; dashboard mostra NFS-e reais de Manaus.
@@ -223,6 +236,7 @@
 ## 3. Itens ainda pendentes de definição
 
 - [ ] Estratégia de cifragem da base64 do .pfx (segurança do certificado).
+- [ ] Confirmação formal do prestador piloto do Slice 6 (candidata natural: **Burgus**, CNPJ `43521115000134`).
 - [ ] ~~Definição de "substituição" no padrão Nacional~~ → **resolvido**: substituição é nativa (evento `1 05 1 02`; disparada pelo `POST /nfse` quando a DPS traz `subst/chSubstda` — doc 06 §1.2/§2.4).
 - [ ] Formato oficial do DANFSE → `[PENDENTE]` em doc 06 §5.
 - [ ] ~~Nomenclatura oficial SEFIN para os identificadores canônicos~~ → **resolvido** (doc 06 §4 e doc 03 §4.3): `nDPS`, `serie`, `nNFSe`, `TSIdNFSe`.
