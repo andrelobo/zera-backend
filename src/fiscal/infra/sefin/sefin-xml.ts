@@ -1,5 +1,8 @@
-const PREFIXED = '\\w*:?';
-const TAG = (name: string) => `${PREFIXED}?${name}\\b`;
+// Prefixo de namespace opcional (ex.: `n0:`, `ns2:`). Usar grupo atômico de
+// prefixo com `:` evita que tags cujo nome termina em `localName` (ex.:
+// `<xDescServ>` vs `cServ`, `<pTotTribMun>` vs `tribMun`) colidam na busca.
+const PREFIXED = '(?:[\\w.]+:)?';
+const TAG = (name: string) => `${PREFIXED}${name}\\b`;
 
 export function extractTag(xml: string, localName: string): string | undefined {
   const re = new RegExp(`<${TAG(localName)}[^>]*>([\\s\\S]*?)</${TAG(localName)}>`);
