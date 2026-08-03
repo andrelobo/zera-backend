@@ -4,7 +4,7 @@ import { EmpresasService } from '../../../modules/empresas/empresas.service';
 import { NfseEmissionStatus } from '../../domain/types/nfse-emission-status';
 import { NfseEmissionRepository } from '../mongo/repositories/nfse-emission.repository';
 import { SefinMtlsHttp } from './sefin-mtls.http';
-import { SefinNfseProvider } from './sefin.provider';
+import { LobonotasProvider } from './sefin.provider';
 
 function createTestCert(): { pfxBase64: string; password: string } {
   const keys = forge.pki.rsa.generateKeyPair(2048);
@@ -67,7 +67,7 @@ function xmlResponse(text: string) {
   };
 }
 
-describe('SefinNfseProvider', () => {
+describe('LobonotasProvider', () => {
   const cert = createTestCert();
   const material = { pfxBase64: cert.pfxBase64, password: cert.password };
 
@@ -84,7 +84,7 @@ describe('SefinNfseProvider', () => {
     findByExternalId: jest.fn(),
   } as unknown as NfseEmissionRepository;
 
-  let provider: SefinNfseProvider;
+  let provider: LobonotasProvider;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -97,11 +97,11 @@ describe('SefinNfseProvider', () => {
     empresasService.obterMaterialCertificado.mockResolvedValue(material);
     empresasService.reservarNumeracaoDps.mockResolvedValue({ serie: '1', nDPS: '1' });
     repository.findByExternalId.mockResolvedValue({ empresaCnpj: '43521115000134' });
-    provider = new SefinNfseProvider(empresasService, http, repository);
+    provider = new LobonotasProvider(empresasService, http, repository);
   });
 
-  it('providerName é SEFIN', () => {
-    expect(provider.providerName).toBe('SEFIN');
+  it('providerName é LOBONOTAS', () => {
+    expect(provider.providerName).toBe('LOBONOTAS');
   });
 
   it('emite DPS assinada e mapeia NFS-e autorizada (status AUTHORIZED + chave)', async () => {
@@ -127,7 +127,7 @@ describe('SefinNfseProvider', () => {
     expect(requestCall.cert.certificatePem).toContain('CERTIFICATE');
 
     expect(result.status).toBe(NfseEmissionStatus.AUTHORIZED);
-    expect(result.provider).toBe('SEFIN');
+    expect(result.provider).toBe('LOBONOTAS');
     expect(result.externalId).toBe(CHAVE);
     expect(result.providerResponse).toEqual(
       expect.objectContaining({ cStat: '100', chaveAcesso: CHAVE, idNota: CHAVE }),

@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { FiscalProvider } from '../domain/fiscal-provider.interface';
 import type { EmitirNfseInput } from '../domain/types/emitir-nfse.types';
 import type { EmitirNfseResult } from '../domain/types/emitir-nfse.result';
@@ -6,6 +6,7 @@ import { NfseEmissionStatus } from '../domain/types/nfse-emission-status';
 import { NfseEmissionRepository } from '../infra/mongo/repositories/nfse-emission.repository';
 import { EmpresasService } from '../../modules/empresas/empresas.service';
 import { TomadoresService } from '../../modules/tomadores/tomadores.service';
+import { FiscalProviderResolver } from './fiscal-provider.resolver';
 
 function normalizeIdempotencyKey(value: string): string | undefined {
   const normalized = value?.trim();
@@ -75,7 +76,13 @@ export class EmitirNfseService {
     private readonly repository: NfseEmissionRepository,
     private readonly empresasService: EmpresasService,
     private readonly tomadoresService: TomadoresService,
+    @Optional() private readonly resolver?: FiscalProviderResolver,
   ) {}
+
+  private providerFor(input: EmitirNfseInput): FiscalProvider {
+    if (!this.resolver) return this.provider;
+    return this.resolver.resolveProviderForCnpj(onlyDigits(input.prestador?.cnpj));
+  }
 
   async execute(input: EmitirNfseInput): Promise<{
     emissionId: string;
@@ -83,6 +90,7 @@ export class EmitirNfseService {
     idempotentReplay: boolean;
   }> {
     const enrichedInput = await this.enrichInputForProvider(input);
+    const provider = this.providerFor(enrichedInput);
     const tomadorEndereco = input?.tomador?.endereco;
     if (!tomadorEndereco) {
       throw new BadRequestException({
@@ -134,7 +142,7 @@ export class EmitirNfseService {
     let emission;
     try {
       emission = await this.repository.create({
-        provider: this.provider.providerName,
+        provider: provider.providerName,
         payload: enrichedInput,
         biSnapshot: bi.biSnapshot,
         empresaCnpj: bi.empresaCnpj,
@@ -174,7 +182,7 @@ export class EmitirNfseService {
     } catch (error: any) {
       if (idempotencyKey && isMongoDuplicateKeyError(error)) {
         const existing = await this.repository.findByReference(
-          this.provider.providerName,
+          provider.providerName,
           idempotencyKey,
         );
         if (existing) {
@@ -206,7 +214,7 @@ export class EmitirNfseService {
         ...providerInput
       } = enrichedInput;
       providerRequestForAudit = { payload: [providerInput] };
-      const result = await this.provider.emitirNfse(providerInput);
+      const result = await provider.emitirNfse(providerInput);
 
       await this.repository.updateEmission(emission._id.toString(), {
         provider: result.provider,
@@ -237,7 +245,7 @@ export class EmitirNfseService {
 
       if (typeof status === 'number' && status >= 400 && status < 500) {
         throw new BadRequestException({
-          message: `${this.provider.providerName} rejected the request`,
+          message: `${provider.providerName} rejected the request`,
           provider: body ?? null,
         });
       }

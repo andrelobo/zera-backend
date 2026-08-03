@@ -1,0 +1,2 @@
+export const PLUGNOTAS_PROVIDER = 'PLUGNOTAS';
+export const LOBONOTAS_PROVIDER = 'LOBONOTAS';

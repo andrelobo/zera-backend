@@ -1,7 +1,15 @@
-import { BadRequestException, HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Optional,
+} from '@nestjs/common';
 import type { FiscalProvider } from '../domain/fiscal-provider.interface';
 import { NfseEmissionStatus } from '../domain/types/nfse-emission-status';
 import { NfseEmissionRepository } from '../infra/mongo/repositories/nfse-emission.repository';
+import { FiscalProviderResolver } from './fiscal-provider.resolver';
 
 function toBase64(data: Uint8Array) {
   return Buffer.from(data).toString('base64');
@@ -29,6 +37,7 @@ export class SyncNfseArtifactsService {
     private readonly repo: NfseEmissionRepository,
     @Inject('FiscalProvider')
     private readonly provider: FiscalProvider,
+    @Optional() private readonly resolver?: FiscalProviderResolver,
   ) {}
 
   async execute(input: { emissionId: string; requestedBy?: string | null; ip?: string | null }) {
@@ -88,7 +97,10 @@ export class SyncNfseArtifactsService {
     }
 
     try {
-      const { status, providerResponse } = await this.provider.consultarNfse(doc.externalId);
+      const emissionProvider = this.resolver
+        ? this.resolver.byProviderName(doc.provider)
+        : this.provider;
+      const { status, providerResponse } = await emissionProvider.consultarNfse(doc.externalId);
       if (status !== NfseEmissionStatus.AUTHORIZED) {
         await this.repo.appendArtifactSyncAudit(doc._id.toString(), {
           at: now,
@@ -110,8 +122,8 @@ export class SyncNfseArtifactsService {
 
       const artifactId = extractArtifactId(providerResponse, doc.externalId);
       const [xml, pdf] = await Promise.all([
-        this.provider.baixarXmlNfse(artifactId),
-        this.provider.baixarPdfNfse(artifactId),
+        emissionProvider.baixarXmlNfse(artifactId),
+        emissionProvider.baixarPdfNfse(artifactId),
       ]);
 
       await this.repo.saveArtifactsById({

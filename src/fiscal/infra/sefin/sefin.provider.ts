@@ -21,9 +21,9 @@ function onlyDigits(value?: string): string {
 }
 
 @Injectable()
-export class SefinNfseProvider implements FiscalProvider {
-  readonly providerName = 'SEFIN';
-  private readonly logger = new Logger(SefinNfseProvider.name);
+export class LobonotasProvider implements FiscalProvider {
+  readonly providerName = 'LOBONOTAS';
+  private readonly logger = new Logger(LobonotasProvider.name);
 
   constructor(
     private readonly empresasService: EmpresasService,
@@ -148,7 +148,7 @@ export class SefinNfseProvider implements FiscalProvider {
     const body = cfg.nfseEnvelope === 'json' ? JSON.stringify({ dps: signedDps }) : signedDps;
     const contentType = cfg.nfseEnvelope === 'json' ? 'application/json' : 'application/xml';
 
-    this.logger.log('Emitindo NFS-e via SEFIN (Ambiente Nacional)', {
+    this.logger.log('Emitindo NFS-e via LOBONOTAS (Ambiente Nacional)', {
       prestador: cnpj,
       dpsId,
       serie: numeracao.serie,
@@ -168,7 +168,7 @@ export class SefinNfseProvider implements FiscalProvider {
     } catch (error: any) {
       if (error?.code === 'SEFIN_REQUEST_TIMEOUT') {
         this.logger.warn(
-          `SEFIN POST /nfse timed out; dpsId=${dpsId}; reconciliação via GET /dps (D5)`,
+          `LOBONOTAS POST /nfse timed out; dpsId=${dpsId}; reconciliação via GET /dps (D5)`,
         );
         return {
           status: NfseEmissionStatus.PENDING,

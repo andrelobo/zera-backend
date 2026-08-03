@@ -5,6 +5,7 @@ import { FiscalController } from './fiscal.controller';
 
 import { EmitirNfseService } from '../../fiscal/application/emitir-nfse.service';
 import { EmitirNfseQuickService } from '../../fiscal/application/emitir-nfse-quick.service';
+import { FiscalProviderResolver } from '../../fiscal/application/fiscal-provider.resolver';
 import { PollNfseStatusService } from '../../fiscal/application/poll-nfse-status.service';
 import { PollNfseStatusRunner } from '../../fiscal/application/poll-nfse-status.runner';
 import { ServicoCatalogService } from '../../fiscal/application/servico-catalog.service';
@@ -19,7 +20,8 @@ import { PlugNotasHttp } from '../../fiscal/infra/plugnotas/plugnotas.http';
 import { PlugNotasNfseApi } from '../../fiscal/infra/plugnotas/nfse.api';
 import { PlugNotasPrerequisitesService } from '../../fiscal/infra/plugnotas/prerequisites.service';
 import { SefinMtlsHttp } from '../../fiscal/infra/sefin/sefin-mtls.http';
-import { SefinNfseProvider } from '../../fiscal/infra/sefin/sefin.provider';
+import { LobonotasProvider } from '../../fiscal/infra/sefin/sefin.provider';
+import { LobonotasConfig } from '../../fiscal/infra/sefin/lobonotas.config';
 import { EmpresasModule } from '../empresas/empresas.module';
 import { TomadoresModule } from '../tomadores/tomadores.module';
 import { WebhookDeliveryAuditRepository } from '../webhooks/webhook-delivery-audit.repository';
@@ -29,14 +31,6 @@ import {
 } from '../webhooks/schemas/webhook-delivery-audit.schema';
 import { ProviderDocumentParsers } from '../../fiscal/domain/provider-document-parsers';
 import { PlugNotasDocumentParser } from '../../fiscal/infra/plugnotas/plugnotas-document-parser';
-
-function envBoolean(value: string | undefined, defaultValue: boolean): boolean {
-  if (value === undefined) return defaultValue;
-  const normalized = value.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
-  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
-  return defaultValue;
-}
 
 @Module({
   imports: [
@@ -65,13 +59,14 @@ function envBoolean(value: string | undefined, defaultValue: boolean): boolean {
     PlugNotasPrerequisitesService,
     PlugNotasProvider,
     SefinMtlsHttp,
-    SefinNfseProvider,
+    LobonotasProvider,
+    LobonotasConfig,
+    FiscalProviderResolver,
     WebhookDeliveryAuditRepository,
     {
       provide: 'FiscalProvider',
-      inject: [SefinNfseProvider, PlugNotasProvider],
-      useFactory: (sefinProvider: SefinNfseProvider, plugNotasProvider: PlugNotasProvider) =>
-        envBoolean(process.env.SEFIN_ENABLED, false) ? sefinProvider : plugNotasProvider,
+      inject: [FiscalProviderResolver],
+      useFactory: (resolver: FiscalProviderResolver) => resolver.resolve(),
     },
   ],
   exports: [

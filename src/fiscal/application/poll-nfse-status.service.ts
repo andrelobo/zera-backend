@@ -1,7 +1,9 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { NfseEmissionRepository } from '../infra/mongo/repositories/nfse-emission.repository';
 import { NfseEmissionStatus } from '../domain/types/nfse-emission-status';
+import type { NfseEmissionDocument } from '../infra/mongo/schemas/nfse-emission.schema';
 import type { FiscalProvider } from '../domain/fiscal-provider.interface';
+import { FiscalProviderResolver } from './fiscal-provider.resolver';
 
 function toBase64(data: Uint8Array) {
   return Buffer.from(data).toString('base64');
@@ -63,6 +65,7 @@ export class PollNfseStatusService {
     private readonly repo: NfseEmissionRepository,
     @Inject('FiscalProvider')
     private readonly provider: FiscalProvider,
+    @Optional() private readonly resolver?: FiscalProviderResolver,
   ) {}
 
   private async updateEmissionFromPolling(
@@ -80,12 +83,32 @@ export class PollNfseStatusService {
   }
 
   async runOnce(input?: { limit?: number; olderThanMs?: number }) {
-    const pending = await this.repo.findPending({
-      provider: this.provider.providerName,
-      limit: input?.limit ?? 50,
-      olderThanMs: input?.olderThanMs ?? 30_000,
-      now: new Date(),
-    });
+    const now = new Date();
+    const providerNames = this.resolver
+      ? this.resolver.pollingProviderNames()
+      : [this.provider.providerName];
+
+    const batches = await Promise.all(
+      providerNames.map((providerName) =>
+        this.repo.findPending({
+          provider: providerName,
+          limit: input?.limit ?? 50,
+          olderThanMs: input?.olderThanMs ?? 30_000,
+          now,
+        }),
+      ),
+    );
+
+    const seen = new Set<string>();
+    const pending: NfseEmissionDocument[] = [];
+    for (const batch of batches) {
+      for (const emission of batch) {
+        const key = String(emission._id ?? emission.externalId);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        pending.push(emission);
+      }
+    }
 
     if (!pending.length) return;
 
@@ -96,15 +119,22 @@ export class PollNfseStatusService {
     for (const emission of pending) {
       if (!emission.externalId) continue;
 
+      const emissionProviderName = emission.provider ?? this.provider.providerName;
+      const emissionProvider = this.resolver
+        ? this.resolver.byProviderName(emissionProviderName)
+        : this.provider;
+
       try {
-        const { status, providerResponse } = await this.provider.consultarNfse(emission.externalId);
+        const { status, providerResponse } = await emissionProvider.consultarNfse(
+          emission.externalId,
+        );
 
         if (status === NfseEmissionStatus.PENDING) {
           await this.updateEmissionFromPolling({
             externalId: emission.externalId,
             status,
             providerResponse,
-            provider: this.provider.providerName,
+            provider: emissionProviderName,
             lastPolledAt: new Date(),
             lastUpdateSource: 'polling',
           });
@@ -114,15 +144,15 @@ export class PollNfseStatusService {
         if (status === NfseEmissionStatus.AUTHORIZED && storeArtifacts) {
           const artifactId = extractArtifactId(providerResponse, emission.externalId);
           const [xml, pdf] = await Promise.all([
-            this.provider.baixarXmlNfse(artifactId),
-            this.provider.baixarPdfNfse(artifactId),
+            emissionProvider.baixarXmlNfse(artifactId),
+            emissionProvider.baixarPdfNfse(artifactId),
           ]);
 
           await this.updateEmissionFromPolling({
             externalId: emission.externalId,
             status,
             providerResponse,
-            provider: this.provider.providerName,
+            provider: emissionProviderName,
             xmlBase64: toBase64(xml),
             pdfBase64: toBase64(pdf),
             lastPolledAt: new Date(),
@@ -136,7 +166,7 @@ export class PollNfseStatusService {
           externalId: emission.externalId,
           status,
           providerResponse,
-          provider: this.provider.providerName,
+          provider: emissionProviderName,
           lastPolledAt: new Date(),
           lastUpdateSource: 'polling',
         });
@@ -154,7 +184,7 @@ export class PollNfseStatusService {
               externalId: emission.externalId,
               status: NfseEmissionStatus.ERROR,
               error: msg,
-              provider: this.provider.providerName,
+              provider: emissionProviderName,
               lastPolledAt: new Date(),
               lastUpdateSource: 'polling',
             });
@@ -169,7 +199,7 @@ export class PollNfseStatusService {
 
           await this.repo.markPollingTransientFailure({
             externalId: emission.externalId,
-            provider: this.provider.providerName,
+            provider: emissionProviderName,
             message: msg,
             nextPollAt,
           });
@@ -183,7 +213,7 @@ export class PollNfseStatusService {
           externalId: emission.externalId,
           status: NfseEmissionStatus.ERROR,
           error: msg,
-          provider: this.provider.providerName,
+          provider: emissionProviderName,
           lastPolledAt: new Date(),
           lastUpdateSource: 'polling',
         });
