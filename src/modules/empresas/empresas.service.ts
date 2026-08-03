@@ -246,7 +246,7 @@ export class EmpresasService {
             sha256,
             uploadedAt: now,
             expiresAt: expiresAt ?? undefined,
-            pfxBase64: file.buffer.toString('base64'),
+            pfxBase64: this.encryptSecret(file.buffer.toString('base64')),
             passwordEncrypted: encryptedPassword,
           },
         },
@@ -740,10 +740,10 @@ export class EmpresasService {
     let certificadoAction: 'reused' | 'uploaded' = 'reused';
 
     if (!providerCertificadoId) {
-      const pfxBase64 = this.toScalarStringOrUndefined(certRaw.pfxBase64);
+      const pfxBase64Raw = this.toScalarStringOrUndefined(certRaw.pfxBase64);
       const passwordEncrypted = this.toScalarStringOrUndefined(certRaw.passwordEncrypted);
 
-      if (!pfxBase64 || !passwordEncrypted) {
+      if (!pfxBase64Raw || !passwordEncrypted) {
         throw new BadRequestException({
           code: 'PLUGNOTAS_CERTIFICADO_UNAVAILABLE',
           message: 'Certificado digital indisponível para sincronização com a PlugNotas',
@@ -751,6 +751,15 @@ export class EmpresasService {
       }
 
       try {
+        const pfxBase64 = this.decryptPfxBase64(pfxBase64Raw);
+        if (!pfxBase64) {
+          throw new BadRequestException({
+            code: 'PLUGNOTAS_CERTIFICADO_PFX_INVALID',
+            message:
+              'Não foi possível recuperar o material do certificado para sincronização com a PlugNotas',
+          });
+        }
+
         const decryptedPassword = this.decryptSecret(passwordEncrypted);
         if (!decryptedPassword) {
           throw new BadRequestException({
@@ -2173,7 +2182,7 @@ export class EmpresasService {
 
     if (!doc) return null;
     const cert = doc.certificado as Record<string, unknown> | undefined;
-    const pfxBase64 = this.toScalarStringOrUndefined(cert?.pfxBase64);
+    const pfxBase64 = this.decryptPfxBase64(this.toScalarStringOrUndefined(cert?.pfxBase64));
     const passwordEncrypted = this.toScalarStringOrUndefined(cert?.passwordEncrypted);
     if (!pfxBase64 || !passwordEncrypted) return null;
 
@@ -2394,7 +2403,9 @@ export class EmpresasService {
       return { status: 'not_applicable' } as const;
     }
 
-    const pfxBase64 = this.toScalarStringOrUndefined(certificadoRaw.pfxBase64);
+    const pfxBase64 = this.decryptPfxBase64(
+      this.toScalarStringOrUndefined(certificadoRaw.pfxBase64),
+    );
     if (!pfxBase64) return { status: 'missing_pfx' } as const;
 
     const passwordEncrypted = this.toScalarStringOrUndefined(certificadoRaw.passwordEncrypted);
@@ -2445,6 +2456,18 @@ export class EmpresasService {
       this.logger.warn(`Falha ao descriptografar senha do certificado: ${message}`);
       return null;
     }
+  }
+
+  private decryptPfxBase64(value?: string): string | null {
+    if (!value) return null;
+    if (!value.startsWith('v1:')) return value;
+
+    const decrypted = this.decryptSecret(value);
+    if (!decrypted) {
+      this.logger.warn('Falha ao descriptografar o material do certificado (pfxBase64)');
+      return null;
+    }
+    return decrypted;
   }
 
   private async hydrateLegacyCertificateExpiration(

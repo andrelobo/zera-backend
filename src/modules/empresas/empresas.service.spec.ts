@@ -406,7 +406,7 @@ describe('EmpresasService', () => {
         $set: expect.objectContaining({
           certificado: expect.objectContaining({
             filename: 'certificado.pfx',
-            pfxBase64: Buffer.from('ABCD').toString('base64'),
+            pfxBase64: expect.stringMatching(/^v1:/),
             passwordEncrypted: expect.stringMatching(/^v1:/),
           }),
         }),
@@ -429,6 +429,49 @@ describe('EmpresasService', () => {
         }),
       }),
     );
+  });
+
+  it('imports certificate with encrypted pfx and obterMaterialCertificado recovers it (round-trip)', async () => {
+    let stored: any;
+    empresaModel.updateOne.mockImplementation(async (_q: any, update: any) => {
+      stored = update.$set.certificado;
+      return { acknowledged: true };
+    });
+    const file = {
+      originalname: 'certificado.pfx',
+      mimetype: 'application/x-pkcs12',
+      size: 4,
+      buffer: Buffer.from('ABCD'),
+    };
+
+    jest.spyOn(service as any, 'inspectCertificateExpiration').mockReturnValue({
+      expiresAt: new Date('2027-03-18T00:00:00.000Z'),
+      status: 'ok',
+    });
+
+    await service.importCertificado('43.521.115/0001-34', '123456', file as any);
+
+    expect(stored.pfxBase64).toMatch(/^v1:/);
+    expect(stored.pfxBase64).not.toBe(Buffer.from('ABCD').toString('base64'));
+    expect(stored.passwordEncrypted).toMatch(/^v1:/);
+
+    empresaModel.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue({
+          cnpj: '43521115000134',
+          certificado: {
+            pfxBase64: stored.pfxBase64,
+            passwordEncrypted: stored.passwordEncrypted,
+          },
+        }),
+      }),
+    });
+
+    const material = await service.obterMaterialCertificado('43.521.115/0001-34');
+    expect(material).toEqual({
+      pfxBase64: Buffer.from('ABCD').toString('base64'),
+      password: '123456',
+    });
   });
 
   it('repairs legacy certificate expiration on normalized output when banco still lacks expiresAt', async () => {
