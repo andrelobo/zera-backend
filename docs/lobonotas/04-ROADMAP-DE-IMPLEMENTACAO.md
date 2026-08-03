@@ -2,7 +2,7 @@
 
 > Sequência de slices para substituir o PlugNotas pelo LOBONOTAS (NFS-e Padrão Nacional) mantendo a API e as capacidades existentes.
 > Cada slice: objetivo, arquivos-alvo, testes, aceite, riscos, dependências, observações e rollback.
-> Status geral (03/08/2026): **Slice 0 IMPLEMENTADO; Slice 1 IMPLEMENTADO; Slice 2 EM ANDAMENTO** (pesquisa oficial coletada em doc 06; **pendências da doc 06 §5 resolvíveis sem credencial fechadas em 03/08/2026** — DANFSE NT 008 v1.02, Decreto 6.743 integral, prazos de cancelamento de Manaus; restam as `[PENDENTE]` que exigem credencial piloto; falta review do owner); **Slice 3 IMPLEMENTADO** (DPS builder+signer, XSD oficial); **Slice 4 PARCIALMENTE IMPLEMENTADO** (cliente mTLS/provider prontos; envelope real e tabela `cStat` dependem de credencial piloto); **Slice 5 IMPLEMENTADO** (resolver + allowlist piloto + kill switch + fail-closed; roteamento por CNPJ ligado em emissão/polling/sync-artifacts; **sub-slice de segurança concluído: material do certificado A1 cifrado em repouso com AES-256-GCM**, mesma rotina da senha, leitura compatível com certificados legados; **harness local do ciclo webhook LOBONOTAS concluído** — `webhooks-lobonotas.integration.spec.ts` — e **stub SEFIN com mTLS real concluído** — `sefin-stub.integration.spec.ts` + `sefin-stub-server.ts`, 234 testes/34 suítes; webhook LOBONOTAS real depende do contrato do Ambiente Nacional — Slice 6); **Slice 6 BLOQUEADO** (contrato real do webhook do Ambiente Nacional depende de credencial piloto); **Slice 7 PARCIALMENTE IMPLEMENTADO** (cancelamento via API Eventos do Ambiente Nacional: `evento-builder.ts` com `TCEvento`/`e101101` assinado, `SefinMtlsHttp.registrarEvento`/`consultarEventos`, `solicitarCancelamentoNfse`/`consultarSolicitacaoCancelamentoNfse` no provider com `protocol = chave de acesso`, mapeamento `CANCELED` por eventos no `sefin-mapper`, rotas de eventos no stub mTLS, 256 testes/35 suítes; **DANFSE e baixarXml do Nacional seguem `[PENDENTE]`** — PDF/DANFSE continua vazio — e a validação do leiaute real do `pedRegEvento`/`evento` XSD depende de credencial piloto); **Slice 8 IMPLEMENTADO** (frontend migrado para o contrato canônico: `inferNfseDataFromProvider` canonico-first com fallback legado, `ProviderResponse.canonico?`, `NfseProvider` com `LOBONOTAS`, filtro de provedor com `Nacional` na listagem, dashboard neutro, tipos migrados; **chamadas diretas ao IBGE removidas** — `PrestacaoServicoSection` e `location.ts` passaram a usar somente `GET /empresas/lookup/municipios`; merge PR #1 `47a9d4c` + commit `b34a7eb` na `feat/lobonotas-slice-8-frontend-restante`; revisão de `normalizeEmpresa`/`EmpresaFormPage` concluída sem mudança — `normalizeEmpresa` é cadastral CNPJ e o card Portal Nacional já é canonico-first); **Slice 9 PROPOSTO**.
+> Status geral (03/08/2026): **Slice 0 IMPLEMENTADO; Slice 1 IMPLEMENTADO; Slice 2 EM ANDAMENTO** (pesquisa oficial coletada em doc 06; **pendências da doc 06 §5 resolvíveis sem credencial fechadas em 03/08/2026** — DANFSE NT 008 v1.02, Decreto 6.743 integral, prazos de cancelamento de Manaus; restam as `[PENDENTE]` que exigem credencial piloto; falta review do owner); **Slice 3 IMPLEMENTADO** (DPS builder+signer, XSD oficial); **Slice 4 PARCIALMENTE IMPLEMENTADO** (cliente mTLS/provider prontos; envelope real e tabela `cStat` dependem de credencial piloto); **Slice 5 IMPLEMENTADO** (resolver + allowlist piloto + kill switch + fail-closed; roteamento por CNPJ ligado em emissão/polling/sync-artifacts; certificado A1 cifrado em repouso; harness webhook e stub mTLS concluídos); **Slice 6 BLOQUEADO** (operação real depende de credencial piloto); **Slice 7 PARCIALMENTE IMPLEMENTADO** (cancelamento/eventos `e101101`, consulta e estado `CANCELED`; `baixarXmlNfse` funcional; **DANFSe v2.0 implementado conforme NT 008 v1.02**, com PDF A4 em uma página, QR Code e marcas d'agua; restam validação real de eventos/cStat e substituição); **Slice 8 IMPLEMENTADO** (frontend canônico e municípios centralizados no backend); **Slice 9 PROPOSTO**.
 
 ---
 
@@ -178,7 +178,7 @@
   5. ✅ Mapeador — `sefin-mapper.ts`: detecção de cancelamento (`e101101`/`e105102`/`evCancelamento`) ⇒ `CANCELED`, `mapSefinEventoRegistroResponse` (cStat/nProt/dhRecbto/tipo) e `parseEventosConsulta`; `sefin-xml.ts` ganhou `extractAllTags`.
   6. ✅ Stub SEFIN com mTLS real — `sefin-stub-server.ts` agora expõe a API Eventos com cenários por chave (`NFS7..` cancelada, `NFS8..` inexistente → 404, `NFS9..` não cancelável → cStat 600) e `sefin-stub.integration.spec.ts` provou o fluxo ponta a ponta (assinatura presente, CN do cliente, protocolo, CANCELED).
 - **Testes**: ✅ suíte completa verde — **256 testes / 35 suítes** (`npm test -- --runInBand`), `npm run build`, `npm run lint` (0 erros; warnings pré-existentes `no-unsafe-*` aceitáveis).
-- **Pendências no sub-slice** (`[PENDENTE]`): leiaute real do `pedRegEvento_v1.01.xsd`/`evento_v1.01.xsd` e tabela real de `cStat` de eventos (validar com credencial piloto); **DANFSE/PDF** e **baixarXml do Nacional** fora do escopo deste passo.
+- **Pendências no sub-slice** (`[PENDENTE]`): leiaute real do `pedRegEvento_v1.01.xsd`/`evento_v1.01.xsd` e tabela real de `cStat` de eventos (validar com credencial piloto). **DANFSe/PDF** e **baixarXml do Nacional** foram implementados no passo seguinte.
 
 ---
 
@@ -186,13 +186,13 @@
 
 - **Objetivo**: fechar ciclo completo da NFS-e LOBONOTAS.
 - **Ações**:
-  1. Baixar/gerar XML autorizado e DANFSE (forma oficial da Sefin — `[PENDENTE]` até Slice 2 concluído).
+  1. ✅ Baixar XML autorizado e gerar DANFSe v2.0 localmente conforme NT 008 v1.02 (API oficial suspensa em 03/08/2026).
   2. Cancelamento por evento (garantir idempotência e estado `CANCELED` ↔ frontend `CANCELLED`, doc 00 §6).
   3. Sincronização de artifacts (`/nfse/:id/sync-artifacts`) para LOBONOTAS.
    4. Substituição: **nativa no padrão Nacional** (evento `1 05 1 02`; disparada pelo `POST /nfse` com DPS contendo `subst/chSubstda` — doc 06 §1.2/§2.4).
 - **Arquivos-alvo**: `lobonotas.provider.ts`, endpoints existentes (sem mudança de rota).
 - **Testes**: ciclo completo em homologação; estado coerente.
-- **Aceite**: XML/DANFSE/cancelamento funcionais com dados oficiais.
+- **Aceite parcial**: XML/DANFSE/cancelamento funcionais em testes locais; aceite real depende do piloto oficial.
 - **Riscos**: especificações de DANFSE podem variar — manter atrás do contrato canônico.
 - **Dependências**: Slices 2, 5, 6.
 - **Rollback**: kill switch.

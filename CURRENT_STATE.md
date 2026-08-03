@@ -2,6 +2,29 @@
 
 Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
 
+## 0. Atualizacao rapida (03/08/2026) - DANFSe v2.0 gerado localmente conforme NT 008 v1.02
+
+Fonte: `codigo local` + `pesquisa oficial` + `testes locais` + `build local` + `lint local`.
+
+Estado atual:
+- `src/fiscal/infra/sefin/danfse.ts` implementa parser do XML autorizado e gerador PDF do **DANFSe v2.0** conforme a NT 008 v1.02, em A4 retrato e pagina unica
+- o documento inclui QR Code da consulta publica, dados fiscais canonicos, tributacao municipal/federal/IBS-CBS, totais, ambiente sem validade juridica e marcas d'agua `CANCELADA`/`SUBSTITUIDA`
+- `LobonotasProvider.baixarPdfNfse` deixou de retornar vazio: consulta o XML oficial por chave e gera o PDF localmente, pois a API oficial de geracao foi suspensa em 03/08/2026
+- `baixarXmlNfse` permanece funcional pela consulta `GET /nfse/{chave}`
+- pesquisa oficial consolidada em `docs/lobonotas/06-SPEC-AMBIENTE-NACIONAL.md` (NT 008 v1.02 e Decreto 6.743 de Manaus)
+
+Validacao local:
+- testes focados de DANFSe/provider: **29 testes / 2 suites** verdes
+- `npm test -- --runInBand` -> **268 testes / 36 suites** verdes
+- `npm run build` -> ok
+- `npm run lint` -> **0 erros** (223 warnings pre-existentes)
+
+Leitura operacional correta:
+1. DANFSe/PDF deixou de ser pendencia de codigo do Slice 7
+2. producao continua no PlugNotas; LOBONOTAS segue protegido por flag/allowlist
+3. piloto real, envelope/cStat reais e leiaute real dos eventos ainda dependem de credencial oficial
+4. substituicao via DPS/evento `e105102` permanece para um passo posterior
+
 ## 0. Atualizacao rapida (03/08/2026) - Slice 7 LOBONOTAS: cancelamento via API Eventos do Ambiente Nacional (e101101) + estado CANCELED
 
 Fonte: `codigo local` + `testes locais` + `build local` + `lint local`.
@@ -26,7 +49,7 @@ Leitura operacional correta:
 1. producao segue no PlugNotas; LOBONOTAS continua aditivo protegido por flag/allowlist; nada do fluxo real muda por default
 2. cancelamento LOBONOTAS depende do registro do evento no Ambiente Nacional (mTLS com certificado A1 do prestador)
 3. `protocol` de cancelamento LOBONOTAS e a **chave de acesso** — o frontend usa esse valor em `GET /nfse/cancelamento/:cancellationProtocol` para consultar os eventos
-4. leiaute real de `pedRegEvento_v1.01.xsd`/`evento_v1.01.xsd` e tabela real de `cStat` de eventos seguem `[PENDENTE]` (credencial piloto); **DANFSE/PDF e baixarXml do Nacional** continuam fora deste passo
+4. leiaute real de `pedRegEvento_v1.01.xsd`/`evento_v1.01.xsd` e tabela real de `cStat` de eventos seguem `[PENDENTE]` (credencial piloto); DANFSe/PDF e baixarXml do Nacional foram implementados no passo seguinte
 
 ## 0. Atualizacao rapida (03/08/2026) - harness local do ciclo LOBONOTAS (emissao -> PENDING -> webhook -> AUTHORIZED) + stub mTLS real do SEFIN
 
