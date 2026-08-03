@@ -1452,7 +1452,7 @@ describe('EmpresasService', () => {
     expect(empresaModel.findOneAndUpdate).toHaveBeenCalledWith(
       { cnpj: '43521115000134' },
       expect.any(Array),
-      expect.objectContaining({ new: true }),
+      expect.objectContaining({ new: true, updatePipeline: true }),
     );
   });
 

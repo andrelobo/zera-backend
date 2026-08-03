@@ -2270,6 +2270,7 @@ export class EmpresasService {
         {
           new: true,
           fields: { dpsContador: 1, dpsSerieContador: 1 },
+          updatePipeline: true,
         },
       )
       .lean<{ dpsContador?: number; dpsSerieContador?: number }>();
