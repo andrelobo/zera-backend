@@ -242,9 +242,13 @@ describe('LobonotasProvider', () => {
     expect(Buffer.from(bytes).toString('utf8')).toContain('<infNFSe');
   });
 
-  it('PDF/DANFSE retorna vazio neste escopo (Slice 7) sem quebrar sync', async () => {
+  it('gera o DANFSe v2.0 em PDF a partir do XML da NFS-e', async () => {
+    (http.request as jest.Mock).mockResolvedValue(xmlResponse(nfseXml()));
+
     const pdf = await provider.baixarPdfNfse(CHAVE);
-    expect(pdf.length).toBe(0);
+
+    expect(Buffer.from(pdf).slice(0, 5).toString()).toBe('%PDF-');
+    expect(pdf.length).toBeGreaterThan(1000);
   });
 
   it('solicita cancelamento registrando evento e101101 assinado e devolve protocolo = chave', async () => {

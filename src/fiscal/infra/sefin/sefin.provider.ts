@@ -18,6 +18,7 @@ import {
 } from './sefin-mapper';
 import { SefinMtlsHttp } from './sefin-mtls.http';
 import { getSefinConfig } from './sefin.config';
+import { gerarDanfsePdf } from './danfse';
 
 function onlyDigits(value?: string): string {
   return (value ?? '').replace(/\D+/g, '');
@@ -300,10 +301,18 @@ export class LobonotasProvider implements FiscalProvider {
     externalId: string,
     _query?: { logotipo?: boolean; mensagem_rodape?: string },
   ): Promise<Uint8Array> {
-    this.logger.warn(
-      `DANFSE/PDF não é gerado pela API SEFIN neste escopo (Slice 7); retornando vazio para não quebrar o sync de artifacts (externalId=${externalId})`,
-    );
-    return new Uint8Array(0);
+    const cert = await this.requireCertForEmission(externalId);
+    const chave = await this.resolveChaveAcesso(externalId, cert);
+    const response = await this.http.request({ method: 'GET', path: `/nfse/${chave}`, cert });
+
+    try {
+      return await gerarDanfsePdf(response.text);
+    } catch (error: any) {
+      this.logger.error(`Falha ao gerar DANFSe da NFS-e ${chave}`, error?.stack);
+      throw this.throwError('DANFSE_GERACAO_FALHOU', `Falha ao gerar DANFSe: ${error?.message}`, {
+        chaveAcesso: chave,
+      });
+    }
   }
 
   async solicitarCancelamentoNfse(
