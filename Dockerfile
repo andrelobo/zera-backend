@@ -3,7 +3,7 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile
+RUN yarn install --frozen-lockfile --network-timeout 600000 --network-concurrency 4
 
 FROM deps AS builder
 COPY . .
@@ -11,7 +11,7 @@ RUN yarn build
 
 FROM base AS production-deps
 COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile --production=true && yarn cache clean
+RUN yarn install --frozen-lockfile --production=true --network-timeout 600000 --network-concurrency 4 && yarn cache clean
 
 FROM base AS runner
 ENV NODE_ENV=production
