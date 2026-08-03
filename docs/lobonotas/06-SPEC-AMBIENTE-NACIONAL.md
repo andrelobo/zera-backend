@@ -1,7 +1,7 @@
 # LOBONOTAS — 06. Spec do Ambiente Nacional NFS-e (SEFIN)
 
 > Pesquisa oficial do Slice 2 (doc 04). Fonte de verdade para o contrato LOBONOTAS, com **citação de documentação oficial** em cada conclusão (regra D13).
-> Data de consulta: **01/08/2026**. Ambientes testados: **Produção Restrita** (`sefin.producaorestrita` / `adn.producaorestrita`).
+> Data de consulta: **01/08/2026** (atualizado em **03/08/2026**: R10 NT 008 v1.02 DANFSe e R11 texto integral do Decreto 6.743). Ambientes testados: **Produção Restrita** (`sefin.producaorestrita` / `adn.producaorestrita`).
 > Regra: sem referência oficial → marcado `[PENDENTE]`.
 
 ---
@@ -19,9 +19,11 @@
 | R7 | Decreto nº 6.743 da Prefeitura de Manaus (adoção NFS-e Padrão Nacional) | DOM 16/12/2025 | Prefeitura de Manaus / imprensa |
 | R8 | Portaria nº 3/2026-SUBREC/SEMEF (regras de adoção integral) | 10/04/2026 | Prefeitura de Manaus |
 | R9 | LC nº 214, de 16/01/2025 (reforma tributária; NFS-e Padrão Nacional) | 2025 | Planalto |
+| R10 | **Nota Técnica nº 008 SE/CGNFS-e — DANFSe (especificações técnicas)** | **v1.02, 14/07/2026** | gov.br NFS-e → Documentação Técnica (PDF oficial) |
+| R11 | Decreto nº 6.743 — **texto integral** (DOM Manaus 16/12/2025) | DOM 16/12/2025 | Prefeitura de Manaus (via LegisWeb, republicação) |
 
 Artefatos arquivados em `/tmp/opencode/lobonotas/oficial/` (fora do repo, para consulta):
-`esquemas-xsd-producao.zip` (→ `esquemas/Schemas/1.00|1.01/`), `anexo-i-dps.xlsx`, `anexo-ii-eventos.xlsx`, `manual-adn-contribuintes.pdf`, `manual-contribuintes-emissor-publico.pdf`, `municipios-aderentes.xlsx`.
+`esquemas-xsd-producao.zip` (→ `esquemas/Schemas/1.00|1.01/`), `anexo-i-dps.xlsx`, `anexo-ii-eventos.xlsx`, `manual-adn-contribuintes.pdf`, `manual-contribuintes-emissor-publico.pdf`, `municipios-aderentes.xlsx`, `nt008-danfse-v1-02.pdf` (+ `.txt` extraído), `decreto-6743-manaus.md`.
 
 ---
 
@@ -134,6 +136,20 @@ Código do evento = 6 dígitos, formado por 4 grupos: **categoria (1) + autor (2
 
 Regras de negócio por evento (aceite/rejeição, autor, assinatura, precedência entre eventos) constam nas planilhas "RN EVENTOSxEVENTOS" e "RN EVENTO_PED.REG.EVENTO" (R5).
 
+### 2.5 DANFSe — Documento Auxiliar da NFS-e (R10)
+
+Fonte: **Nota Técnica nº 008 SE/CGNFS-e, v1.02, de 14/07/2026** (especificações técnicas do DANFSe). Histórico: v1.0 (→) → v1.01 (30/06/2026, alteração da data de suspensão da API de geração) → v1.02 (14/07/2026, alteração da data de suspensão; quantidade de caracteres dos campos; ajuste em `vPis`/`vCofins`/`tpRetPisCofins`; outras correções).
+
+- **Suspensão da API oficial de geração**: a API `https://adn.nfse.gov.br/danfse/docs/index.html` é **sobrestada (suspensa) em 03/08/2026** — a geração do DANFSe passa a ser feita **pelos próprios sistemas de emissão** (ERP/sistemas fiscais), conforme a NT 008.
+- **Finalidade**: documento auxiliar impresso em papel para consulta resumida dos dados da NFS-e e apoio a processos administrativos/financeiros do destinatário não credenciado. Impresso em **uma única via**, em qualquer papel exceto jornal; **obrigatoriamente em uma única página**, modo retrato, tamanho mínimo **A4** (210×297 mm); margens laterais 0,15–0,20 cm; linhas divisórias 0,5 pt e borda de página 1 pt; cabeçalho/títulos de blocos e os campos "Emitente da NFS-e" e "Valor Líquido da NFS-e + IBS/CBS" com sombreamento cinza claro 5%.
+- **Modelo**: o **Anexo I** define a disposição dos campos (obrigatória). Fontes: **Arial** (títulos/labels) e **Microsoft Sans Serif** (conteúdo), preto sólido K100. Tamanhos: títulos de blocos 7 pt negrito caixa alta; labels de campos 6 pt negrito (7 pt caixa alta nos blocos de identificação); conteúdo 7 pt normal. Cabeçalho: logo NFS-e (canto esquerdo), ao centro **"DANFSe v2.0"** + "Documento Auxiliar da NFS-e" (9 pt negrito Arial), à direita nome do município/ambiente gerador/tipo de ambiente; **QR Code** (mín. 1,52×1,52 cm, em X 17,48/Y 1,67) apontando para `https://www.nfse.gov.br/ConsultaPublica/?tpc=1&chave=<ChaveDeAcesso>`.
+- **Ambiente de homologação**: NFS-e com `tpAmb=2` → incluir, no cabeçalho, abaixo de "Documento Auxiliar da NFS-e", a expressão **"NFS-e SEM VALIDADE JURÍDICA"** em vermelho sólido (M100/Y100), 9 pt negrito Arial.
+- **Campos do DANFSe (seções 2.1.1–2.1.13)**: Chave de Acesso (50 dígitos); Identificação da NFS-e (número, competência, data/hora da emissão, número/série/data da DPS, emitente, situação, finalidade); Prestador/Fornecedor (CNPJ/CPF/NIF, Inscrição, telefone, nome, município/UF, código IBGE/CEP, endereço, e-mail, Simples Nacional na competência, regime de apuração); Tomador/Adquirente; Destinatário da Operação; Intermediário da Operação; Serviço Prestado (cód. tributação Nacional/Municipal, NBS, local da prestação, descrições); Tributação Municipal ISSQN; Tributação Federal (exceto CBS: IRRF, contribuição previdenciária retida, contribuições sociais retidas, PIS/COFINS); Tributação IBS/CBS (CST/cClassTrib, indicador de operação, exclusões/reduções, alíquotas e valores apurados IBS Estadual/Municipal e CBS); Valor Total da NFS-e (vServ, descontos, total retenções, valor líquido, total IBS/CBS, valor líquido + IBS/CBS); Informações Complementares (obrigatória a linha **"Totais Aproximados dos Tributos cfe. Lei nº 12.741/2012: Federais/Estaduais/Municipais"**, separadas por `|`); Canhoto (opcional).
+- **Supressões permitidas (2.3)**: blocos de Tomador/Destinatário/Intermediário/Tributação Municipal podem ser substituídos por textos fixos ("...NÃO IDENTIFICADO NA NFS-e" / "O DESTINATÁRIO É O PRÓPRIO TOMADOR/ADQUIRENTE..." / "TRIBUTAÇÃO MUNICIPAL (ISSQN) - OPERAÇÃO NÃO SUJEITA AO ISSQN"), redistribuindo a altura para "Descrição do Serviço"/"Informações Complementares". Campos sem dados no XML devem ser preenchidos com **traço (–)** (nota 12).
+- **Marca d'água (2.5)**: **"CANCELADA"** quando houver cancelamento; **"SUBSTITUÍDA"** quando houver substituição; na diagonal, Arial, mín. 50 pt, cinza K35.
+- **Leiaute real dos campos (2.4.5)**: tabela com caminho XML, tamanho (alt./larg.) e posição (X/Y) em centímetros de cada campo — ver PDF arquivado (`nt008-danfse-v1-02.pdf`); requisito de 1 página em A4 com ~29 blocos fixos.
+- **Notas aplicáveis à implementação**: linha de tributação federal "PIS/COFINS" imprime só até competência 31/12/2026 (nota 6); `vPis`/`vCofins`/`tpRetPisCofins`: quando `tpRetPisCofins=1` (Retido) as contribuições retidas somam-se em "Contribuições Sociais – Retidas" e `vPis`/`vCofins` zeram (ajuste da v1.02); ops. com fatos geradores IBS/CBS sem documento fiscal (NT 007 seção 3.a) terão NT específica do DANFSe (a publicar).
+
 ---
 
 ## 3. Situação oficial de Manaus (piloto)
@@ -152,14 +168,16 @@ Linha Manaus (1302603) na tabela oficial de municípios aderentes (gov.br, atual
 | Publicação | 23/09/2022 |
 | **Início de Vigência** | **01/12/2025** |
 
-### 3.2 Obrigatoriedade (R7/R8/R9)
+### 3.2 Obrigatoriedade (R7/R8/R9/R11)
 
-- **Decreto nº 6.743** (Prefeitura de Manaus, publicado no DOM em 16/12/2025): adoção **obrigatória** da NFS-e Padrão Nacional a partir de **1º/01/2026**, com base no **art. 62 da LC nº 214/2025**. Emissão exclusivamente pelo Portal Nacional (emissor web, app ou **API**).
-- "Nota Manaus" (sistema municipal legado): mantido apenas para fatos geradores anteriores; após isso, a emissão retroativa segue pelo sistema nacional. Recolhimento do ISS por guia no "Nota Manaus" (vencimento dia 10), exceto Simples Nacional → DAS.
+- **Decreto nº 6.743** (Prefeitura de Manaus, publicado no DOM em 16/12/2025; texto integral lido — R11): adoção **obrigatória e exclusiva** da NFS-e Padrão Nacional a partir de **1º/01/2026** (art. 1º), para todos os prestadores estabelecidos em Manaus contribuintes do ISSQN (ainda que imunes, isentos ou Simples Nacional), substituindo todos os demais modelos de documentos fiscais de serviços vigentes. Emissão exclusivamente pelos emissores do Portal Nacional — web, mobile ou **API** (art. 3º). Acesso/autenticação (certificado digital, gov.br ou login/senha), habilitação e leiautes seguem as normas do Portal Nacional (art. 4º).
+- **Recolhimento do ISSQN** (art. 5º): até o **dia 10 do mês subsequente** ao da competência, com guia gerada no portal "Nota Manaus"; optantes do Simples Nacional recolhem via **DAS/PGDAS-D** (exceto impedidos/sublimite → regra geral); responsável solidário do setor público apura em **regime de caixa** (§2º). Emissão constitui **confissão de dívida** (art. 6º).
+- **Cancelamento e substituição** (arts. 7º–8º): cancelamento/substituição **no mesmo sistema** em que o documento foi emitido (art. 7º). Prazos para NFS-e Padrão Nacional (art. 8º): substituição em até **9 dias**; cancelamento solicitado em até **90 dias** (365 dias quando tomador = responsável solidário do setor público); o pedido de cancelamento **não suspende o débito** — exige formalização de processo administrativo via SIGED. Notas "Nota Manaus" (inclusive retroativas pós 01/01/2026) cancelam-se por processo administrativo.
+- **"Nota Manaus"** (arts. 11–13): sistemas municipais desativados para fatos geradores a partir de 01/01/2026; a partir dessa data a NFS-e Padrão Nacional é o **único documento válido** e fica vedada a emissão pelo Nota Manaus para fatos geradores novos; o sistema legado permanece apenas para retroativa (fato gerador anterior), consulta/cancelamento/substituição das próprias notas e geração das **guias do ISSQN**.
 - **Portaria nº 3/2026-SUBREC/SEMEF** (10/04/2026): regras para adoção integral, revogando a IN 001/2012-GS/SEMEF.
-- Adequação técnica (contribuintes/ERP) prevista até 31/12/2025; ERPs devem migrar de RPS para **DPS** do padrão nacional.
+- Adequação técnica (contribuintes/ERP): sistemas próprios de emissão (API) devem se comunicar com o Sistema da Nota Nacional **até 31/12/2025** (art. 14); ERPs devem migrar de RPS para **DPS** do padrão nacional.
 
-> Observação: a confirmação da obrigatoriedade foi validada por imprensa local (portalmeuamazonas.com.br, 17/12/2025) e pela tabela oficial R6. A leitura pontual do texto do Decreto 6.743 (DOM 16/12/2025) permanece como fonte primária `[PENDENTE]` de confirmação direta.
+> Observação (03/08/2026): a leitura direta do texto do Decreto 6.743 foi realizada (R11, republicação do DOM Manaus 16/12/2025 via LegisWeb) e a pendência de fonte primária foi **resolvida** — ver §5.
 
 ---
 
@@ -187,9 +205,9 @@ Linha Manaus (1302603) na tabela oficial de municípios aderentes (gov.br, atual
 
 - [ ] URL base definitiva de **Produção** para emissão/consulta via API (produção restrita confirmada apenas para testes; ver R2 §1.6).
 - [ ] Fluxo de **autenticação mTLS** detalhado (headers/cert chain) — R3 menciona certificado com CNPJ raiz do contribuinte consultado; detalhes técnicos de handshake para o piloto.
-- [ ] Regras de **prazo/cancelamento** parametrizáveis por município (R5 menciona prazos e valores parametrizados pelo município emissor) — aplicar as de Manaus quando homologar.
-- [ ] Leitura direta do texto do Decreto 6.743 no DOM (confirmação pontual da obrigatoriedade).
-- [ ] Geração/validação do **DANFSE** oficial da Sefin Nacional (R2 cita Anexo I de Leiautes DPS/NFS-e; DANFSE não detalhado no material baixado).
+- [ ] Regras de **prazo/cancelamento** parametrizáveis por município (R5 menciona prazos e valores parametrizados pelo município emissor) — **Manaus resolvida (R11)**: substituição até 9 dias e cancelamento até 90 dias (365 p/ responsável solidário do setor público), cancelamento/substituição no mesmo sistema, pedido não suspende débito (art. 8º). Outros municípios `[PENDENTE]`.
+- [ ] Leitura direta do texto do Decreto 6.743 no DOM (confirmação pontual da obrigatoriedade) — **resolvida (03/08/2026)**: texto integral via R11; ver §3.2.
+- [ ] Geração/validação do **DANFSE** oficial da Sefin Nacional — **resolvida (03/08/2026)**: especificação oficial na **NT 008 v1.02 (R10)**, §2.5; **API oficial de geração suspensa em 03/08/2026** → geração deve ser própria (ERP/sistema fiscal); modelo no Anexo I.
 
 **Resolvidas no Slice 3 (01/08/2026):**
 - ✅ Dependência de assinatura XML aprovada e instalada: `xml-crypto@6.1.2` (lib pura JS) + `@types/xml-crypto`.
@@ -226,3 +244,4 @@ Linha Manaus (1302603) na tabela oficial de municípios aderentes (gov.br, atual
 - **Slice 4 (cliente)**: endpoints relativos de R2 (emissão/consulta/eventos) + ADN (R3); mTLS com certificado A1 do prestador; Produção Restrita em `*.producaorestrita.nfse.gov.br`. **Status: implementado em `fiscal/infra/sefin/*`** (cliente, config, mapper, provider, contador DPS, wiring `SEFIN_ENABLED`) — envelope real e tabela `cStat` permanecem `[PENDENTE]` até acesso com credencial piloto.
 - **Slice 7 (cancelamento/substituição)**: via **API Eventos** (`POST /nfse/{chave}/eventos`) com código `1 01 1 01` (cancelamento) e `1 05 1 02` (por substituição — gerado automaticamente no `POST /nfse` quando a DPS traz `subst/chSubstda`). **Status do cancelamento: implementado** (ver "Resolvidas no Slice 7" na §5); substituição é **nativa do padrão** e fica para um próximo passo (diferente do que se supunha no doc 04 §"Itens pendentes").
 - **Cancelamento legado vs Nacional**: o frontend expõe `POST /nfse/:id/cancelamento` e `GET /nfse/cancelamento/:cancellationProtocol` (doc 03 §1); no Nacional não há "protocolo de cancelamento" — o estado deriva dos **eventos** da chave de acesso (R5). Ponto de mapeamento a resolver no Slice 7.
+- **DANFSe / PDF (Slice 7)**: a geração passa a ser **obrigatoriamente própria** (API oficial suspensa em 03/08/2026 — R10). O `baixarPdfNfse` do `SefinNfseProvider` (hoje retorna PDF vazio) deve gerar o DANFSe v2.0 a partir do XML da NFS-e, conforme NT 008 v1.02 (§2.5 + Anexo I) — marca d'água CANCELADA/SUBSTITUÍDA conforme eventos, e "NFS-e SEM VALIDADE JURÍDICA" quando `tpAmb=2`. Leiaute de campos (seção 2.4.5 da NT 008) documentado para implementação.
