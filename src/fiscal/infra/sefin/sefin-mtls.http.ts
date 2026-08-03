@@ -108,7 +108,10 @@ export class SefinMtlsHttp {
           return;
         }
         const mTlsCode =
-          code === 'DEPTH_ZERO_SELF_SIGNED_CERT' || code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE'
+          code === 'DEPTH_ZERO_SELF_SIGNED_CERT' ||
+          code === 'SELF_SIGNED_CERT_IN_CHAIN' ||
+          code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ||
+          code === 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY'
             ? 'SEFIN_CERT_VERIFY_FAILED'
             : 'SEFIN_MTLS_ERROR';
         const wrapped = toSefinHttpError({

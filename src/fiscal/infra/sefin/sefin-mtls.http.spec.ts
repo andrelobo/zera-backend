@@ -28,9 +28,11 @@ jest.mock('node:https', () => {
         },
       };
       cb(res);
+      req.emit('close');
     });
     req.destroy = (err?: any) => {
       if (err) req.emit('error', err);
+      req.emit('close');
     };
     state.req = req;
     return req;
