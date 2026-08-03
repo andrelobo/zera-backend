@@ -19,6 +19,16 @@ export function hasElement(xml: string, localName: string): boolean {
   return new RegExp(`<${TAG(localName)}[\\s>]`).test(xml);
 }
 
+export function extractAllTags(xml: string, localName: string): string[] {
+  const re = new RegExp(`<${TAG(localName)}[^>]*>([\\s\\S]*?)</${TAG(localName)}>`, 'g');
+  const results: string[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(xml)) !== null) {
+    results.push(match[1].trim());
+  }
+  return results;
+}
+
 export function extractElementId(
   xml: string,
   localName: string,

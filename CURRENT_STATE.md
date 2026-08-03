@@ -2,6 +2,32 @@
 
 Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
 
+## 0. Atualizacao rapida (03/08/2026) - Slice 7 LOBONOTAS: cancelamento via API Eventos do Ambiente Nacional (e101101) + estado CANCELED
+
+Fonte: `codigo local` + `testes locais` + `build local` + `lint local`.
+
+Estado atual:
+- **cancelamento por evento implementado** no provider LOBONOTAS (`src/fiscal/infra/sefin/`), removendo o placeholder `SEFIN_EVENTO_NOT_IMPLEMENTED`:
+  - novo `evento-builder.ts` gera o pedido de registro do cancelamento como **`TCEvento`** (doc 06 §2.3): `infEvento` (`Id="e101101{chNFSe}"`, `verAplic`, `ambGer`=`tpAmb`, `nSeqEvento`, `dhProc` UTC, `nDFSe`) + `pedRegEvento`/`infPedReg` (`Id="pedRegEvento{chNFSe}"`, `tpAmb`, `verAplic`, `dhEvento`, `CNPJAutor`, `chNFSe`, `e101101` com `versao`+`xJust`) + `ds:Signature` enveloped sobre `infEvento`
+  - `dps-signer.ts` ganhou `signXmlElement` (rotina de assinatura generalizada; `signDps` delega a ela)
+  - `SefinMtlsHttp` ganhou `registrarEvento` (`POST /nfse/{chave}/eventos`, `application/xml`) e `consultarEventos` (`GET /nfse/{chave}/eventos[/{tipoEvento}[/{numSeq}]]`)
+  - `solicitarCancelamentoNfse(idNota, {codigo, motivo})` resolve a chave (DPS id -> chave se preciso), monta/assina o evento com `CNPJAutor` e `nDFSe` da emissao, registra e devolve **`protocol = chave de acesso`** (o Nacional nao tem protocolo de cancelamento; o estado deriva dos eventos da chave — doc 06 §6) + `aceito`/`nProt`/`cStat` na resposta; 404 -> `notFound`, rejeicao (cStat 4xx/5xx) -> `protocol=null` + `status: REJECTED`
+  - `consultarSolicitacaoCancelamentoNfse(protocol)` consulta os eventos da chave e mapeia **`CANCELED`** quando ha `e101101`/`e105102`; 404 -> `status: undefined` + `notFound`
+  - `sefin-mapper.ts`: deteccao de cancelamento (`e101101`/`e105102`/`evCancelamento`) => `CANCELED`, novo `mapSefinEventoRegistroResponse` e `parseEventosConsulta`; `sefin-xml.ts` ganhou `extractAllTags`
+- **stub SEFIN com API Eventos** (`sefin-stub-server.ts`): `POST/GET /nfse/{chave}/eventos` com cenarios por conteudo da chave — `NFS7..` NFS-e ja cancelada, `NFS8..` inexistente (404), `NFS9..` nao cancelavel (cStat 600), demais aceitas — e integracao mTLS real em `sefin-stub.integration.spec.ts` (evento assinado trafega com CN do cliente validado; consulta devolve e101101)
+- contrato dos endpoints legados inalterado: `POST /nfse/:id/cancelamento` e `GET /nfse/cancelamento/:cancellationProtocol` continuam servindo o fluxo (o controller grava `cancelamento.protocol/response` no `providerResponse`)
+
+Validacao local:
+- `npm test -- --runInBand` -> **256 testes / 35 suites** verdes (+22)
+- `npm run build` ok (inclui copia do catalogo LC116 para `dist`)
+- `npm run lint` -> **0 erros** (warnings pre-existentes de tipagem estrita)
+
+Leitura operacional correta:
+1. producao segue no PlugNotas; LOBONOTAS continua aditivo protegido por flag/allowlist; nada do fluxo real muda por default
+2. cancelamento LOBONOTAS depende do registro do evento no Ambiente Nacional (mTLS com certificado A1 do prestador)
+3. `protocol` de cancelamento LOBONOTAS e a **chave de acesso** — o frontend usa esse valor em `GET /nfse/cancelamento/:cancellationProtocol` para consultar os eventos
+4. leiaute real de `pedRegEvento_v1.01.xsd`/`evento_v1.01.xsd` e tabela real de `cStat` de eventos seguem `[PENDENTE]` (credencial piloto); **DANFSE/PDF e baixarXml do Nacional** continuam fora deste passo
+
 ## 0. Atualizacao rapida (03/08/2026) - harness local do ciclo LOBONOTAS (emissao -> PENDING -> webhook -> AUTHORIZED) + stub mTLS real do SEFIN
 
 Fonte: `codigo local` + `testes locais` + `build local` + `lint local`.

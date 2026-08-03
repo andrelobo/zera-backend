@@ -211,4 +211,41 @@ export class SefinMtlsHttp {
       });
     }
   }
+
+  async registrarEvento(input: { chave: string; body: string; cert: DpsCertMaterialPem }): Promise<{
+    status: number;
+    headers: Record<string, string | string[] | undefined>;
+    text: string;
+    json?: any;
+  }> {
+    return this.request({
+      method: 'POST',
+      path: `/nfse/${input.chave}/eventos`,
+      cert: input.cert,
+      body: input.body,
+      contentType: 'application/xml',
+    });
+  }
+
+  async consultarEventos(input: {
+    chave: string;
+    cert: DpsCertMaterialPem;
+    tipoEvento?: string;
+    numSeqEvento?: string;
+  }): Promise<{
+    status: number;
+    headers: Record<string, string | string[] | undefined>;
+    text: string;
+    json?: any;
+  }> {
+    const suffix = [input.tipoEvento, input.numSeqEvento]
+      .filter((part): part is string => Boolean(part))
+      .map((part) => encodeURIComponent(part))
+      .join('/');
+    return this.request({
+      method: 'GET',
+      path: `/nfse/${input.chave}/eventos${suffix ? `/${suffix}` : ''}`,
+      cert: input.cert,
+    });
+  }
 }

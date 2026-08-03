@@ -56,27 +56,40 @@ export function extractDpsId(dpsXml: string): string {
   return match[1];
 }
 
-export function signDps(dpsXml: string, keyAndCert: DpsCertMaterialPem): string {
-  const id = extractDpsId(dpsXml);
+export function signXmlElement(input: {
+  xml: string;
+  id: string;
+  localName: string;
+  keyAndCert: DpsCertMaterialPem;
+}): string {
   const signedXml = new SignedXml({
-    privateKey: keyAndCert.privateKeyPem,
-    publicCert: keyAndCert.certificatePem,
+    privateKey: input.keyAndCert.privateKeyPem,
+    publicCert: input.keyAndCert.certificatePem,
     canonicalizationAlgorithm: DSIG_C14N,
     signatureAlgorithm: DSIG_RSA_SHA256,
     getKeyInfoContent: SignedXml.getKeyInfoContent,
   });
 
   signedXml.addReference({
-    xpath: "//*[local-name()='infDPS']",
+    xpath: `//*[local-name()='${input.localName}']`,
     transforms: [DSIG_ENVELOPED, DSIG_C14N],
     digestAlgorithm: DSIG_SHA256,
-    uri: `#${id}`,
+    uri: `#${input.id}`,
   });
 
-  signedXml.computeSignature(dpsXml, {
+  signedXml.computeSignature(input.xml, {
     location: { reference: '/*', action: 'append' },
     prefix: 'ds',
   });
 
   return signedXml.getSignedXml();
+}
+
+export function signDps(dpsXml: string, keyAndCert: DpsCertMaterialPem): string {
+  return signXmlElement({
+    xml: dpsXml,
+    id: extractDpsId(dpsXml),
+    localName: 'infDPS',
+    keyAndCert,
+  });
 }

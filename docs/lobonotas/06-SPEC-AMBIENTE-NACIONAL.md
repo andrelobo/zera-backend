@@ -207,8 +207,16 @@ Linha Manaus (1302603) na tabela oficial de municípios aderentes (gov.br, atual
 
 **Ainda pendentes (`[PENDENTE]`):**
 - [ ] **Envelope real do `POST /nfse`** (XML puro vs JSON com DPS) e **tabela real de `cStat`** — confirmar com credencial piloto; por isso `SEFIN_NFSE_ENVELOPE` é configurável e o mapeador aceita ambos.
+- [ ] **Leiaute real do evento** (`pedRegEvento_v1.01.xsd`/`evento_v1.01.xsd` — campos exatos da parte específica `e101101`, formato do `@Id`, `nSeqEvento`/`nDFSe` obrigatórios) e **tabela real de `cStat` de eventos** — estrutura atual do `TCEvento` em `evento-builder.ts` é a interpretação documentada da §2.3/§2.4, a validar com credencial piloto.
 - [ ] Teste real de handshake mTLS contra Produção Restrita (certificado do piloto).
 - [ ] Confirmação do prestador piloto (candidata natural: **Burgus LTDA**, CNPJ `43521115000134` — prestador Manaus com certificado A1 real no fluxo PlugNotas atual).
+
+**Resolvidas no Slice 7 (03/08/2026) — cancelamento/eventos:**
+- ✅ `evento-builder.ts` implementa o pedido de registro do cancelamento (`e101101`) como **`TCEvento`** (§2.3): `infEvento` (`Id="e101101{chNFSe}"`, `verAplic`, `ambGer`=`tpAmb`, `nSeqEvento`, `dhProc` UTC, `nDFSe`) + `pedRegEvento`/`infPedReg` (`Id="pedRegEvento{chNFSe}"`, `tpAmb`, `verAplic`, `dhEvento`, `CNPJAutor`, `chNFSe`, `e101101` com `versao`+`xJust`) + `ds:Signature` enveloped sobre `infEvento` (mesma rotina c14n inclusiva/SHA-256 da DPS).
+- ✅ `SefinMtlsHttp.registrarEvento` (`POST /nfse/{chave}/eventos`, `application/xml`) e `consultarEventos` (`GET /nfse/{chave}/eventos[/{tipoEvento}[/{numSeq}]]`).
+- ✅ `LobonotasProvider.solicitarCancelamentoNfse`/`consultarSolicitacaoCancelamentoNfse` (removido `SEFIN_EVENTO_NOT_IMPLEMENTED`); mapeamento de `CANCELED` por eventos no `sefin-mapper`; stub SEFIN com API Eventos (cenários `NFS7..` cancelada / `NFS8..` inexistente / `NFS9..` não cancelável) + integração mTLS real.
+- ✅ **Decisão de mapeamento do "protocolo" de cancelamento (§6)**: como o Nacional não tem protocolo de cancelamento, `solicitarCancelamentoNfse` devolve **`protocol = chave de acesso`** (o `nProt` do evento fica na `providerResponse`). Assim `GET /nfse/cancelamento/:cancellationProtocol` consulta os eventos da chave.
+- ⏳ Leiaute real de `pedRegEvento_v1.01.xsd`/`evento_v1.01.xsd` e tabela real de `cStat` de eventos → `[PENDENTE]` (credencial piloto).
 
 ---
 
@@ -216,5 +224,5 @@ Linha Manaus (1302603) na tabela oficial de municípios aderentes (gov.br, atual
 
 - **Slice 3 (DPS)**: usar `TCInfDPS` + `TSIdDPS` (XSD 1.01) e assinar `DPS` (Signature **opcional** na DPS, mas a NFS-e gerada sempre vem assinada pela Sefin; no envio por WS o **evento/pedRegEvento** exige assinatura). Validação com os XSD arquivados. **Status: concluído** (builder + signer + validação XSD — doc 04 §Slice 3).
 - **Slice 4 (cliente)**: endpoints relativos de R2 (emissão/consulta/eventos) + ADN (R3); mTLS com certificado A1 do prestador; Produção Restrita em `*.producaorestrita.nfse.gov.br`. **Status: implementado em `fiscal/infra/sefin/*`** (cliente, config, mapper, provider, contador DPS, wiring `SEFIN_ENABLED`) — envelope real e tabela `cStat` permanecem `[PENDENTE]` até acesso com credencial piloto.
-- **Slice 7 (cancelamento/substituição)**: via **API Eventos** (`POST /nfse/{chave}/eventos`) com código `1 01 1 01` (cancelamento) e `1 05 1 02` (por substituição — gerado automaticamente no `POST /nfse` quando a DPS traz `subst/chSubstda`). Substituição é **nativa do padrão** (diferente do que se supunha no doc 04 §"Itens pendentes").
+- **Slice 7 (cancelamento/substituição)**: via **API Eventos** (`POST /nfse/{chave}/eventos`) com código `1 01 1 01` (cancelamento) e `1 05 1 02` (por substituição — gerado automaticamente no `POST /nfse` quando a DPS traz `subst/chSubstda`). **Status do cancelamento: implementado** (ver "Resolvidas no Slice 7" na §5); substituição é **nativa do padrão** e fica para um próximo passo (diferente do que se supunha no doc 04 §"Itens pendentes").
 - **Cancelamento legado vs Nacional**: o frontend expõe `POST /nfse/:id/cancelamento` e `GET /nfse/cancelamento/:cancellationProtocol` (doc 03 §1); no Nacional não há "protocolo de cancelamento" — o estado deriva dos **eventos** da chave de acesso (R5). Ponto de mapeamento a resolver no Slice 7.

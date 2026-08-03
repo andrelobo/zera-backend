@@ -4,7 +4,9 @@ import {
   NFSE_CHAVE_PATTERN,
   looksLikeDpsId,
   looksLikeNfseChave,
+  mapSefinEventoRegistroResponse,
   mapSefinNfseResponse,
+  parseEventosConsulta,
 } from './sefin-mapper';
 
 const CHAVE = `NFS${'1'.repeat(50)}`;
@@ -78,5 +80,53 @@ describe('sefin-mapper', () => {
     expect(looksLikeNfseChave(DPS_ID)).toBe(false);
     expect(looksLikeDpsId(DPS_ID)).toBe(true);
     expect(looksLikeDpsId(CHAVE)).toBe(false);
+  });
+
+  it('NFS-e com evento de cancelamento (e101101) vira CANCELED', () => {
+    const canceled = `<?xml version="1.0" encoding="UTF-8"?><NFSe xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01"><infNFSe Id="${CHAVE}"><cStat>100</cStat></infNFSe><eventos><evento><e101101><versao>1.01</versao><xJust>Cancelamento</xJust></e101101></evento></eventos></NFSe>`;
+    const parsed = mapSefinNfseResponse({ text: canceled });
+    expect(parsed.status).toBe(NfseEmissionStatus.CANCELED);
+  });
+
+  it('mapeia resposta de registro de evento (cStat/nProt/dhRecbto/tipo)', () => {
+    const ret =
+      `<retEvento xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">` +
+      `<cStat>100</cStat><xMotivo>Evento registrado</xMotivo><nProt>123456789012345</nProt>` +
+      `<dhRecbto>2026-08-03T12:00:00+00:00</dhRecbto><e101101><versao>1.01</versao><xJust>motivo</xJust></e101101></retEvento>`;
+
+    const parsed = mapSefinEventoRegistroResponse({ text: ret });
+
+    expect(parsed.cStat).toBe('100');
+    expect(parsed.xMotivo).toBe('Evento registrado');
+    expect(parsed.nProt).toBe('123456789012345');
+    expect(parsed.dhRecbto).toBe('2026-08-03T12:00:00+00:00');
+    expect(parsed.tipoEvento).toBe('e101101');
+  });
+
+  it('consulta de eventos sem cancelamento permanece sem status CANCELED', () => {
+    const consulta =
+      `<consultarEventos xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">` +
+      `<cStat>100</cStat><xMotivo>Sucesso</xMotivo><eventos></eventos></consultarEventos>`;
+
+    const result = parseEventosConsulta({ text: consulta });
+
+    expect(result.status).toBe(NfseEmissionStatus.PENDING);
+    expect(result.eventos).toHaveLength(0);
+  });
+
+  it('consulta de eventos com e101101 vira CANCELED e lista o evento', () => {
+    const consulta =
+      `<consultarEventos xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">` +
+      `<cStat>100</cStat><xMotivo>Sucesso</xMotivo><eventos>` +
+      `<evento><cStat>100</cStat><xMotivo>Cancelamento registrado</xMotivo><nProt>123456789012345</nProt>` +
+      `<dhRecbto>2026-08-03T12:00:00+00:00</dhRecbto><e101101><versao>1.01</versao><xJust>motivo</xJust></e101101></evento>` +
+      `</eventos></consultarEventos>`;
+
+    const result = parseEventosConsulta({ text: consulta });
+
+    expect(result.status).toBe(NfseEmissionStatus.CANCELED);
+    expect(result.eventos).toHaveLength(1);
+    expect(result.eventos[0].tipoEvento).toBe('e101101');
+    expect(result.eventos[0].nProt).toBe('123456789012345');
   });
 });

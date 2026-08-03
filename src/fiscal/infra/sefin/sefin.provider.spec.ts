@@ -58,6 +58,8 @@ describe('LobonotasProvider', () => {
 
   const http = {
     request: jest.fn(),
+    registrarEvento: jest.fn(),
+    consultarEventos: jest.fn(),
   } as unknown as SefinMtlsHttp;
 
   const repository = {
@@ -245,9 +247,98 @@ describe('LobonotasProvider', () => {
     expect(pdf.length).toBe(0);
   });
 
-  it('cancelamento lança SEFIN_EVENTO_NOT_IMPLEMENTED até o Slice 7', async () => {
-    await expect(
-      provider.solicitarCancelamentoNfse(CHAVE, { codigo: '1', motivo: 'teste' }),
-    ).rejects.toMatchObject({ code: 'SEFIN_EVENTO_NOT_IMPLEMENTED' });
+  it('solicita cancelamento registrando evento e101101 assinado e devolve protocolo = chave', async () => {
+    const retEvento =
+      `<retEvento xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">` +
+      `<cStat>100</cStat><xMotivo>Evento registrado</xMotivo><nProt>123456789012345</nProt>` +
+      `<dhRecbto>2026-08-03T12:00:00+00:00</dhRecbto><e101101><versao>1.01</versao><xJust>teste</xJust></e101101></retEvento>`;
+    (http.registrarEvento as jest.Mock).mockResolvedValue(xmlResponse(retEvento));
+
+    const result = await provider.solicitarCancelamentoNfse(CHAVE, {
+      codigo: '1',
+      motivo: 'teste',
+    });
+
+    const call = (http.registrarEvento as jest.Mock).mock.calls[0][0];
+    expect(call.chave).toBe(CHAVE);
+    expect(call.body).toContain('<e101101>');
+    expect(call.body).toContain('<ds:Signature');
+    expect(call.body).toContain(`<chNFSe>${'1'.repeat(50)}</chNFSe>`);
+    expect(call.cert.certificatePem).toContain('CERTIFICATE');
+
+    expect(result.protocol).toBe(CHAVE);
+    expect(result.providerResponse).toEqual(
+      expect.objectContaining({
+        chaveAcesso: CHAVE,
+        nProt: '123456789012345',
+        cStat: '100',
+        aceito: true,
+      }),
+    );
+  });
+
+  it('cancelamento rejeitado (cStat 600) devolve protocol=null e status REJECTED', async () => {
+    const reject =
+      `<retEvento xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">` +
+      `<cStat>600</cStat><xMotivo>Cancelamento não permitido</xMotivo></retEvento>`;
+    (http.registrarEvento as jest.Mock).mockRejectedValue({
+      code: 'SEFIN_HTTP_ERROR',
+      status: 400,
+      message: 'Sefin API error: 400',
+      body: reject,
+    });
+
+    const result = await provider.solicitarCancelamentoNfse(CHAVE, { codigo: '9', motivo: 'x' });
+
+    expect(result.protocol).toBeNull();
+    expect(result.providerResponse).toEqual(
+      expect.objectContaining({
+        cStat: '600',
+        aceito: false,
+        status: NfseEmissionStatus.REJECTED,
+      }),
+    );
+  });
+
+  it('cancelamento de NFS-e inexistente (404) devolve notFound sem lançar', async () => {
+    (http.registrarEvento as jest.Mock).mockRejectedValue({
+      code: 'SEFIN_HTTP_ERROR',
+      status: 404,
+      message: 'Sefin API error: 404',
+    });
+
+    const result = await provider.solicitarCancelamentoNfse(CHAVE);
+
+    expect(result.protocol).toBeNull();
+    expect(result.providerResponse.notFound).toBe(true);
+  });
+
+  it('consulta cancelamento via eventos: evento e101101 registrado vira CANCELED', async () => {
+    const consulta =
+      `<consultarEventos xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">` +
+      `<cStat>100</cStat><xMotivo>Sucesso</xMotivo><eventos>` +
+      `<evento><cStat>100</cStat><xMotivo>Cancelamento registrado</xMotivo><nProt>123456789012345</nProt>` +
+      `<dhRecbto>2026-08-03T12:00:00+00:00</dhRecbto><e101101><versao>1.01</versao><xJust>x</xJust></e101101></evento>` +
+      `</eventos></consultarEventos>`;
+    (http.consultarEventos as jest.Mock).mockResolvedValue(xmlResponse(consulta));
+
+    const { status, providerResponse } = await provider.consultarSolicitacaoCancelamentoNfse(CHAVE);
+
+    expect(http.consultarEventos).toHaveBeenCalledWith(expect.objectContaining({ chave: CHAVE }));
+    expect(status).toBe(NfseEmissionStatus.CANCELED);
+    expect(providerResponse.eventos[0].tipoEvento).toBe('e101101');
+  });
+
+  it('consulta cancelamento com 404 retorna status undefined e notFound', async () => {
+    (http.consultarEventos as jest.Mock).mockRejectedValue({
+      code: 'SEFIN_HTTP_ERROR',
+      status: 404,
+      message: 'Sefin API error: 404',
+    });
+
+    const { status, providerResponse } = await provider.consultarSolicitacaoCancelamentoNfse(CHAVE);
+
+    expect(status).toBeUndefined();
+    expect(providerResponse.notFound).toBe(true);
   });
 });

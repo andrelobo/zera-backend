@@ -7,10 +7,13 @@ import type { EmitirNfseResult } from '../../domain/types/emitir-nfse.result';
 import { NfseEmissionRepository } from '../mongo/repositories/nfse-emission.repository';
 import { buildDps, type DpsBuilderOptions } from './dps-builder';
 import { extractDpsId, extractKeyAndCert, signDps, type DpsCertMaterialPem } from './dps-signer';
+import { EVENTO_CANCELAMENTO_TAG, buildPedidoCancelamentoAssinado } from './evento-builder';
 import {
   looksLikeDpsId,
   looksLikeNfseChave,
+  mapSefinEventoRegistroResponse,
   mapSefinNfseResponse,
+  parseEventosConsulta,
   type SefinNfseParsed,
 } from './sefin-mapper';
 import { SefinMtlsHttp } from './sefin-mtls.http';
@@ -50,6 +53,15 @@ export class LobonotasProvider implements FiscalProvider {
   }
 
   private async requireCertForEmission(externalId: string): Promise<DpsCertMaterialPem> {
+    const { cert } = await this.resolverMaterialEmitente(externalId);
+    return cert;
+  }
+
+  private async resolverMaterialEmitente(externalId: string): Promise<{
+    cert: DpsCertMaterialPem;
+    cnpj?: string;
+    nDFSe?: string;
+  }> {
     const emission = await this.repository.findByExternalId(externalId);
     const cnpj = emission?.empresaCnpj;
     const material = cnpj ? await this.empresasService.obterMaterialCertificado(cnpj) : null;
@@ -61,7 +73,12 @@ export class LobonotasProvider implements FiscalProvider {
       );
     }
     try {
-      return extractKeyAndCert(material);
+      const providerResponse = (emission?.providerResponse ?? {}) as Record<string, any>;
+      return {
+        cert: extractKeyAndCert(material),
+        cnpj,
+        nDFSe: typeof providerResponse.nDFSe === 'string' ? providerResponse.nDFSe : undefined,
+      };
     } catch (error) {
       return this.throwError(
         'SEFIN_CERT_PARSE_FAILED',
@@ -293,21 +310,104 @@ export class LobonotasProvider implements FiscalProvider {
     idNota: string,
     input?: { codigo?: string; motivo?: string },
   ): Promise<{ protocol: string | null; providerResponse: any }> {
-    return this.throwError(
-      'SEFIN_EVENTO_NOT_IMPLEMENTED',
-      'Cancelamento no Ambiente Nacional será via API Eventos (POST /nfse/{chave}/eventos) no Slice 7',
-      { idNota, codigo: input?.codigo, motivo: input?.motivo },
+    const { cert, cnpj, nDFSe } = await this.resolverMaterialEmitente(idNota);
+    const chave = await this.resolveChaveAcesso(idNota, cert);
+    const cfg = getSefinConfig();
+
+    const motivo = input?.motivo?.trim() || 'Cancelamento a pedido do Prestador';
+    const eventoXml = buildPedidoCancelamentoAssinado(
+      {
+        chave,
+        motivo,
+        tpAmb: cfg.tpAmb,
+        verAplic: cfg.verAplic,
+        cnpjAutor: cnpj,
+        nDFSe,
+      },
+      cert,
     );
+
+    this.logger.log('Solicitando cancelamento via API Eventos (Ambiente Nacional)', {
+      chave,
+      evento: EVENTO_CANCELAMENTO_TAG,
+      ambiente: cfg.environment,
+    });
+
+    let response;
+    try {
+      response = await this.http.registrarEvento({ chave, body: eventoXml, cert });
+    } catch (error: any) {
+      if (error?.status === 404) {
+        return {
+          protocol: null,
+          providerResponse: { chaveAcesso: chave, notFound: true },
+        };
+      }
+      const parsed = mapSefinEventoRegistroResponse({
+        text: typeof error?.body === 'string' ? error.body : '',
+        json: error?.body,
+      });
+      if (parsed.cStat || parsed.xMotivo) {
+        const aceito = parsed.cStat ? /^[12]\d{2}$/.test(parsed.cStat) : false;
+        return {
+          protocol: aceito ? chave : null,
+          providerResponse: {
+            ...parsed,
+            chaveAcesso: chave,
+            protocol: aceito ? chave : null,
+            aceito,
+            status: aceito ? NfseEmissionStatus.AUTHORIZED : NfseEmissionStatus.REJECTED,
+          },
+        };
+      }
+      throw error;
+    }
+
+    const parsed = mapSefinEventoRegistroResponse({ text: response.text, json: response.json });
+    const aceito = parsed.cStat ? /^[12]\d{2}$/.test(parsed.cStat) : false;
+
+    return {
+      protocol: aceito ? chave : null,
+      providerResponse: {
+        ...parsed,
+        chaveAcesso: chave,
+        protocol: aceito ? chave : null,
+        aceito,
+      },
+    };
   }
 
   async consultarSolicitacaoCancelamentoNfse(cancellationProtocol: string): Promise<{
     status: string | undefined;
     providerResponse: any;
   }> {
-    return this.throwError(
-      'SEFIN_EVENTO_NOT_IMPLEMENTED',
-      'Consulta de cancelamento no Ambiente Nacional será via API Eventos (GET /nfse/{chave}/eventos) no Slice 7',
-      { cancellationProtocol },
-    );
+    const cert = await this.requireCertForEmission(cancellationProtocol);
+    const chave = await this.resolveChaveAcesso(cancellationProtocol, cert);
+
+    let response;
+    try {
+      response = await this.http.consultarEventos({ chave, cert });
+    } catch (error: any) {
+      if (error?.status === 404) {
+        return {
+          status: undefined,
+          providerResponse: { chaveAcesso: chave, notFound: true },
+        };
+      }
+      throw error;
+    }
+
+    const consulta = parseEventosConsulta({ text: response.text, json: response.json });
+
+    return {
+      status: consulta.status,
+      providerResponse: {
+        chaveAcesso: chave,
+        cStat: consulta.cStat,
+        xMotivo: consulta.xMotivo,
+        eventos: consulta.eventos,
+        xml: consulta.xml,
+      },
+    };
   }
 }

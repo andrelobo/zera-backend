@@ -1,8 +1,19 @@
 import { NfseEmissionStatus } from '../../domain/types/nfse-emission-status';
-import { extractElementId, extractIntTag, extractTag, hasElement } from './sefin-xml';
+import {
+  extractAllTags,
+  extractElementId,
+  extractIntTag,
+  extractTag,
+  hasElement,
+} from './sefin-xml';
 
 export const NFSE_CHAVE_PATTERN = /^NFS[0-9]{50}$/;
 export const DPS_ID_PATTERN = /^DPS[0-9]{42}$/;
+export const EVENTO_TAG_PATTERN = /^e\d{6}$/;
+export const EVENTO_CANCELAMENTO_TAGS = ['e101101', 'e105102'];
+export const EVENTO_CANCELAMENTO_TAG_REGEX = new RegExp(
+  `\\b(?:${EVENTO_CANCELAMENTO_TAGS.join('|')}|evCancelamento)\\b`,
+);
 
 export type SefinNfseParsed = {
   status: NfseEmissionStatus;
@@ -12,6 +23,23 @@ export type SefinNfseParsed = {
   dhProc?: string;
   nDFSe?: string;
   nNFSe?: string;
+  xml?: string;
+};
+
+export type SefinEventoRegistrado = {
+  tipoEvento?: string;
+  cStat?: string;
+  xMotivo?: string;
+  nProt?: string;
+  dhRecbto?: string;
+  xml?: string;
+};
+
+export type SefinEventoConsulta = {
+  status: NfseEmissionStatus;
+  eventos: SefinEventoRegistrado[];
+  cStat?: string;
+  xMotivo?: string;
   xml?: string;
 };
 
@@ -96,7 +124,9 @@ function extractEmbeddedXml(json: any): string | undefined {
 
 function parseXml(xml: string): SefinNfseParsed {
   const parsed: SefinNfseParsed = { status: NfseEmissionStatus.PENDING };
-  if (hasElement(xml, 'infNFSe')) {
+  if (EVENTO_CANCELAMENTO_TAG_REGEX.test(xml)) {
+    parsed.status = NfseEmissionStatus.CANCELED;
+  } else if (hasElement(xml, 'infNFSe')) {
     parsed.status = NfseEmissionStatus.AUTHORIZED;
   }
   parsed.cStat = extractIntTag(xml, 'cStat');
@@ -109,7 +139,7 @@ function parseXml(xml: string): SefinNfseParsed {
 }
 
 function inferStatus(parsed: SefinNfseParsed): NfseEmissionStatus {
-  if (parsed.status === NfseEmissionStatus.AUTHORIZED) return parsed.status;
+  if (parsed.status !== NfseEmissionStatus.PENDING) return parsed.status;
 
   const cStat = parsed.cStat;
   if (cStat) {
@@ -155,4 +185,76 @@ export function looksLikeNfseChave(value: string): boolean {
 
 export function looksLikeDpsId(value: string): boolean {
   return DPS_ID_PATTERN.test(value);
+}
+
+function detectEventoTipo(xml: string): string | undefined {
+  const match = /<[\w:]*\b(e\d{6})[\s>]/.exec(xml);
+  return match?.[1] ?? undefined;
+}
+
+export function mapSefinEventoRegistroResponse(input: {
+  text: string;
+  json?: any;
+}): SefinEventoRegistrado {
+  const embedded = extractEmbeddedXml(input.json);
+  const xml = embedded ?? input.text;
+  const parsed: SefinEventoRegistrado = {};
+
+  if (xml?.trim()) {
+    parsed.tipoEvento = detectEventoTipo(xml);
+    parsed.cStat = extractIntTag(xml, 'cStat');
+    parsed.xMotivo = extractTag(xml, 'xMotivo');
+    parsed.nProt = extractTag(xml, 'nProt');
+    parsed.dhRecbto = extractTag(xml, 'dhRecbto');
+    parsed.xml = xml;
+  }
+
+  if (input.json && typeof input.json === 'object') {
+    parsed.cStat = numericCStat(input.json.cStat) ?? numericCStat(input.json.cstat) ?? parsed.cStat;
+    parsed.xMotivo = input.json.xMotivo ?? input.json.motivo ?? parsed.xMotivo;
+    parsed.nProt = input.json.nProt ?? parsed.nProt;
+    parsed.dhRecbto = input.json.dhRecbto ?? input.json.dhProc ?? parsed.dhRecbto;
+  }
+
+  return parsed;
+}
+
+export function parseEventosConsulta(input: { text: string; json?: any }): SefinEventoConsulta {
+  const embedded = extractEmbeddedXml(input.json);
+  const xml = embedded ?? input.text;
+  const result: SefinEventoConsulta = { status: NfseEmissionStatus.PENDING, eventos: [] };
+
+  if (!xml?.trim()) return result;
+  result.xml = xml;
+  result.cStat = extractIntTag(xml, 'cStat');
+  result.xMotivo = extractTag(xml, 'xMotivo');
+
+  for (const bloco of extractAllTags(xml, 'evento')) {
+    result.eventos.push({
+      tipoEvento: detectEventoTipo(bloco),
+      cStat: extractIntTag(bloco, 'cStat'),
+      xMotivo: extractTag(bloco, 'xMotivo'),
+      nProt: extractTag(bloco, 'nProt'),
+      dhRecbto: extractTag(bloco, 'dhRecbto'),
+    });
+  }
+
+  if (EVENTO_CANCELAMENTO_TAG_REGEX.test(xml)) {
+    result.status = NfseEmissionStatus.CANCELED;
+  } else if (hasElement(xml, 'infNFSe')) {
+    result.status = NfseEmissionStatus.AUTHORIZED;
+  }
+
+  const temCancelamento = result.eventos.some(
+    (evento) => evento.tipoEvento === 'e101101' || evento.tipoEvento === 'e105102',
+  );
+  if (temCancelamento) result.status = NfseEmissionStatus.CANCELED;
+
+  if (input.json && typeof input.json === 'object') {
+    const statusLabel = findDeepStringValue(input.json, JSON_STATUS_KEYS);
+    const mapped = statusLabel ? JSON_STATUS_TO_DOMAIN[statusLabel.toUpperCase()] : undefined;
+    if (mapped) result.status = mapped;
+  }
+
+  return result;
 }

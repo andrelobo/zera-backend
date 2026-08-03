@@ -5,10 +5,14 @@ import { NfseEmissionStatus } from '../../domain/types/nfse-emission-status';
 import { createTestPki, toPem } from '../../test-fixtures/test-cert';
 import { SefinStubServer } from '../../test-fixtures/sefin-stub-server';
 import { NfseEmissionRepository } from '../mongo/repositories/nfse-emission.repository';
+import { buildPedidoCancelamentoAssinado } from './evento-builder';
 import { SefinMtlsHttp } from './sefin-mtls.http';
 import { LobonotasProvider } from './sefin.provider';
 
 const CHAVE = `NFS${'1'.repeat(50)}`;
+const CHAVE_CANCELADA = `NFS${'7'.repeat(50)}`;
+const CHAVE_INEXISTENTE = `NFS${'8'.repeat(50)}`;
+const CHAVE_NAO_CANCELAVEL = `NFS${'9'.repeat(50)}`;
 
 describe('SefinMtlsHttp real mTLS contra stub SEFIN local (Ambiente Nacional simulado)', () => {
   const pki = createTestPki();
@@ -114,6 +118,71 @@ describe('SefinMtlsHttp real mTLS contra stub SEFIN local (Ambiente Nacional sim
     await expect(
       http.request({ method: 'GET', path: '/dps/inexistente', cert: clientPem }),
     ).rejects.toMatchObject({ code: 'SEFIN_CERT_VERIFY_FAILED' });
+  });
+
+  it('POST /nfse/{chave}/eventos registra evento e101101 via mTLS real', async () => {
+    const eventoXml = buildPedidoCancelamentoAssinado(
+      {
+        chave: CHAVE,
+        motivo: 'Cancelamento a pedido do Prestador',
+        tpAmb: '2',
+        verAplic: 'ZERA-1.0',
+      },
+      toPem(pki.clientPfx),
+    );
+
+    const response = await http.registrarEvento({ chave: CHAVE, body: eventoXml, cert: clientPem });
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('<cStat>100</cStat>');
+    expect(response.text).toContain('<nProt>');
+    expect(response.text).toContain('<e101101>');
+
+    const post = stub.requests.find(
+      (r) => r.method === 'POST' && r.path === `/nfse/${CHAVE}/eventos`,
+    );
+    expect(post).toBeDefined();
+    expect(post?.body).toContain('<ds:Signature');
+    expect(post?.clientCertCn).toBe('ZERA SEFIN TESTE');
+  });
+
+  it('GET /nfse/{chave}/eventos devolve o evento e101101 registrado', async () => {
+    await http.registrarEvento({
+      chave: CHAVE,
+      body: buildPedidoCancelamentoAssinado(
+        { chave: CHAVE, motivo: 'Cancelamento a pedido do Prestador' },
+        toPem(pki.clientPfx),
+      ),
+      cert: clientPem,
+    });
+
+    const response = await http.consultarEventos({ chave: CHAVE, cert: clientPem });
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('<e101101>');
+    expect(response.text).toContain('<nProt>');
+  });
+
+  it('GET eventos de NFS-e já cancelada (NFS7..) devolve e101101', async () => {
+    const response = await http.consultarEventos({ chave: CHAVE_CANCELADA, cert: clientPem });
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('<e101101>');
+  });
+
+  it('POST evento de NFS-e inexistente (NFS8..) retorna 404', async () => {
+    await expect(
+      http.registrarEvento({ chave: CHAVE_INEXISTENTE, body: '<pedRegEvento/>', cert: clientPem }),
+    ).rejects.toMatchObject({ code: 'SEFIN_HTTP_ERROR', status: 404 });
+  });
+
+  it('POST evento de NFS-e não cancelável (NFS9..) retorna 400 com cStat 600', async () => {
+    await expect(
+      http.registrarEvento({
+        chave: CHAVE_NAO_CANCELAVEL,
+        body: '<pedRegEvento/>',
+        cert: clientPem,
+      }),
+    ).rejects.toMatchObject({ code: 'SEFIN_HTTP_ERROR', status: 400 });
   });
 });
 
@@ -241,5 +310,50 @@ describe('LobonotasProvider ponta a ponta via mTLS real (stub SEFIN)', () => {
     const paths = stub.requests.filter((r) => r.method === 'GET').map((r) => r.path);
     expect(paths).toContain(`/dps/${dpsId}`);
     expect(paths).toContain(`/nfse/${CHAVE}`);
+  });
+
+  it('solicita cancelamento ponta a ponta: evento assinado + protocolo = chave', async () => {
+    const result = await provider.solicitarCancelamentoNfse(CHAVE, {
+      codigo: '1',
+      motivo: 'Cancelamento a pedido do Prestador',
+    });
+
+    expect(result.protocol).toBe(CHAVE);
+    expect(result.providerResponse.aceito).toBe(true);
+    expect(result.providerResponse.cStat).toBe('100');
+    expect(result.providerResponse.nProt).toMatch(/^\d{15}$/);
+
+    const post = stub.requests.find(
+      (r) => r.method === 'POST' && r.path === `/nfse/${CHAVE}/eventos`,
+    );
+    expect(post?.body).toContain('<ds:Signature');
+    expect(post?.clientCertCn).toBe('ZERA SEFIN TESTE');
+  });
+
+  it('consulta cancelamento ponta a ponta devolve CANCELED após registrar evento', async () => {
+    await provider.solicitarCancelamentoNfse(CHAVE, { codigo: '1', motivo: 'x' });
+
+    const { status, providerResponse } = await provider.consultarSolicitacaoCancelamentoNfse(CHAVE);
+
+    expect(status).toBe(NfseEmissionStatus.CANCELED);
+    expect(providerResponse.chaveAcesso).toBe(CHAVE);
+    expect(providerResponse.eventos[0].tipoEvento).toBe('e101101');
+  });
+
+  it('consulta NFS-e já cancelada (NFS7..) devolve CANCELED', async () => {
+    const { status, providerResponse } = await provider.consultarNfse(CHAVE_CANCELADA);
+    expect(status).toBe(NfseEmissionStatus.CANCELED);
+    expect(providerResponse.chaveAcesso).toBe(CHAVE_CANCELADA);
+  });
+
+  it('cancelamento de NFS-e não cancelável (NFS9..) devolve protocol=null sem lançar', async () => {
+    const result = await provider.solicitarCancelamentoNfse(CHAVE_NAO_CANCELAVEL, {
+      codigo: '9',
+      motivo: 'x',
+    });
+    expect(result.protocol).toBeNull();
+    expect(result.providerResponse).toEqual(
+      expect.objectContaining({ cStat: '600', aceito: false }),
+    );
   });
 });

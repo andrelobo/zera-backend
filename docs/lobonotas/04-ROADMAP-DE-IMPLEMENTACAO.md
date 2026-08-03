@@ -2,7 +2,7 @@
 
 > Sequência de slices para substituir o PlugNotas pelo LOBONOTAS (NFS-e Padrão Nacional) mantendo a API e as capacidades existentes.
 > Cada slice: objetivo, arquivos-alvo, testes, aceite, riscos, dependências, observações e rollback.
-> Status geral (03/08/2026): **Slice 0 IMPLEMENTADO; Slice 1 IMPLEMENTADO; Slice 2 EM ANDAMENTO** (pesquisa oficial coletada em doc 06; falta review do owner e validação das pendências da doc 06 §5); **Slice 3 IMPLEMENTADO** (DPS builder+signer, XSD oficial); **Slice 4 PARCIALMENTE IMPLEMENTADO** (cliente mTLS/provider prontos; envelope real e tabela `cStat` dependem de credencial piloto); **Slice 5 IMPLEMENTADO** (resolver + allowlist piloto + kill switch + fail-closed; roteamento por CNPJ ligado em emissão/polling/sync-artifacts; **sub-slice de segurança concluído: material do certificado A1 cifrado em repouso com AES-256-GCM**, mesma rotina da senha, leitura compatível com certificados legados; **harness local do ciclo webhook LOBONOTAS concluído** — `webhooks-lobonotas.integration.spec.ts` — e **stub SEFIN com mTLS real concluído** — `sefin-stub.integration.spec.ts` + `sefin-stub-server.ts`, 234 testes/34 suítes; webhook LOBONOTAS real depende do contrato do Ambiente Nacional — Slice 6); Slice 6–9 PROPOSTOS.
+> Status geral (03/08/2026): **Slice 0 IMPLEMENTADO; Slice 1 IMPLEMENTADO; Slice 2 EM ANDAMENTO** (pesquisa oficial coletada em doc 06; falta review do owner e validação das pendências da doc 06 §5); **Slice 3 IMPLEMENTADO** (DPS builder+signer, XSD oficial); **Slice 4 PARCIALMENTE IMPLEMENTADO** (cliente mTLS/provider prontos; envelope real e tabela `cStat` dependem de credencial piloto); **Slice 5 IMPLEMENTADO** (resolver + allowlist piloto + kill switch + fail-closed; roteamento por CNPJ ligado em emissão/polling/sync-artifacts; **sub-slice de segurança concluído: material do certificado A1 cifrado em repouso com AES-256-GCM**, mesma rotina da senha, leitura compatível com certificados legados; **harness local do ciclo webhook LOBONOTAS concluído** — `webhooks-lobonotas.integration.spec.ts` — e **stub SEFIN com mTLS real concluído** — `sefin-stub.integration.spec.ts` + `sefin-stub-server.ts`, 234 testes/34 suítes; webhook LOBONOTAS real depende do contrato do Ambiente Nacional — Slice 6); **Slice 6 BLOQUEADO** (contrato real do webhook do Ambiente Nacional depende de credencial piloto); **Slice 7 PARCIALMENTE IMPLEMENTADO** (cancelamento via API Eventos do Ambiente Nacional: `evento-builder.ts` com `TCEvento`/`e101101` assinado, `SefinMtlsHttp.registrarEvento`/`consultarEventos`, `solicitarCancelamentoNfse`/`consultarSolicitacaoCancelamentoNfse` no provider com `protocol = chave de acesso`, mapeamento `CANCELED` por eventos no `sefin-mapper`, rotas de eventos no stub mTLS, 256 testes/35 suítes; **DANFSE e baixarXml do Nacional seguem `[PENDENTE]`** — PDF/DANFSE continua vazio — e a validação do leiaute real do `pedRegEvento`/`evento` XSD depende de credencial piloto); Slice 8–9 PROPOSTOS.
 
 ---
 
@@ -108,7 +108,7 @@
   4. ✅ `SefinNfseProvider` implementando `FiscalProvider` (`emitirNfse`, `consultarNfse`, `baixarXmlNfse`, `baixarPdfNfse` stub) — `fiscal/infra/sefin/sefin.provider.ts`.
   5. ✅ Contador atômico de DPS na `Empresa` (`dpsContador`/`dpsSerieContador`) via `findOneAndUpdate` com rollover de série — `EmpresasService.reservarNumeracaoDps`.
   6. ✅ Wiring atrás de flag `SEFIN_ENABLED=false` (default) com PlugNotas como provider ativo — `fiscal.module.ts`.
-  7. ⏳ Endpoints de evento/cancelamento → Slice 7 (`SEFIN_EVENTO_NOT_IMPLEMENTED`).
+  7. ✅ Endpoints de evento/cancelamento implementados no Slice 7 — `evento-builder.ts` (TCEvento/e101101 assinado), `SefinMtlsHttp.registrarEvento`/`consultarEventos`, `solicitarCancelamentoNfse`/`consultarSolicitacaoCancelamentoNfse` no provider, roteiro de eventos no stub (mTLS real). Validação do leiaute real do `pedRegEvento_v1.01.xsd`/`evento_v1.01.xsd` fica `[PENDENTE]` (credencial piloto).
   8. ⏳ Envelope real do `POST /nfse` e tabela `cStat` → `[PENDENTE]` até acesso com credencial piloto.
 - **Arquivos-alvo**: `fiscal/infra/sefin/*` (implementado) — nomenclatura `sefin` no lugar de `lobonotas`.
 - **Testes**: ✅ unit verdes (config, mapper, cliente mTLS, provider, contador); fixtures de resposta oficial aguardam credencial piloto.
@@ -163,6 +163,22 @@
 - **Riscos**: alto (autoridade fiscal real); mitigado por Produção Restrita e sem fallback.
 - **Dependências**: Slice 5.
 - **Rollback**: kill switch → PlugNotas (não reenvia emissões já transmitidas — reconciliação manual).
+
+---
+
+## Slice 7 — cancelamento/eventos (sub-slice implementado em 03/08/2026)
+
+> Escopo acordado com o owner: **cancelamento via evento `1 01 1 01` (e101101), consulta de eventos e estado `CANCELED`**, além do mapeamento dos endpoints legados (`POST :id/cancelamento`, `GET cancelamento/:protocol`). **DANFSE, baixarXml do Nacional e substituição ficam para depois** (DANFSE segue `[PENDENTE]`; substituição é nativa do padrão — ver §6 do doc 06).
+
+- **O que foi implementado**:
+  1. ✅ Assinatura XML generalizada — `dps-signer.ts` agora expõe `signXmlElement` (reuso da rotina enveloped/c14n inclusiva/SHA-256 usada na DPS) e `signDps` delega a ela.
+  2. ✅ Builder do pedido de registro de evento — `fiscal/infra/sefin/evento-builder.ts`: `buildPedidoCancelamento`/`buildPedidoCancelamentoAssinado` geram o **`TCEvento`** (doc 06 §2.3): `infEvento` (`Id="e101101{chNFSe}"`, `verAplic`, `ambGer`=`tpAmb`, `nSeqEvento`, `dhProc` UTC, `nDFSe`) + `pedRegEvento`/`infPedReg` (`Id="pedRegEvento{chNFSe}"`, `tpAmb`, `verAplic`, `dhEvento`, `CNPJAutor`, `chNFSe`, `e101101` com `versao`+`xJust`) + `ds:Signature` enveloped sobre `infEvento`.
+  3. ✅ Cliente de eventos — `SefinMtlsHttp.registrarEvento` (`POST /nfse/{chave}/eventos`, `application/xml`) e `consultarEventos` (`GET /nfse/{chave}/eventos[/{tipoEvento}[/{numSeq}]]`) sobre o mTLS existente.
+  4. ✅ Provider — `LobonotasProvider.solicitarCancelamentoNfse` (resolve chave, monta/assina o evento com `CNPJAutor` e `nDFSe` da emissão, registra e devolve **`protocol = chave de acesso`** — não há "protocolo de cancelamento" no Nacional, o estado deriva dos eventos da chave, doc 06 §6 — com `aceito`/`nProt`/`cStat` na resposta) e `consultarSolicitacaoCancelamentoNfse` (consulta eventos da chave e mapeia `CANCELED` quando há `e101101`/`e105102`). Removido `SEFIN_EVENTO_NOT_IMPLEMENTED`.
+  5. ✅ Mapeador — `sefin-mapper.ts`: detecção de cancelamento (`e101101`/`e105102`/`evCancelamento`) ⇒ `CANCELED`, `mapSefinEventoRegistroResponse` (cStat/nProt/dhRecbto/tipo) e `parseEventosConsulta`; `sefin-xml.ts` ganhou `extractAllTags`.
+  6. ✅ Stub SEFIN com mTLS real — `sefin-stub-server.ts` agora expõe a API Eventos com cenários por chave (`NFS7..` cancelada, `NFS8..` inexistente → 404, `NFS9..` não cancelável → cStat 600) e `sefin-stub.integration.spec.ts` provou o fluxo ponta a ponta (assinatura presente, CN do cliente, protocolo, CANCELED).
+- **Testes**: ✅ suíte completa verde — **256 testes / 35 suítes** (`npm test -- --runInBand`), `npm run build`, `npm run lint` (0 erros; warnings pré-existentes `no-unsafe-*` aceitáveis).
+- **Pendências no sub-slice** (`[PENDENTE]`): leiaute real do `pedRegEvento_v1.01.xsd`/`evento_v1.01.xsd` e tabela real de `cStat` de eventos (validar com credencial piloto); **DANFSE/PDF** e **baixarXml do Nacional** fora do escopo deste passo.
 
 ---
 
