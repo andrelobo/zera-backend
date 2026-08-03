@@ -1,29 +1,9 @@
-import * as forge from 'node-forge';
-
 import { EmpresasService } from '../../../modules/empresas/empresas.service';
+import { createTestCert, toPem } from '../../test-fixtures/test-cert';
 import { NfseEmissionStatus } from '../../domain/types/nfse-emission-status';
 import { NfseEmissionRepository } from '../mongo/repositories/nfse-emission.repository';
 import { SefinMtlsHttp } from './sefin-mtls.http';
 import { LobonotasProvider } from './sefin.provider';
-
-function createTestCert(): { pfxBase64: string; password: string } {
-  const keys = forge.pki.rsa.generateKeyPair(2048);
-  const cert = forge.pki.createCertificate();
-  cert.publicKey = keys.publicKey;
-  cert.serialNumber = '01';
-  cert.validity.notBefore = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  cert.validity.notAfter = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
-  const attrs = [{ name: 'commonName', value: 'ZERA SEFIN TESTE' }];
-  cert.setSubject(attrs);
-  cert.setIssuer(attrs);
-  cert.sign(keys.privateKey, forge.md.sha256.create());
-
-  const asn1 = forge.pkcs12.toPkcs12Asn1(keys.privateKey, cert, 'zera-sefin', {
-    algorithm: '3des',
-  });
-  const der = forge.asn1.toDer(asn1).getBytes();
-  return { pfxBase64: Buffer.from(der, 'binary').toString('base64'), password: 'zera-sefin' };
-}
 
 const CHAVE = `NFS${'1'.repeat(50)}`;
 const DPS_ID = `DPS${'2'.repeat(42)}`;
@@ -68,8 +48,8 @@ function xmlResponse(text: string) {
 }
 
 describe('LobonotasProvider', () => {
-  const cert = createTestCert();
-  const material = { pfxBase64: cert.pfxBase64, password: cert.password };
+  const cert = toPem(createTestCert());
+  const material = createTestCert();
 
   const empresasService = {
     obterMaterialCertificado: jest.fn(),
