@@ -39,11 +39,13 @@ Validacao local:
 3. Fazer **uma unica** nova tentativa real via reemissao da origem `6a70eb85caa874f842b4a576` e acompanhar o correlationId nos logs.
 4. Se o `E1226` sumir, o proximo contrato real a diagnosticar sera o campo compactado de retorno da NFS-e autorizada.
 
-### Estado de repositorio/deploy
+### Estado de repositorio/deploy (04/08/2026 - codec em producao)
 
-- Branch local `feat/sefin-gzip-base64` no commit `2924849 feat(sefin): comprime DPS em GZip+Base64 no envelope JSON (E1226)`.
-- `main` backend permanece em `446a620 fix(sefin): envia DPS em envelope JSON` (deploy `30872158142`).
-- Nao cancelar a NFS-e 47 e nao reemitir antes do deploy do codec.
+- PR #4 (`feat/sefin-gzip-base64`, commit `2924849`) mergeado na `main` e deployado: GitHub Actions `Deploy Oracle VPS` run `30927612670` -> **success**.
+- Container `zera-backend-api` confirmado via SSH em 04/08/2026 16:11 UTC: **running + healthy**, criado apos o deploy, com `/app/dist/fiscal/infra/sefin/sefin-codec.js` contendo `xmlToGzipBase64`.
+- Variaveis SEFIN confirmadas no container: `SEFIN_BASE_URL=https://sefin.nfse.gov.br/SefinNacional`, `SEFIN_ENV=producao`, `SEFIN_TP_AMB=1`, `SEFIN_NFSE_ENVELOPE=json`.
+- Commit `5f7130d` (docs-only do CURRENT_STATE) na `main` sem novo deploy (workflow ignora `*.md`).
+- Proximo passo operacional: **uma unica** tentativa real via reemissao da origem `6a70eb85caa874f842b4a576`, acompanhando o correlationId nos logs. Nao cancelar a NFS-e 47.
 
 ## 0. Atualizacao rapida (03/08/2026) - reemissao segura de erro anterior a transmissao
 
