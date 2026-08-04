@@ -3,6 +3,18 @@
 > Leitura rapida operacional: veja `CURRENT_STATE.md` (snapshot atual).
 > Este documento (`CONTEXT.md`) permanece como historico completo e linha do tempo.
 
+## HANDOVER IMEDIATO (04/08/2026) - FIX ARTEFATOS XML/PDF DEPLOYADO; VALIDACAO REAL PENDENTE
+
+Leitura canonica detalhada: `CURRENT_STATE.md`, secao **RETOMAR DAQUI** (topo).
+
+- NFS-e real autorizada: PlugNotas 47 (`6a71420f451c04dbcc7a438c`) e SEFIN 48 (emissao `6a725cab7aa43f7ecdaaa64f`, chave `NFS13026032243521115000134000000000004826089378783140`). Manter ambas.
+- Diagnostico concluido: XML/PDF nao gerados por (1) chave com prefixo `NFS` nos paths (API exige 50 digitos -> E2406) e (2) download devolvendo envelope JSON `nfseXmlGZipB64` sem descomprimir.
+- Fix entregue (PR #11, commit `96f738f`): `toApiChave()` normaliza para 50 digitos nos paths de consulta/download/cancelamento; `baixarXmlNfse`/`baixarPdfNfse` extraem o XML do envelope via `mapSefinNfseResponse`; stub e specs atualizados para o contrato real.
+- Validacao local: **294 testes / 37 suites** verdes; build ok; lint 0 erros.
+- Deploy: PR #11 mergeado em `main` (`4ef20ec`); run `30954950657` -> **success**.
+- **Pendente**: apos o deploy o ambiente ficou inacessivel para login/uso; NAO testado ainda. Retomar com health/login -> `POST /nfse/6a725cab7aa43f7ecdaaa64f/sync-artifacts` (1 tentativa real por vez) -> confirmar `xmlBase64`/`pdfBase64` e `GET /nfse/:id/xml` e `/pdf`.
+- Nao usar PlugNotas em novas emissoes; LOBONOTAS (SEFIN Nacional) e o caminho de emissao.
+
 ## HANDOVER IMEDIATO (04/08/2026) - LOBONOTAS real pausado antes do codec GZip/Base64
 
 Leitura canonica detalhada: `CURRENT_STATE.md`, secao **RETOMAR DAQUI**.

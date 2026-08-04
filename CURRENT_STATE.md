@@ -2,6 +2,38 @@
 
 Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
 
+## 0. RETOMAR DAQUI (04/08/2026) - FIX ARTEFATOS XML/PDF DEPLOYADO; VALIDACAO REAL PENDENTE
+
+Fonte: `codigo local` + `testes locais` + `build local` + `lint local` + `reproducao real da API SEFIN Nacional` + `deploy GitHub Actions`.
+
+### Problema diagnosticado (XML/PDF nao gerados)
+
+- A emissao real `6a725cab7aa43f7ecdaaa64f` (NFS-e 48 autorizada) ficou sem `xmlBase64`/`pdfBase64` persistidos; `POST /nfse/:id/sync-artifacts` falhava com 500 (`artifactSyncAudit.outcome=failed`, `message="Sefin API error: 400"`).
+- **Causa raiz 1 (E2406)**: os paths usavam a chave com prefixo `NFS`, mas a API SEFIN Nacional exige **somente os 50 dígitos** — `GET /nfse/{50 digitos}` -> 200 OK; com `NFS...` -> 400 E2406 `"A chave de acesso consultada deve conter 50 números."` (reproduzido em 04/08 com o certificado real, password `12345678`).
+- **Causa raiz 2 (envelope)**: `baixarXmlNfse`/`baixarPdfNfse` devolviam o corpo cru (envelope JSON `{nfseXmlGZipB64}`) sem extrair/descomprimir o XML.
+- `gerarDanfsePdf` local com o XML real da NFS-e 48 funciona (PDF 10215 bytes); o problema nao era o gerador.
+
+### Correcao entregue (PR #11, commit `96f738f`)
+
+- `sefin.provider.ts`: novo `toApiChave()` remove o prefixo `NFS` e valida 50 digitos; aplicado nos paths de `consultarNfse`, `baixarXmlNfse`, `baixarPdfNfse`, `solicitarCancelamentoNfse` (via `registrarEvento`) e `consultarSolicitacaoCancelamentoNfse` (via `consultarEventos`).
+- `baixarXmlNfse`/`baixarPdfNfse`: extraem `parsed.xml` via `mapSefinNfseResponse` (ja descomprime `nfseXmlGZipB64`), com erro `SEFIN_XML_NAO_ENCONTRADO` se ausente.
+- Stub (`sefin-stub-server.ts`): cenario agora tolera chave sem prefixo no path (re-adiciona `NFS` no `Id` do XML).
+- Specs (`sefin.provider.spec.ts`, `sefin-stub.integration.spec.ts`): asserts de path atualizados para `CHAVE_API` (50 digitos).
+
+### Validacao e deploy (04/08/2026)
+
+- Suite completa: **294 testes / 37 suites verdes**; `npm run build` ok; `npm run lint` **0 erros** (236 warnings pre-existentes).
+- Branch `fix/sefin-chave-50-digit` -> PR #11 mergeado em `main` (`4ef20ec`).
+- Deploy `Deploy Oracle VPS` run `30954950657` (job `92145685109`) -> **success** em ~4min.
+
+### Pendente ao retomar
+
+- **Validacao real do sync**: apos o deploy o ambiente ficou inacessivel para login/uso — NAO testado ainda. Retomar com:
+  1. Confirmar health/login no ambiente (`136.248.90.172:3000` / domain); token via `POST /auth/login` `{email:"loboandre@hotmail.com", password:"Nhaca70x07@"}`.
+  2. Disparar `POST /nfse/6a725cab7aa43f7ecdaaa64f/sync-artifacts` (1 tentativa real por vez).
+  3. Confirmar `xmlBase64`/`pdfBase64` persistidos e `GET /nfse/:id/xml` e `/pdf` (DANFSe v2.0 local).
+- Regras do piloto mantidas: NAO cancelar NFS-e 47; UMA tentativa real por vez; NAO usar PlugNotas em novas emissoes.
+
 ## 0. RETOMAR DAQUI (04/08/2026) - PILOTO LOBONOTAS CONCLUIDO: NFS-e REAL AUTORIZADA (n 48)
 
 Fonte: `codigo local` + `testes locais` + `build local` + `lint local` + `resposta real da SEFIN Nacional` + manual oficial SN NFS-e + SDKs publicos do Ambiente Nacional.
