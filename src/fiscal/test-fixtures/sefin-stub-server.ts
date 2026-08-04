@@ -99,10 +99,16 @@ export class SefinStubServer {
   }
 
   private scenario(chave: string): 'cancelada' | 'inexistente' | 'naoCancelavel' | 'ok' {
-    if (/^NFS8+$/.test(chave)) return 'inexistente';
-    if (/^NFS9+$/.test(chave)) return 'naoCancelavel';
-    if (/^NFS7+$/.test(chave)) return 'cancelada';
+    const digits = chave.replace(/^NFS/, '');
+    if (/^8+$/.test(digits)) return 'inexistente';
+    if (/^9+$/.test(digits)) return 'naoCancelavel';
+    if (/^7+$/.test(digits)) return 'cancelada';
     return 'ok';
+  }
+
+  private static nfseId(chave: string): string {
+    const digits = chave.replace(/^NFS/, '');
+    return `NFS${digits}`;
   }
 
   private static nProt(chave: string): string {
@@ -272,10 +278,10 @@ export class SefinStubServer {
         return;
       }
       if (scenario === 'cancelada') {
-        this.send(res, 200, canceledNfseXml(chave), 'application/xml');
+        this.send(res, 200, canceledNfseXml(SefinStubServer.nfseId(chave)), 'application/xml');
         return;
       }
-      this.send(res, 200, authorizedNfseXml(chave), 'application/xml');
+      this.send(res, 200, authorizedNfseXml(SefinStubServer.nfseId(chave)), 'application/xml');
       return;
     }
 

@@ -106,6 +106,18 @@ export class LobonotasProvider implements FiscalProvider {
     }
   }
 
+  private toApiChave(chave: string): string {
+    const digits = chave.replace(/^NFS/, '');
+    if (!/^[0-9]{50}$/.test(digits)) {
+      return this.throwError(
+        'SEFIN_CHAVE_INVALIDA',
+        `Chave de acesso da NFS-e inválida: ${chave}`,
+        { chave },
+      );
+    }
+    return digits;
+  }
+
   private async resolveChaveAcesso(externalId: string, cert: DpsCertMaterialPem): Promise<string> {
     let chave = externalId;
     if (looksLikeDpsId(externalId)) {
@@ -276,7 +288,11 @@ export class LobonotasProvider implements FiscalProvider {
 
     let response;
     try {
-      response = await this.http.request({ method: 'GET', path: `/nfse/${chave}`, cert });
+      response = await this.http.request({
+        method: 'GET',
+        path: `/nfse/${this.toApiChave(chave)}`,
+        cert,
+      });
     } catch (error: any) {
       if (error?.status === 404) {
         return {
@@ -297,8 +313,20 @@ export class LobonotasProvider implements FiscalProvider {
   async baixarXmlNfse(externalId: string): Promise<Uint8Array> {
     const cert = await this.requireCertForEmission(externalId);
     const chave = await this.resolveChaveAcesso(externalId, cert);
-    const response = await this.http.request({ method: 'GET', path: `/nfse/${chave}`, cert });
-    return response.body;
+    const response = await this.http.request({
+      method: 'GET',
+      path: `/nfse/${this.toApiChave(chave)}`,
+      cert,
+    });
+    const parsed = mapSefinNfseResponse({ text: response.text, json: response.json });
+    if (!parsed.xml) {
+      return this.throwError(
+        'SEFIN_XML_NAO_ENCONTRADO',
+        `XML da NFS-e não retornado pelo Sefin para a chave ${chave}`,
+        { chaveAcesso: chave },
+      );
+    }
+    return Buffer.from(parsed.xml, 'utf8');
   }
 
   async baixarPdfNfse(
@@ -307,10 +335,22 @@ export class LobonotasProvider implements FiscalProvider {
   ): Promise<Uint8Array> {
     const cert = await this.requireCertForEmission(externalId);
     const chave = await this.resolveChaveAcesso(externalId, cert);
-    const response = await this.http.request({ method: 'GET', path: `/nfse/${chave}`, cert });
+    const response = await this.http.request({
+      method: 'GET',
+      path: `/nfse/${this.toApiChave(chave)}`,
+      cert,
+    });
+    const parsed = mapSefinNfseResponse({ text: response.text, json: response.json });
+    if (!parsed.xml) {
+      return this.throwError(
+        'SEFIN_XML_NAO_ENCONTRADO',
+        `XML da NFS-e não retornado pelo Sefin para a chave ${chave}`,
+        { chaveAcesso: chave },
+      );
+    }
 
     try {
-      return await gerarDanfsePdf(response.text);
+      return await gerarDanfsePdf(parsed.xml);
     } catch (error: any) {
       this.logger.error(`Falha ao gerar DANFSe da NFS-e ${chave}`, error?.stack);
       throw this.throwError('DANFSE_GERACAO_FALHOU', `Falha ao gerar DANFSe: ${error?.message}`, {
@@ -355,7 +395,7 @@ export class LobonotasProvider implements FiscalProvider {
     let response;
     try {
       response = await this.http.registrarEvento({
-        chave,
+        chave: this.toApiChave(chave),
         body: eventoBody,
         contentType: eventoContentType,
         cert,
@@ -410,7 +450,7 @@ export class LobonotasProvider implements FiscalProvider {
 
     let response;
     try {
-      response = await this.http.consultarEventos({ chave, cert });
+      response = await this.http.consultarEventos({ chave: this.toApiChave(chave), cert });
     } catch (error: any) {
       if (error?.status === 404) {
         return {
