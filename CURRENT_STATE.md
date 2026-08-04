@@ -2,31 +2,30 @@
 
 Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
 
-## 0. RETOMAR DAQUI (04/08/2026) - E1226 resolvido (dpsXmlGZipB64); E1228 resolvido (assinatura sem prefixo de namespace); proximo: deploy + tentativa real unica
+## 0. RETOMAR DAQUI (04/08/2026) - E1228 resolvido (assinatura sem prefixo); E0008 resolvido (dhEmi em hora local -04:00); proximo: deploy + tentativa real unica
 
 Fonte: `codigo local` + `testes locais` + `build local` + `lint local` + `resposta real da SEFIN Nacional` + manual oficial SN NFS-e + SDKs publicos do Ambiente Nacional.
 
-### Resultado real da tentativa com o envelope corrigido (emissao `6a724c06f7817a7586791763`)
+### Resultado real da tentativa com a assinatura sem prefixo (emissao `6a724eade0a5fd596880c5a0`)
 
-- Reemissao real de `6a70eb85caa874f842b4a576` (04/08/2026 ~17:31-03:00): **E1226 sumiu** — SEFIN aceitou `dpsXmlGZipB64`, descompactou e processou a DPS (DPS `62`).
-- Novo erro real: **E1228 - Xml declarado com prefixo de namespace** (`erros:[{Codigo:"E1228",Descricao:"Xml declarado com prefixo de namespace."}]`, httpStatus 400).
-- Causa raiz (manual oficial): o SN NFS-e **veda prefixos de namespace** e exige que a assinatura declare o namespace **na propria tag `Signature`** como **namespace default** (sem prefixo). O antigo E6155 foi renumerado para **E1228** na atualizacao do portal (24/04/2026).
+- Reemissao real pos-PR #6 (04/08/2026 ~20:42-03:00): **E1228 sumiu** — a SEFIN aceitou `<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">` (namespace default, sem prefixo) e processou a DPS.
+- Novo erro real: **E0008 - A data de emissão da DPS não pode ser posterior à data do seu processamento.** (`erros:[{Codigo:"E0008",Descricao:"A data de emissão da DPS não pode ser posterior à data do seu processamento."}]`, httpStatus 400).
+- Causa raiz do E0008: o Ambiente Nacional **compara o relógio de parede sem normalizar offsets**. Nossa DPS saia com `dhEmi=...T20:42:22+00:00` (UTC) e o SEFIN processava `...T17:42:22-03:00` (mesmo instante): como `20:42 > 17:42`, o dhEmi "parecia" posterior.
 
-### Correcao desta rodada (assinatura sem prefixo)
+### Correcao desta rodada (dhEmi/dhEvento em hora local)
 
-- `sefin-mapper.ts`: erros de validacao JSON `erros:[{Codigo,Descricao}]` (emissao) / `erro:[{Codigo,Descricao}]` (eventos) passaram a ser mapeados para `cStat`/`xMotivo` com status `REJECTED` — antes viravam erro generico (`BAD_REQUEST`, "LOBONOTAS rejected the request"). Isso ja entrou no commit `d12b272`.
-- `dps-signer.ts`: `computeSignature(..., { prefix: '' })` — a assinatura agora sai como `<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">` com elementos filhos **sem prefixo** (`SignedInfo`, `CanonicalizationMethod`, `SignatureValue`, `KeyInfo/X509Data`, ...), conforme o padrao do Nacional. Mesma rotina valida para DPS e eventos (`signXmlElement`).
-- `xml-crypto` produz esse formato nativamente com `prefix: ''` (signed-xml.js:674-691); assinatura verificada por `checkSignature` nos testes.
-- Specs atualizados para afirmar o formato sem prefixo e **negar** regressao (`not.toContain('xmlns:ds')`, `not.toMatch(/<ds:/)`).
+- `dps-builder.ts`: novo `toDateTimeLocal(value?, timeZone='America/Manaus')` usando `Intl.DateTimeFormat` (calcula offset a partir da diferenca entre relogio de parede local e UTC). `dhEmi` agora sai em **America/Manaus (-04:00)** — o local real de emissao (`cLocEmi=1302603`) e o mesmo fuso usado nos retornos reais do SEFIN (`danfse.spec.ts` ja usava `-04:00`).
+- `evento-builder.ts`: `dhEvento`/`dhProc` usam `toDateTimeLocal` (mesmo racional para eventos).
+- Com -04:00, o relogio de parede do dhEmi (16:42) fica sempre **antes** do processamento local do SEFIN (17:42), eliminando o E0008 sob qualquer interpretacao (wall-clock ou instante).
 
 Validacao local:
-- suite completa: **288 testes / 37 suites** verdes (inclui `checkSignature` da DPS e do evento sem prefixo).
+- suite completa: **290 testes / 37 suites** verdes (+2 novos: dhEmi -04:00 default e conversao `toDateTimeLocal`; 288->290).
 - `npm run build` ok (inclui copia do catalogo LC116 para `dist/`).
-- `npm run lint` -> **0 erros** (225 warnings pre-existentes).
+- `npm run lint` -> **0 erros** (227 warnings pre-existentes).
 
 ### Regra ao retomar
 
-- **NAO fazer nova tentativa real antes do deploy desta correcao da assinatura e da confirmacao no container.**
+- **NAO fazer nova tentativa real antes do deploy desta correcao do dhEmi e da confirmacao no container.**
 - A NFS-e PlugNotas numero **47**, documento ZERA `6a71420f451c04dbcc7a438c`, foi autorizada e o owner decidiu **mante-la**.
 - A tentativa original LOBONOTAS que serve de origem continua sendo `6a70eb85caa874f842b4a576` (R$ 1,00, BURGUS -> LEVACAR, servico `171901`).
 - Nova tentativa real = **uma unica** reemissao, acompanhando o correlationId nos logs da VPS.
@@ -37,21 +36,22 @@ Validacao local:
 2. DPS **58**, producao restrita: chamada na raiz errada -> HTML IIS `404`. Fixes `5722299`/`7ac1ebe`.
 3. DPS **59**: `application/xml` nao suportado. Fix `446a620`: envelope JSON ativado.
 4. DPS **60**: JSON aceito, SEFIN respondeu `E1226` -> codec GZip+Base64 (commit `2924849`, PR #4).
-5. Reemissao real pos-codec: **E1226** -> causa raiz: chave JSON `dps` (corrigida para `dpsXmlGZipB64` em `d12b272`, PR #5).
-6. Reemissao real pos-PR5: **E1228** -> causa raiz: prefixo `ds:` na assinatura (corrigida nesta rodada: `prefix: ''`).
+5. Reemissao real pos-codec: **E1226** -> chave JSON `dps` (corrigida para `dpsXmlGZipB64` em `d12b272`, PR #5).
+6. Reemissao real pos-PR5: **E1228** -> prefixo `ds:` na assinatura (corrigido em `4e98953`, PR #6).
+7. Reemissao real pos-PR6: **E0008** -> `dhEmi` em UTC parecia posterior ao processamento (corrigido nesta rodada: hora local -04:00).
 
 ### Proximo passo tecnico exato
 
-1. Fechar a branch da correcao da assinatura (validada 288/288 testes, build e lint ok) e mergear na `main`.
-2. Disparar deploy; confirmar no container `zera-backend-api` que `dps-signer.js` contem `prefix: ""`.
+1. Fechar a branch da correcao do dhEmi (validada 290/290 testes, build e lint ok) e mergear na `main`.
+2. Disparar deploy; confirmar no container `zera-backend-api` que `dps-builder.js` contem `America/Manaus` e `toDateTimeLocal`.
 3. Fazer **uma unica** nova tentativa real via reemissao da origem `6a70eb85caa874f842b4a576` e acompanhar o correlationId nos logs.
-4. Se o `E1228` sumir, o proximo contrato real a diagnosticar sera o retorno `nfseXmlGZipB64` da NFS-e autorizada e o processamento/assinatura da NFS-e.
+4. Se o `E0008` sumir, o proximo contrato real a diagnosticar sera o retorno `nfseXmlGZipB64` da NFS-e autorizada e o processamento/assinatura da NFS-e.
 
 ### Estado de repositorio/deploy (04/08/2026)
 
-- PR #4 (`2924849`, codec) e PR #5 (`d12b272`, `dpsXmlGZipB64` + mapper de erros) mergeados e deployados (runs `30927612670` e `30947820327` success).
+- PR #4 (`2924849`, codec), PR #5 (`d12b272`, envelope real) e PR #6 (`4e98953`, assinatura sem prefixo) mergeados e deployados (runs `30927612670`, `30947820327` e `30948692601` success).
 - Variaveis SEFIN confirmadas no container: `SEFIN_BASE_URL=https://sefin.nfse.gov.br/SefinNacional`, `SEFIN_ENV=producao`, `SEFIN_TP_AMB=1`, `SEFIN_NFSE_ENVELOPE=json`.
-- Proximo passo operacional: **deploy da correcao da assinatura (E1228)** e, depois, **uma unica** tentativa real. Nao cancelar a NFS-e 47.
+- Proximo passo operacional: **deploy da correcao do dhEmi (E0008)** e, depois, **uma unica** tentativa real. Nao cancelar a NFS-e 47.
 
 ## 0. Atualizacao rapida (03/08/2026) - reemissao segura de erro anterior a transmissao
 

@@ -1,4 +1,4 @@
-import { DPS_NAMESPACE, DPS_VERSION } from './dps-builder';
+import { DPS_NAMESPACE, DPS_VERSION, toDateTimeLocal } from './dps-builder';
 import { signXmlElement, type DpsCertMaterialPem } from './dps-signer';
 
 export const EVENTO_CANCELAMENTO_TAG = 'e101101';
@@ -38,31 +38,19 @@ function escapeXml(value: string): string {
     .replace(/'/g, '&apos;');
 }
 
-function toDateTimeUtc(value?: string): string {
-  if (!value) {
-    return new Date().toISOString().replace(/\.\d{3}Z$/, '+00:00');
-  }
-  const cleaned = value.replace(/\.\d{3}Z$/, 'Z').replace(/\.\d{3}[+-]\d{2}:\d{2}$/, '+00:00');
-  const hasOffset = /[+-]\d{2}:\d{2}$/.test(cleaned);
-  const candidate = hasOffset ? cleaned : `${cleaned.replace('Z', '')}+00:00`;
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/.test(candidate)) {
-    return candidate;
-  }
-  return new Date().toISOString().replace(/\.\d{3}Z$/, '+00:00');
-}
-
 /**
  * Gera o pedido de registro do evento de cancelamento (e101101) do Ambiente
  * Nacional no formato TCEvento (evento_v1.01.xsd): `infEvento` (parte genérica
  * com `nSeqEvento`/`dhProc`/`nDFSe`) + `pedRegEvento` (`infPedReg` com a parte
- * específica `e101101`). A `ds:Signature` é obrigatória no envio à API.
+ * específica `e101101`). A `Signature` sem prefixo (namespace default na própria
+ * tag) é obrigatória no envio à API.
  */
 export function buildPedidoCancelamento(options: CancelamentoEventoOptions): string {
   const tpAmb = options.tpAmb ?? '2';
   const verAplic = options.verAplic ?? 'ZERA-1.0';
   const nSeqEvento = options.nSeqEvento ?? '1';
   const nDFSe = options.nDFSe ?? '1';
-  const dhEvento = toDateTimeUtc(options.dhEvento);
+  const dhEvento = toDateTimeLocal(options.dhEvento);
   const chNFSe = chNfseFromChave(options.chave);
   const tcEventoId = buildTCEventoId(options.chave);
   const pedRegId = buildPedidoRegistroId(options.chave);
