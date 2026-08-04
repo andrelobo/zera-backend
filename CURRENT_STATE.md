@@ -2,32 +2,33 @@
 
 Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
 
-## 0. RETOMAR DAQUI (04/08/2026) - E1228 resolvido; E0008 resolvido (dhEmi local); E0004 resolvido (tipo de inscricao CNPJ=2 no Id); proximo: deploy + tentativa real unica
+## 0. RETOMAR DAQUI (04/08/2026) - E1228, E0008, E0004 resolvidos; E0121 resolvido (sem xNome do prestador); proximo: deploy + tentativa real unica
 
 Fonte: `codigo local` + `testes locais` + `build local` + `lint local` + `resposta real da SEFIN Nacional` + manual oficial SN NFS-e + SDKs publicos do Ambiente Nacional.
 
-### Resultado real da tentativa com dhEmi local (emissao `6a7250df65c391be2ab8556f`)
+### Resultado real da tentativa com o Id corrigido (emissao `6a725324fb4cd24ec8b3f01e`)
 
-- Reemissao real pos-PR #7 (04/08/2026 ~20:51-03:00): **E0008 sumiu** — SEFIN aceitou `dhEmi=...T16:51:44-04:00`.
-- Novo erro real: **E0004 - Conteúdo do identificador informado na DPS difere da concatenação dos campos correspondentes.**
-- Causa raiz do E0004: o **digito de tipo de inscricao no Id da DPS estava invertido**. `buildDpsId` usava `'1'` para CNPJ e `'2'` para CPF; o padrao nacional usa **`2` = CNPJ, `1` = CPF** (confirmado no SDK `open-nfse@0.10.1` `dps-id.js` e num Id real do PlugNotas em `nfse.mapper.spec.ts`: `DPS130260324352111500013400001000000000000038`).
+- Reemissao real pos-PR #8 (04/08/2026 ~21:01-03:00): **E0004 sumiu** — SEFIN aceitou o Id `DPS130260324352111500013400001000000000000066` (CNPJ=2).
+- Novo erro real: **E0121 - O nome ou razão social do prestador não deve ser informado quando o emitente da DPS for o próprio prestador.**
+- Causa raiz: o `<prest>` da DPS levava `<xNome>BURGUS LTDA</xNome>`; o SN NFS-e **proibe** `xNome` do prestador quando `tpEmit=1` (emitente = proprio prestador) — nosso fluxo sempre emite como prestador.
 
-### Correcao desta rodada (tipo de inscricao no Id da DPS)
+### Correcao desta rodada (xNome do prestador)
 
-- `dps-builder.ts` `buildDpsId`: `tipoInscricao = inscricao.length === 14 ? '2' : '1'` (era `'1' : '2'`). CPF continua preenchido para 14 com zeros à esquerda (padrao nacional).
-- `dps-builder.spec.ts`: assercao do Id atualizada (`...1302603` + `2` + `43521115000134` + `00001` + `000000000000001`).
+- `dps-builder.ts` `buildPrest`: removido o `<xNome>` do prestador (mantido apenas CNPJ/CPF, IM e regTrib). O `xNome` do **tomador** continua obrigatorio (inalterado).
+- `dps-builder.spec.ts`: novo teste de regressao afirmando a ausencia do `xNome` do prestador e a presenca do `xNome` do tomador.
 
 Validacao local:
-- suite completa: **290 testes / 37 suites** verdes.
+- suite completa: **291 testes / 37 suites** verdes (+1 novo).
 - `npm run build` ok (inclui copia do catalogo LC116 para `dist/`).
-- `npm run lint` -> **0 erros** (227 warnings pre-existentes).
+- `npm run lint` -> **0 erros** (228 warnings pre-existentes).
 
 ### Regra ao retomar
 
-- **NAO fazer nova tentativa real antes do deploy desta correcao do Id e da confirmacao no container.**
+- **NAO fazer nova tentativa real antes do deploy desta correcao do xNome e da confirmacao no container.**
 - A NFS-e PlugNotas numero **47**, documento ZERA `6a71420f451c04dbcc7a438c`, foi autorizada e o owner decidiu **mante-la**.
 - A tentativa original LOBONOTAS que serve de origem continua sendo `6a70eb85caa874f842b4a576` (R$ 1,00, BURGUS -> LEVACAR, servico `171901`).
 - Nova tentativa real = **uma unica** reemissao, acompanhando o correlationId nos logs da VPS.
+- **NAO usar PLUGNOTAS** em novas emissoes; o piloto LOBONOTAS (SEFIN Nacional) e o caminho de emissao.
 
 ### Linha do tempo real (contexto)
 
@@ -37,20 +38,21 @@ Validacao local:
 4. DPS **60**: **E1226** -> codec GZip+Base64 (`2924849`, PR #4); chave `dps` -> `dpsXmlGZipB64` (`d12b272`, PR #5).
 5. Pos-PR5: **E1228** (prefixo `ds:`) -> `prefix: ''` na assinatura (`4e98953`, PR #6).
 6. Pos-PR6: **E0008** (dhEmi UTC parecia posterior) -> dhEmi local -04:00 (`743ff6d`, PR #7).
-7. Pos-PR7: **E0004** (tipo de inscricao invertido no Id) -> CNPJ=2/CPF=1 nesta rodada.
+7. Pos-PR7: **E0004** (tipo de inscricao invertido) -> CNPJ=2/CPF=1 (`d90b533`, PR #8).
+8. Pos-PR8: **E0121** (xNome do prestador proibido com tpEmit=1) -> removido nesta rodada.
 
 ### Proximo passo tecnico exato
 
-1. Fechar a branch da correcao do Id (validada 290/290 testes, build e lint ok) e mergear na `main`.
-2. Disparar deploy; confirmar no container `zera-backend-api` que `dps-builder.js` usa `'2' : '1'`.
+1. Fechar a branch da correcao do xNome (validada 291/291 testes, build e lint ok) e mergear na `main`.
+2. Disparar deploy; confirmar no container `zera-backend-api` que `dps-builder.js` nao emite `<xNome>` dentro de `<prest>`.
 3. Fazer **uma unica** nova tentativa real via reemissao da origem `6a70eb85caa874f842b4a576` e acompanhar o correlationId nos logs.
-4. Se o `E0004` sumir, o proximo contrato real a diagnosticar sera o retorno `nfseXmlGZipB64` da NFS-e autorizada e o processamento/assinatura da NFS-e.
+4. Se o `E0121` sumir, o proximo contrato real a diagnosticar sera o retorno `nfseXmlGZipB64` da NFS-e autorizada e o processamento/assinatura da NFS-e.
 
 ### Estado de repositorio/deploy (04/08/2026)
 
-- PR #4 (`2924849`, codec), PR #5 (`d12b272`, envelope real), PR #6 (`4e98953`, assinatura sem prefixo) e PR #7 (`743ff6d`, dhEmi local) mergeados e deployados (runs `30927612670`, `30947820327`, `30948692601` e `30949413817` success).
+- PRs #4..#8 mergeados e deployados (runs `30927612670`, `30947820327`, `30948692601`, `30949413817`, `30950147874` success).
 - Variaveis SEFIN confirmadas no container: `SEFIN_BASE_URL=https://sefin.nfse.gov.br/SefinNacional`, `SEFIN_ENV=producao`, `SEFIN_TP_AMB=1`, `SEFIN_NFSE_ENVELOPE=json`.
-- Proximo passo operacional: **deploy da correcao do Id da DPS (E0004)** e, depois, **uma unica** tentativa real. Nao cancelar a NFS-e 47.
+- Proximo passo operacional: **deploy da correcao do xNome (E0121)** e, depois, **uma unica** tentativa real. Nao cancelar a NFS-e 47.
 
 ## 0. Atualizacao rapida (03/08/2026) - reemissao segura de erro anterior a transmissao
 

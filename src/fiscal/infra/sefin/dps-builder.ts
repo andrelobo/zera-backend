@@ -152,8 +152,6 @@ function buildPrest(input: EmitirNfseInput): string {
   const parts: string[] = [`<${tag}>${value}</${tag}>`];
   const im = input.prestador.inscricaoMunicipal?.trim();
   if (im) parts.push(`<IM>${escapeXml(im)}</IM>`);
-  const nome = input.prestador.razaoSocial?.trim();
-  if (nome) parts.push(`<xNome>${escapeXml(nome)}</xNome>`);
   parts.push(buildRegTrib(input));
   return `<prest>${parts.join('')}</prest>`;
 }
