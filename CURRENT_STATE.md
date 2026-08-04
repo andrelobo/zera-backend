@@ -2,33 +2,34 @@
 
 Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
 
-## 0. RETOMAR DAQUI (04/08/2026) - E1228, E0008, E0004 resolvidos; E0121 resolvido (sem xNome do prestador); proximo: deploy + tentativa real unica
+## 0. RETOMAR DAQUI (04/08/2026) - PILOTO LOBONOTAS CONCLUIDO: NFS-e REAL AUTORIZADA (n 48)
 
 Fonte: `codigo local` + `testes locais` + `build local` + `lint local` + `resposta real da SEFIN Nacional` + manual oficial SN NFS-e + SDKs publicos do Ambiente Nacional.
 
-### Resultado real da tentativa com o Id corrigido (emissao `6a725324fb4cd24ec8b3f01e`)
+### Resultado real da tentativa com pTotTribSN (emissao `6a725cab7aa43f7ecdaaa64f`)
 
-- Reemissao real pos-PR #8 (04/08/2026 ~21:01-03:00): **E0004 sumiu** — SEFIN aceitou o Id `DPS130260324352111500013400001000000000000066` (CNPJ=2).
-- Novo erro real: **E0121 - O nome ou razão social do prestador não deve ser informado quando o emitente da DPS for o próprio prestador.**
-- Causa raiz: o `<prest>` da DPS levava `<xNome>BURGUS LTDA</xNome>`; o SN NFS-e **proibe** `xNome` do prestador quando `tpEmit=1` (emitente = proprio prestador) — nosso fluxo sempre emite como prestador.
+- Reemissao real pos-PR #10 (04/08/2026 ~21:42-03:00): **E0712 sumiu** — **`status=AUTHORIZED`**, `cStat=100`, chave `NFS13026032243521115000134000000000004826089378783140`.
+- **NFS-e autorizada no Ambiente Nacional**: `nNFSe=48`, `nDFSe=15963801`, `dhProc=2026-08-04T18:42:04-03:00`, `vLiq=1.00`, `ambGer=2`, `procEmi=1`.
+- `providerResponse.xml` e o XML completo da **NFSe 1.01 assinada pelo SERPRO** (`*.nfse.gov.br`), contendo a DPS (com `<pTotTribSN>6.00</pTotTribSN>`) embutida no `<infNFSe>` e assinada pelo prestador.
+- **Piloto LOBONOTAS/SEFIN Nacional concluido com sucesso de ponta a ponta** (emissao -> assinatura DPS -> mTLS -> autorizacao -> retorno da NFSe).
 
-### Correcao desta rodada (xNome do prestador)
+### Correcao desta rodada (pTotTribSN / E0712)
 
-- `dps-builder.ts` `buildPrest`: removido o `<xNome>` do prestador (mantido apenas CNPJ/CPF, IM e regTrib). O `xNome` do **tomador** continua obrigatorio (inalterado).
-- `dps-builder.spec.ts`: novo teste de regressao afirmando a ausencia do `xNome` do prestador e a presenca do `xNome` do tomador.
+- `dps-builder.ts` `buildTrib`: ME/EPP (`opSimpNac=3`) sem `tributacaoTotal` agora emite `<pTotTribSN>` (novo campo `servico.tributacaoTotal.pTotTribSN`) em vez de `<indTotTrib>`; lança erro claro se ME/EPP sem valor; `indTotTrib` ficou apenas para fora do Simples.
+- `emitir-nfse.service.ts` `enrichInputForProvider`: injeta `pTotTribSN` a partir de `empresa.simplesSnapshot.aliquotaEfetiva` (0.06 -> 6.00) mesmo quando `regimeTributarioSn` ja esta preenchido (cobre reemissao de payload armazenado).
+- `emitir-nfse.dto.ts` + `emitir-nfse.types.ts`: `tributacaoTotal.pTotTribSN` opcional (0-100).
+- `dps-builder.spec.ts`: baseInput com `pTotTribSN`; teste novo: ME/EPP sem pTotTribSN lanca erro, fora do Simples segue `indTotTrib`; vTotTrib aceito.
 
 Validacao local:
-- suite completa: **291 testes / 37 suites** verdes (+1 novo).
+- suite completa: **294 testes / 37 suites** verdes (+3 novos).
 - `npm run build` ok (inclui copia do catalogo LC116 para `dist/`).
-- `npm run lint` -> **0 erros** (228 warnings pre-existentes).
+- `npm run lint` -> **0 erros** (236 warnings pre-existentes).
 
 ### Regra ao retomar
 
-- **NAO fazer nova tentativa real antes do deploy desta correcao do xNome e da confirmacao no container.**
-- A NFS-e PlugNotas numero **47**, documento ZERA `6a71420f451c04dbcc7a438c`, foi autorizada e o owner decidiu **mante-la**.
-- A tentativa original LOBONOTAS que serve de origem continua sendo `6a70eb85caa874f842b4a576` (R$ 1,00, BURGUS -> LEVACAR, servico `171901`).
-- Nova tentativa real = **uma unica** reemissao, acompanhando o correlationId nos logs da VPS.
+- A NFS-e PlugNotas numero **47**, documento ZERA `6a71420f451c04dbcc7a438c`, e a NFS-e SEFIN **48** (emissao `6a725cab7aa43f7ecdaaa64f`) estao autorizadas; owner decidiu **mante-las**.
 - **NAO usar PLUGNOTAS** em novas emissoes; o piloto LOBONOTAS (SEFIN Nacional) e o caminho de emissao.
+- Proximos passos naturais: integracao do retorno da NFSe autorizada (`providerResponse.xml`), sync de artefatos (`sync-nfse-artifacts.service`), cancelamento via API Eventos, e DANFE/PDF a partir do XML assinado.
 
 ### Linha do tempo real (contexto)
 
@@ -39,20 +40,14 @@ Validacao local:
 5. Pos-PR5: **E1228** (prefixo `ds:`) -> `prefix: ''` na assinatura (`4e98953`, PR #6).
 6. Pos-PR6: **E0008** (dhEmi UTC parecia posterior) -> dhEmi local -04:00 (`743ff6d`, PR #7).
 7. Pos-PR7: **E0004** (tipo de inscricao invertido) -> CNPJ=2/CPF=1 (`d90b533`, PR #8).
-8. Pos-PR8: **E0121** (xNome do prestador proibido com tpEmit=1) -> removido nesta rodada.
-
-### Proximo passo tecnico exato
-
-1. Fechar a branch da correcao do xNome (validada 291/291 testes, build e lint ok) e mergear na `main`.
-2. Disparar deploy; confirmar no container `zera-backend-api` que `dps-builder.js` nao emite `<xNome>` dentro de `<prest>`.
-3. Fazer **uma unica** nova tentativa real via reemissao da origem `6a70eb85caa874f842b4a576` e acompanhar o correlationId nos logs.
-4. Se o `E0121` sumir, o proximo contrato real a diagnosticar sera o retorno `nfseXmlGZipB64` da NFS-e autorizada e o processamento/assinatura da NFS-e.
+8. Pos-PR8: **E0121** (xNome do prestador proibido com tpEmit=1) -> removido (`cc7c702`, PR #9).
+9. Pos-PR9: **E0712** (ME/EPP nao pode informar indTotTrib) -> `pTotTribSN` (`c8cbfc3`, PR #10) -> **AUTHORIZED** (DPS 68).
 
 ### Estado de repositorio/deploy (04/08/2026)
 
-- PRs #4..#8 mergeados e deployados (runs `30927612670`, `30947820327`, `30948692601`, `30949413817`, `30950147874` success).
+- PRs #4..#10 mergeados e deployados (runs `30927612670`, `30947820327`, `30948692601`, `30949413817`, `30950147874`, `30950788239`, `30953151678` success).
+- `pTotTribSN`/`simplesSnapshot` confirmados no container; health ok.
 - Variaveis SEFIN confirmadas no container: `SEFIN_BASE_URL=https://sefin.nfse.gov.br/SefinNacional`, `SEFIN_ENV=producao`, `SEFIN_TP_AMB=1`, `SEFIN_NFSE_ENVELOPE=json`.
-- Proximo passo operacional: **deploy da correcao do xNome (E0121)** e, depois, **uma unica** tentativa real. Nao cancelar a NFS-e 47.
 
 ## 0. Atualizacao rapida (03/08/2026) - reemissao segura de erro anterior a transmissao
 

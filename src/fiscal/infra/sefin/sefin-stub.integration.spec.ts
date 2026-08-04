@@ -11,6 +11,7 @@ import { LobonotasProvider } from './sefin.provider';
 import { gzipBase64ToXml } from './sefin-codec';
 
 const CHAVE = `NFS${'1'.repeat(50)}`;
+const CHAVE_API = '1'.repeat(50);
 const CHAVE_CANCELADA = `NFS${'7'.repeat(50)}`;
 const CHAVE_INEXISTENTE = `NFS${'8'.repeat(50)}`;
 const CHAVE_NAO_CANCELAVEL = `NFS${'9'.repeat(50)}`;
@@ -315,7 +316,7 @@ describe('LobonotasProvider ponta a ponta via mTLS real (stub SEFIN)', () => {
 
     const paths = stub.requests.filter((r) => r.method === 'GET').map((r) => r.path);
     expect(paths).toContain(`/dps/${dpsId}`);
-    expect(paths).toContain(`/nfse/${CHAVE}`);
+    expect(paths).toContain(`/nfse/${CHAVE_API}`);
   });
 
   it('solicita cancelamento ponta a ponta: evento assinado + protocolo = chave', async () => {
@@ -330,7 +331,7 @@ describe('LobonotasProvider ponta a ponta via mTLS real (stub SEFIN)', () => {
     expect(result.providerResponse.nProt).toMatch(/^\d{15}$/);
 
     const post = stub.requests.find(
-      (r) => r.method === 'POST' && r.path === `/nfse/${CHAVE}/eventos`,
+      (r) => r.method === 'POST' && r.path === `/nfse/${CHAVE_API}/eventos`,
     );
     const eventoXml = gzipBase64ToXml(
       JSON.parse(post!.body).pedidoRegistroEventoXmlGZipB64 as string,

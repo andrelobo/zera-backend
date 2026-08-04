@@ -7,6 +7,7 @@ import { SefinMtlsHttp } from './sefin-mtls.http';
 import { LobonotasProvider } from './sefin.provider';
 
 const CHAVE = `NFS${'1'.repeat(50)}`;
+const CHAVE_API = '1'.repeat(50);
 const DPS_ID = `DPS${'2'.repeat(42)}`;
 
 const baseInput: any = {
@@ -201,7 +202,7 @@ describe('LobonotasProvider', () => {
     const { status, providerResponse } = await provider.consultarNfse(CHAVE);
 
     expect(http.request).toHaveBeenCalledWith(
-      expect.objectContaining({ method: 'GET', path: `/nfse/${CHAVE}` }),
+      expect.objectContaining({ method: 'GET', path: `/nfse/${CHAVE_API}` }),
     );
     expect(status).toBe(NfseEmissionStatus.AUTHORIZED);
     expect(providerResponse.chaveAcesso).toBe(CHAVE);
@@ -228,7 +229,7 @@ describe('LobonotasProvider', () => {
       expect.objectContaining({ method: 'GET', path: `/dps/${DPS_ID}` }),
     );
     expect(http.request).toHaveBeenCalledWith(
-      expect.objectContaining({ method: 'GET', path: `/nfse/${CHAVE}` }),
+      expect.objectContaining({ method: 'GET', path: `/nfse/${CHAVE_API}` }),
     );
     expect(status).toBe(NfseEmissionStatus.AUTHORIZED);
   });
@@ -291,7 +292,7 @@ describe('LobonotasProvider', () => {
     });
 
     const call = (http.registrarEvento as jest.Mock).mock.calls[0][0];
-    expect(call.chave).toBe(CHAVE);
+    expect(call.chave).toBe(CHAVE_API);
     expect(call.contentType).toBe('application/json');
     const eventoXml = gzipBase64ToXml(
       JSON.parse(call.body as string).pedidoRegistroEventoXmlGZipB64 as string,
@@ -360,7 +361,9 @@ describe('LobonotasProvider', () => {
 
     const { status, providerResponse } = await provider.consultarSolicitacaoCancelamentoNfse(CHAVE);
 
-    expect(http.consultarEventos).toHaveBeenCalledWith(expect.objectContaining({ chave: CHAVE }));
+    expect(http.consultarEventos).toHaveBeenCalledWith(
+      expect.objectContaining({ chave: CHAVE_API }),
+    );
     expect(status).toBe(NfseEmissionStatus.CANCELED);
     expect(providerResponse.eventos[0].tipoEvento).toBe('e101101');
   });
