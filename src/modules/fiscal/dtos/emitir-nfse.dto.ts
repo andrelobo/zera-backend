@@ -9,6 +9,8 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  Max,
+  Min,
   ValidateNested,
 } from 'class-validator';
 
@@ -184,6 +186,18 @@ class TributacaoTotalDto {
   @ValidateNested()
   @Type(() => TributacaoParcialDto)
   municipal?: TributacaoParcialDto;
+
+  @ApiProperty({
+    required: false,
+    description:
+      'Percentual aproximado do total dos tributos da alíquota do Simples Nacional (pTotTribSN). Obrigatório para ME/EPP (opSimpNac=3).',
+    example: 6,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  pTotTribSN?: number;
 }
 
 class RetencoesFederaisDto {

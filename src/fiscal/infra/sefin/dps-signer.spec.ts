@@ -54,6 +54,7 @@ const baseInput = {
     descricao: 'Consulta IR 2024',
     valor: 150,
     iss: { retido: false, aliquota: 5 },
+    tributacaoTotal: { pTotTribSN: 6 },
   },
 } as const;
 

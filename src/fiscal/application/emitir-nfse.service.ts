@@ -262,15 +262,27 @@ export class EmitirNfseService {
   }
 
   private async enrichInputForProvider(input: EmitirNfseInput): Promise<EmitirNfseInput> {
-    if (input.prestador?.regimeTributarioSn) return input;
-
     const cnpj = onlyDigits(input.prestador?.cnpj);
     if (cnpj.length !== 14) return input;
 
+    const regime = input.prestador?.regimeTributarioSn;
+    const tot = input.servico?.tributacaoTotal;
+    const hasTotTribValues =
+      tot?.federal?.valor !== undefined ||
+      tot?.federal?.valorPercentual !== undefined ||
+      tot?.estadual?.valor !== undefined ||
+      tot?.estadual?.valorPercentual !== undefined ||
+      tot?.municipal?.valor !== undefined ||
+      tot?.municipal?.valorPercentual !== undefined ||
+      tot?.pTotTribSN !== undefined;
+    const isMeEpp = regime?.opSimpNac === 3;
+
+    if (regime && (!isMeEpp || hasTotTribValues)) return input;
+
     const empresa = await this.empresasService.getByCnpj(cnpj);
-    const providerData = (empresa as Record<string, unknown> | null)?.providerData as
-      | Record<string, unknown>
-      | undefined;
+    const empresaRecord = (empresa as Record<string, unknown> | null) ?? {};
+    const providerData =
+      (empresaRecord.providerData as Record<string, unknown> | undefined) ?? undefined;
     const simplesData = (providerData?.simples as Record<string, unknown> | undefined) ?? undefined;
 
     const optante =
@@ -281,16 +293,37 @@ export class EmitirNfseService {
 
     if (optante === false) return input;
 
+    const simplesSnapshot =
+      (empresaRecord.simplesSnapshot as Record<string, unknown> | undefined) ?? undefined;
+    const aliquotaEfetiva = normalizeNumber(simplesSnapshot?.aliquotaEfetiva);
+    const pTotTribSN =
+      aliquotaEfetiva !== undefined ? Number((aliquotaEfetiva * 100).toFixed(2)) : undefined;
+
     return {
       ...input,
       prestador: {
         ...input.prestador,
         regimeTributarioSn: {
-          opSimpNac: optionalNumberFromEnv(process.env.QUICK_NFSE_OP_SIMP_NAC) ?? 3,
-          regApTribSN: optionalNumberFromEnv(process.env.QUICK_NFSE_REG_AP_TRIB_SN) ?? 1,
-          regEspTrib: optionalNumberFromEnv(process.env.QUICK_NFSE_REG_ESP_TRIB) ?? 0,
+          opSimpNac:
+            regime?.opSimpNac ?? optionalNumberFromEnv(process.env.QUICK_NFSE_OP_SIMP_NAC) ?? 3,
+          regApTribSN:
+            regime?.regApTribSN ??
+            optionalNumberFromEnv(process.env.QUICK_NFSE_REG_AP_TRIB_SN) ??
+            1,
+          regEspTrib:
+            regime?.regEspTrib ?? optionalNumberFromEnv(process.env.QUICK_NFSE_REG_ESP_TRIB) ?? 0,
         },
       },
+      servico:
+        pTotTribSN !== undefined
+          ? {
+              ...input.servico,
+              tributacaoTotal: {
+                ...(input.servico?.tributacaoTotal ?? {}),
+                pTotTribSN,
+              },
+            }
+          : input.servico,
     };
   }
 

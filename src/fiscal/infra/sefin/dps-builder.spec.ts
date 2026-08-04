@@ -24,6 +24,7 @@ const baseInput = {
     descricao: 'Consulta IR 2024',
     valor: 150,
     iss: { retido: false, aliquota: 5 },
+    tributacaoTotal: { pTotTribSN: 6 },
   },
 } as const;
 
@@ -92,7 +93,50 @@ describe('buildDps', () => {
     expect(xml).toContain('<cTribNac>171901</cTribNac>');
     expect(xml).toContain('<cTribMun>100</cTribMun>');
     expect(xml).toContain(
-      '<valores><vServPrest><vServ>150.00</vServ></vServPrest><trib><tribMun><tribISSQN>1</tribISSQN><tpRetISSQN>1</tpRetISSQN></tribMun><totTrib><indTotTrib>0</indTotTrib></totTrib></trib></valores>',
+      '<valores><vServPrest><vServ>150.00</vServ></vServPrest><trib><tribMun><tribISSQN>1</tribISSQN><tpRetISSQN>1</tpRetISSQN></tribMun><totTrib><pTotTribSN>6.00</pTotTribSN></totTrib></trib></valores>',
+    );
+  });
+
+  it('emite indTotTrib apenas para fora do Simples; ME/EPP exige pTotTribSN (E0712)', () => {
+    const xml = buildDps(
+      {
+        ...baseInput,
+        prestador: {
+          ...baseInput.prestador,
+          regimeTributarioSn: { opSimpNac: 1, regApTribSN: 0, regEspTrib: 0 },
+        },
+        servico: { ...baseInput.servico, tributacaoTotal: undefined },
+      } as any,
+      options,
+    );
+    expect(xml).toContain('<totTrib><indTotTrib>0</indTotTrib></totTrib>');
+
+    const inputSemPTot = {
+      ...baseInput,
+      servico: { ...baseInput.servico, tributacaoTotal: undefined },
+    };
+    expect(() => buildDps(inputSemPTot as any, options)).toThrow(
+      'ME/EPP (opSimpNac=3) não pode informar indTotTrib',
+    );
+  });
+
+  it('aceita vTotTrib quando tributacaoTotal possui valores monetarios', () => {
+    const xml = buildDps(
+      {
+        ...baseInput,
+        servico: {
+          ...baseInput.servico,
+          tributacaoTotal: {
+            federal: { valor: 5 },
+            estadual: { valor: 0 },
+            municipal: { valor: 2.01 },
+          },
+        },
+      } as any,
+      options,
+    );
+    expect(xml).toContain(
+      '<totTrib><vTotTrib><vTotTribFed>5.00</vTotTribFed><vTotTribEst>0.00</vTotTribEst><vTotTribMun>2.01</vTotTribMun></vTotTrib></totTrib>',
     );
   });
 

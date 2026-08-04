@@ -83,6 +83,8 @@ export interface EmitirNfseInput {
         valor?: number;
         valorPercentual?: number;
       };
+      /** Percentual aproximado do total dos tributos da alíquota do Simples Nacional (pTotTribSN). Obrigatório para ME/EPP. */
+      pTotTribSN?: number;
     };
   };
 
