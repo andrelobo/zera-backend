@@ -96,12 +96,12 @@ describe('LobonotasProvider', () => {
       expect.objectContaining({
         method: 'POST',
         path: '/nfse',
-        contentType: 'application/xml',
+        contentType: 'application/json',
       }),
     );
 
     const requestCall = (http.request as jest.Mock).mock.calls[0][0];
-    const body = requestCall.body as string;
+    const body = JSON.parse(requestCall.body as string).dps as string;
     expect(body).toContain('<DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">');
     expect(body).toContain('<ds:Signature');
     expect(body).toContain('<serie>00001</serie>');
@@ -116,17 +116,15 @@ describe('LobonotasProvider', () => {
     );
   });
 
-  it('suporta envelope JSON quando SEFIN_NFSE_ENVELOPE=json', async () => {
-    process.env.SEFIN_NFSE_ENVELOPE = 'json';
+  it('suporta override de envelope XML quando SEFIN_NFSE_ENVELOPE=xml', async () => {
+    process.env.SEFIN_NFSE_ENVELOPE = 'xml';
     (http.request as jest.Mock).mockResolvedValue(xmlResponse(nfseXml()));
 
     await provider.emitirNfse(baseInput);
 
     const requestCall = (http.request as jest.Mock).mock.calls[0][0];
-    expect(requestCall.contentType).toBe('application/json');
-    const parsed = JSON.parse(requestCall.body as string);
-    expect(typeof parsed.dps).toBe('string');
-    expect(parsed.dps).toContain('<DPS');
+    expect(requestCall.contentType).toBe('application/xml');
+    expect(requestCall.body).toContain('<DPS');
   });
 
   it('timeout pós-DPS vira PENDING com transmitidoSemConfirmacao e dpsId p/ reconciliação', async () => {

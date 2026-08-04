@@ -28,7 +28,7 @@ describe('sefin.config', () => {
     process.env = originalEnv;
   });
 
-  it('defaults: desabilitado, produção restrita, tpAmb 2, timeout 30s, xml', () => {
+  it('defaults: desabilitado, produção restrita, tpAmb 2, timeout 30s, json', () => {
     const cfg = getSefinConfig();
     expect(cfg.enabled).toBe(false);
     expect(cfg.environment).toBe('producaorestrita');
@@ -43,7 +43,7 @@ describe('sefin.config', () => {
     expect(cfg.dpsSerie).toBe('1');
     expect(cfg.cLocEmi).toBe('1302603');
     expect(cfg.verifyCert).toBe(true);
-    expect(cfg.nfseEnvelope).toBe('xml');
+    expect(cfg.nfseEnvelope).toBe('json');
   });
 
   it('produção real: tpAmb 1 e verAplic do NFSE_VER_APLIC', () => {
@@ -70,11 +70,11 @@ describe('sefin.config', () => {
     expect(getSefinConfig().cLocEmi).toBe('1302603');
   });
 
-  it('envelope json e verifyCert off', () => {
-    process.env.SEFIN_NFSE_ENVELOPE = 'json';
+  it('permite override de envelope xml e verifyCert off', () => {
+    process.env.SEFIN_NFSE_ENVELOPE = 'xml';
     process.env.SEFIN_VERIFY_CERT = 'false';
     const cfg = getSefinConfig();
-    expect(cfg.nfseEnvelope).toBe('json');
+    expect(cfg.nfseEnvelope).toBe('xml');
     expect(cfg.verifyCert).toBe(false);
   });
 

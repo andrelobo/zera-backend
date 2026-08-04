@@ -83,7 +83,7 @@ export function getSefinConfig(): SefinConfig {
     cLocEmi,
     codigoTributacaoNacional: process.env.SEFIN_CODIGO_TRIBUTACAO_NACIONAL?.trim() || undefined,
     verifyCert: parseBoolean(process.env.SEFIN_VERIFY_CERT, true),
-    nfseEnvelope: process.env.SEFIN_NFSE_ENVELOPE === 'json' ? 'json' : 'xml',
+    nfseEnvelope: process.env.SEFIN_NFSE_ENVELOPE === 'xml' ? 'xml' : 'json',
   };
 
   if (enabled && !baseUrl) {
