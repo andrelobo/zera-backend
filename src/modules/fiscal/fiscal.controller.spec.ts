@@ -393,6 +393,67 @@ describe('FiscalController', () => {
     );
   });
 
+  it('reemitir cria nova tentativa para ERROR sem evidencia de transmissao', async () => {
+    repo.findById.mockResolvedValue({
+      _id: { toString: () => 'em-error-1' },
+      status: NfseEmissionStatus.ERROR,
+      externalId: null,
+      providerResponse: null,
+      idempotencyKey: 'nfse-piloto-original',
+      payload: {
+        referenciaExterna: 'nfse-piloto-original',
+        prestador: { cnpj: '43521115000134' },
+        tomador: { cpfCnpj: '40672760000160' },
+        servico: { codigoNacional: '171901', descricao: 'Contabilidade.', valor: 1 },
+      },
+    });
+    emitirNfseService.execute.mockResolvedValue({
+      emissionId: 'em-retry-1',
+      idempotentReplay: false,
+      result: { status: NfseEmissionStatus.PENDING, provider: 'LOBONOTAS' },
+    });
+
+    await expect(controller.reemitir('em-error-1')).resolves.toMatchObject({
+      emissionId: 'em-retry-1',
+    });
+    expect(emitirNfseService.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        referenciaExterna: expect.stringMatching(/^nfse-piloto-original-retry-\d+$/),
+        prestador: expect.objectContaining({ cnpj: '43521115000134' }),
+      }),
+    );
+  });
+
+  it('reemitir rejeita tentativa com externalId por risco de duplicidade', async () => {
+    repo.findById.mockResolvedValue({
+      _id: { toString: () => 'em-error-transmitida' },
+      status: NfseEmissionStatus.ERROR,
+      externalId: 'DPS123',
+      providerResponse: null,
+      payload: {},
+    });
+
+    await expect(controller.reemitir('em-error-transmitida')).rejects.toMatchObject({
+      response: { code: 'REEMISSAO_NAO_SEGURA' },
+    });
+    expect(emitirNfseService.execute).not.toHaveBeenCalled();
+  });
+
+  it('reemitir rejeita tentativa com resposta do provider por risco de duplicidade', async () => {
+    repo.findById.mockResolvedValue({
+      _id: { toString: () => 'em-error-provider' },
+      status: NfseEmissionStatus.ERROR,
+      externalId: null,
+      providerResponse: { cStat: '500' },
+      payload: {},
+    });
+
+    await expect(controller.reemitir('em-error-provider')).rejects.toMatchObject({
+      response: { code: 'REEMISSAO_NAO_SEGURA' },
+    });
+    expect(emitirNfseService.execute).not.toHaveBeenCalled();
+  });
+
   it('rejects substituicao when original emission is not AUTHORIZED', async () => {
     repo.findById.mockResolvedValue({
       _id: { toString: () => 'em-1' },

@@ -2,6 +2,30 @@
 
 Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
 
+## 0. Atualizacao rapida (03/08/2026) - reemissao segura de erro anterior a transmissao
+
+Fonte: `codigo local` + `registro real de producao` + `testes locais` + `build local`.
+
+Motivacao:
+- a emissao LOBONOTAS `6a70eb85caa874f842b4a576` falhou com `externalId=null`, `providerResponse=null` e erro do Mongoose sobre `updatePipeline`
+- o erro ocorreu na reserva da numeracao DPS, antes de qualquer transmissao ao Ambiente Nacional; o fix `f8b2bbb` ja esta em producao
+
+Estado atual:
+- novo endpoint `POST /nfse/:id/reemitir`, permitido para `admin|manager|user`
+- fail-closed: aceita somente emissao `ERROR` sem `externalId` e sem `providerResponse`
+- reutiliza o payload fiscal armazenado, cria nova `referenciaExterna` idempotente e nova emissao; a tentativa anterior permanece intacta para auditoria
+- tentativas com evidencia de transmissao sao rejeitadas com `REEMISSAO_NAO_SEGURA`
+
+Validacao local:
+- controller focado: **18/18 testes** verdes
+- suite completa: **271 testes / 36 suites** verdes
+- build ok; lint sem erros novos
+
+Leitura operacional correta:
+1. a emissao real acima pode ser tentada novamente pelo frontend sem risco de duplicar uma transmissao anterior
+2. a nova tentativa pode revelar o proximo contrato real do Ambiente Nacional (mTLS/envelope/cStat), que deve ser diagnosticado pelo novo registro
+3. nao reutilizar este endpoint quando existir `externalId` ou resposta do provider
+
 ## 0. Atualizacao rapida (03/08/2026) - DANFSe v2.0 gerado localmente conforme NT 008 v1.02
 
 Fonte: `codigo local` + `pesquisa oficial` + `testes locais` + `build local` + `lint local`.

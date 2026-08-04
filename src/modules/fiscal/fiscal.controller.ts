@@ -35,6 +35,7 @@ import { SyncNfseArtifactsResponseDto } from './dtos/sync-nfse-artifacts.respons
 import { NfseEmissionRepository } from '../../fiscal/infra/mongo/repositories/nfse-emission.repository';
 import type { NfseEmissionDocument } from '../../fiscal/infra/mongo/schemas/nfse-emission.schema';
 import type { FiscalProvider } from '../../fiscal/domain/fiscal-provider.interface';
+import type { EmitirNfseInput } from '../../fiscal/domain/types/emitir-nfse.types';
 import { NfseEmissionStatus } from '../../fiscal/domain/types/nfse-emission-status';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -222,6 +223,52 @@ export class FiscalController {
   @ApiResponse({ status: 201, type: EmitirNfseResponseDto })
   emitirQuick(@Body() dto: EmitirNfseQuickDto) {
     return this.emitirNfseQuickService.execute(dto);
+  }
+
+  @Post(':id/reemitir')
+  @Roles('admin', 'manager', 'user')
+  @ApiOperation({
+    summary: 'Reemitir tentativa que falhou antes da transmissao',
+    description:
+      'Somente aceita emissao ERROR sem externalId e sem resposta do provider. Cria uma nova emissao e preserva a anterior para auditoria.',
+  })
+  @ApiResponse({ status: 201, type: EmitirNfseResponseDto })
+  async reemitir(@Param('id') id: string) {
+    const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null;
+    if (!doc) {
+      throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
+    }
+
+    if (
+      doc.status !== NfseEmissionStatus.ERROR ||
+      Boolean(doc.externalId) ||
+      Boolean(doc.providerResponse)
+    ) {
+      throw new BadRequestException({
+        code: 'REEMISSAO_NAO_SEGURA',
+        message:
+          'A reemissao automatica so e permitida para erro anterior a transmissao, sem externalId e sem resposta do provider',
+      });
+    }
+
+    const providerPayload = Array.isArray((doc.providerRequest as any)?.payload)
+      ? (doc.providerRequest as any).payload[0]
+      : undefined;
+    const original = (doc.payload ?? providerPayload) as EmitirNfseInput | undefined;
+    if (!original?.prestador?.cnpj || !original?.tomador?.cpfCnpj || !original?.servico) {
+      throw new BadRequestException({
+        code: 'REEMISSAO_PAYLOAD_INDISPONIVEL',
+        message: 'Payload original incompleto para reemissao',
+      });
+    }
+
+    const originalReference =
+      original.referenciaExterna?.trim() || doc.idempotencyKey?.trim() || `nfse-${id}`;
+
+    return this.emitirNfseService.execute({
+      ...original,
+      referenciaExterna: `${originalReference}-retry-${Date.now()}`,
+    });
   }
 
   @Post(':id/substituicao')
