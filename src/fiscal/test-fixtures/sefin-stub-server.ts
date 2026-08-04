@@ -4,7 +4,7 @@ import type { TLSSocket } from 'node:tls';
 
 import type { TestPki } from './test-cert';
 import { extractDpsId } from '../infra/sefin/dps-signer';
-import { gzipBase64ToXml, looksLikeGzipBase64 } from '../infra/sefin/sefin-codec';
+import { gzipBase64ToXml, looksLikeGzipBase64, xmlToGzipBase64 } from '../infra/sefin/sefin-codec';
 
 export interface StubRequestLog {
   method: string;
@@ -141,17 +141,31 @@ export class SefinStubServer {
 
     if (req.method === 'POST' && pathname === '/nfse') {
       let dpsXml = body;
+      let jsonEnvelope = false;
       try {
         const parsed = JSON.parse(body);
-        if (parsed.dps && looksLikeGzipBase64(parsed.dps)) {
-          dpsXml = gzipBase64ToXml(parsed.dps);
+        if (parsed && typeof parsed === 'object') {
+          jsonEnvelope = true;
+          const dpsB64 = parsed.dpsXmlGZipB64;
+          if (typeof dpsB64 === 'string' && looksLikeGzipBase64(dpsB64)) {
+            dpsXml = gzipBase64ToXml(dpsB64);
+          }
         }
       } catch {
         // não é JSON, tenta usar o body como XML direto
       }
       const dpsId = extractDpsId(dpsXml);
       this.dpsToChave.set(dpsId, this.chave);
-      this.send(res, 200, authorizedNfseXml(this.chave), 'application/xml');
+      if (jsonEnvelope) {
+        this.send(
+          res,
+          200,
+          JSON.stringify({ nfseXmlGZipB64: xmlToGzipBase64(authorizedNfseXml(this.chave)) }),
+          'application/json',
+        );
+      } else {
+        this.send(res, 200, authorizedNfseXml(this.chave), 'application/xml');
+      }
       return;
     }
 
@@ -186,7 +200,19 @@ export class SefinStubServer {
         this.send(res, 400, reject, 'application/xml');
         return;
       }
-      const tipoEvento = /e\d{6}/.exec(body)?.[0] ?? 'e101101';
+      let eventoXml = body;
+      try {
+        const parsed = JSON.parse(body) as
+          | { pedidoRegistroEventoXmlGZipB64?: string }
+          | null
+          | undefined;
+        if (parsed && typeof parsed.pedidoRegistroEventoXmlGZipB64 === 'string') {
+          eventoXml = gzipBase64ToXml(parsed.pedidoRegistroEventoXmlGZipB64);
+        }
+      } catch {
+        // body direto (XML)
+      }
+      const tipoEvento = /e\d{6}/.exec(eventoXml)?.[0] ?? 'e101101';
       const registro: StubEventoRegistrado = {
         cStat: '100',
         nProt: SefinStubServer.nProt(chave),

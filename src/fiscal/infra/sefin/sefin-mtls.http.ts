@@ -212,7 +212,12 @@ export class SefinMtlsHttp {
     }
   }
 
-  async registrarEvento(input: { chave: string; body: string; cert: DpsCertMaterialPem }): Promise<{
+  async registrarEvento(input: {
+    chave: string;
+    body: string;
+    cert: DpsCertMaterialPem;
+    contentType?: string;
+  }): Promise<{
     status: number;
     headers: Record<string, string | string[] | undefined>;
     text: string;
@@ -223,7 +228,7 @@ export class SefinMtlsHttp {
       path: `/nfse/${input.chave}/eventos`,
       cert: input.cert,
       body: input.body,
-      contentType: 'application/xml',
+      contentType: input.contentType ?? 'application/xml',
     });
   }
 

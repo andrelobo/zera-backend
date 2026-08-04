@@ -289,7 +289,7 @@ describe('LobonotasProvider ponta a ponta via mTLS real (stub SEFIN)', () => {
     const post = stub.requests.find((r) => r.method === 'POST' && r.path === '/nfse');
     expect(post).toBeDefined();
     const envelope = JSON.parse(post!.body);
-    const dpsXml = gzipBase64ToXml(envelope.dps);
+    const dpsXml = gzipBase64ToXml(envelope.dpsXmlGZipB64);
     expect(dpsXml).toContain('<ds:Signature');
     expect(post?.clientCertCn).toBe('ZERA SEFIN TESTE');
   });
@@ -329,7 +329,10 @@ describe('LobonotasProvider ponta a ponta via mTLS real (stub SEFIN)', () => {
     const post = stub.requests.find(
       (r) => r.method === 'POST' && r.path === `/nfse/${CHAVE}/eventos`,
     );
-    expect(post?.body).toContain('<ds:Signature');
+    const eventoXml = gzipBase64ToXml(
+      JSON.parse(post!.body).pedidoRegistroEventoXmlGZipB64 as string,
+    );
+    expect(eventoXml).toContain('<ds:Signature');
     expect(post?.clientCertCn).toBe('ZERA SEFIN TESTE');
   });
 

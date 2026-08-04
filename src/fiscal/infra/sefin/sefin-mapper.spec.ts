@@ -152,6 +152,45 @@ describe('sefin-mapper', () => {
     expect(parsed.chaveAcesso).toBe(CHAVE);
   });
 
+  it('descompacta o campo real do SEFIN nfseXmlGZipB64', () => {
+    const compressed = xmlToGzipBase64(nfseXml);
+    const parsed = mapSefinNfseResponse({
+      text: JSON.stringify({ nfseXmlGZipB64: compressed }),
+      json: { nfseXmlGZipB64: compressed },
+    });
+    expect(parsed.status).toBe(NfseEmissionStatus.AUTHORIZED);
+    expect(parsed.chaveAcesso).toBe(CHAVE);
+  });
+
+  it('rejeição JSON do SEFIN com erros Codigo/Descricao vira REJECTED (ex.: E1226)', () => {
+    const parsed = mapSefinNfseResponse({
+      text: JSON.stringify({
+        tipoAmbiente: 1,
+        versaoAplicativo: 'SefinNacional_1.6.0',
+        dataHoraProcessamento: '2026-08-04T17:05:44.0422736-03:00',
+        erros: [{ Codigo: 'E1226', Descricao: 'Estrutura descompactada mal formada.' }],
+      }),
+      json: {
+        tipoAmbiente: 1,
+        versaoAplicativo: 'SefinNacional_1.6.0',
+        dataHoraProcessamento: '2026-08-04T17:05:44.0422736-03:00',
+        erros: [{ Codigo: 'E1226', Descricao: 'Estrutura descompactada mal formada.' }],
+      },
+    });
+    expect(parsed.status).toBe(NfseEmissionStatus.REJECTED);
+    expect(parsed.cStat).toBe('E1226');
+    expect(parsed.xMotivo).toBe('Estrutura descompactada mal formada.');
+  });
+
+  it('erro de evento em JSON (erro[{Codigo,Descricao}]) é mapeado no registro', () => {
+    const parsed = mapSefinEventoRegistroResponse({
+      text: JSON.stringify({ erro: [{ Codigo: 'E1500', Descricao: 'Evento não permitido' }] }),
+      json: { erro: [{ Codigo: 'E1500', Descricao: 'Evento não permitido' }] },
+    });
+    expect(parsed.cStat).toBe('E1500');
+    expect(parsed.xMotivo).toBe('Evento não permitido');
+  });
+
   it('trata Base64 não-XML como texto puro', () => {
     const fakeBase64 = Buffer.from('não é XML comprimido mas é Base64').toString('base64');
     const parsed = mapSefinNfseResponse({
