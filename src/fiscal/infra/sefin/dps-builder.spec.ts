@@ -121,6 +121,12 @@ describe('buildDps', () => {
     expect(xml).toContain('<prest><CNPJ>43521115000134</CNPJ>');
   });
 
+  it('nao informa xNome do prestador quando o emitente da DPS e o proprio prestador (E0121)', () => {
+    const xml = buildDps(baseInput as any, options);
+    expect(xml).not.toContain('<xNome>BURGUS LTDA</xNome>');
+    expect(xml).toContain('<xNome>ANDRE AUGUSTO DE HOLANDA LOBO</xNome>');
+  });
+
   it('injeta tributos federais e substituição quando presentes', () => {
     const input = {
       ...baseInput,
