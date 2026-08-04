@@ -53,7 +53,9 @@ export function getSefinConfig(): SefinConfig {
   const logger = new Logger('SefinConfig');
 
   const enabled = parseBoolean(process.env.SEFIN_ENABLED, false);
-  const baseUrl = process.env.SEFIN_BASE_URL ?? 'https://sefin.producaorestrita.nfse.gov.br';
+  const baseUrl =
+    process.env.SEFIN_BASE_URL ??
+    'https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional';
   const adnBaseUrl = process.env.SEFIN_ADN_BASE_URL ?? 'https://adn.producaorestrita.nfse.gov.br';
   const environment =
     (process.env.SEFIN_ENV as SefinEnvironment | undefined) ?? inferEnvironment(baseUrl);
