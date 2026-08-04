@@ -131,6 +131,34 @@ function extractEmbeddedXml(json: any): string | undefined {
   return undefined;
 }
 
+function extractSefinErros(json: any): { cStat?: string; xMotivo?: string } | undefined {
+  if (!json || typeof json !== 'object') return undefined;
+  let lista: unknown[] = [];
+  if (Array.isArray(json.erros)) lista = json.erros;
+  else if (Array.isArray(json.erro)) lista = json.erro;
+  else if (json.erro && typeof json.erro === 'object') lista = [json.erro];
+  else if (json.erros && typeof json.erros === 'object') lista = [json.erros];
+  if (lista.length === 0) return undefined;
+  const first = lista[0] as Record<string, unknown> | undefined;
+  if (!first || typeof first !== 'object') return undefined;
+  const cStat =
+    typeof first.Codigo === 'string'
+      ? first.Codigo
+      : typeof first.codigo === 'string'
+        ? first.codigo
+        : undefined;
+  const xMotivo =
+    typeof first.Descricao === 'string'
+      ? first.Descricao
+      : typeof first.descricao === 'string'
+        ? first.descricao
+        : typeof first.message === 'string'
+          ? first.message
+          : undefined;
+  if (!cStat && !xMotivo) return undefined;
+  return { cStat, xMotivo };
+}
+
 function parseXml(xml: string): SefinNfseParsed {
   const parsed: SefinNfseParsed = { status: NfseEmissionStatus.PENDING };
   if (EVENTO_CANCELAMENTO_TAG_REGEX.test(xml)) {
@@ -185,6 +213,15 @@ export function mapSefinNfseResponse(input: { text: string; json?: any }): Sefin
     }
   }
 
+  const erros = extractSefinErros(input.json);
+  if (erros) {
+    parsed.cStat = erros.cStat ?? parsed.cStat;
+    parsed.xMotivo = erros.xMotivo ?? parsed.xMotivo;
+    if (parsed.status === NfseEmissionStatus.PENDING) {
+      parsed.status = NfseEmissionStatus.REJECTED;
+    }
+  }
+
   return parsed;
 }
 
@@ -223,6 +260,12 @@ export function mapSefinEventoRegistroResponse(input: {
     parsed.xMotivo = input.json.xMotivo ?? input.json.motivo ?? parsed.xMotivo;
     parsed.nProt = input.json.nProt ?? parsed.nProt;
     parsed.dhRecbto = input.json.dhRecbto ?? input.json.dhProc ?? parsed.dhRecbto;
+  }
+
+  const erros = extractSefinErros(input.json);
+  if (erros) {
+    parsed.cStat = erros.cStat ?? parsed.cStat;
+    parsed.xMotivo = erros.xMotivo ?? parsed.xMotivo;
   }
 
   return parsed;

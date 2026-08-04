@@ -102,7 +102,7 @@ describe('LobonotasProvider', () => {
     );
 
     const requestCall = (http.request as jest.Mock).mock.calls[0][0];
-    const body = JSON.parse(requestCall.body as string).dps as string;
+    const body = JSON.parse(requestCall.body as string).dpsXmlGZipB64 as string;
     const dpsXml = gzipBase64ToXml(body);
     expect(dpsXml).toContain('<DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">');
     expect(dpsXml).toContain('<ds:Signature');
@@ -157,6 +157,31 @@ describe('LobonotasProvider', () => {
     expect(result.status).toBe(NfseEmissionStatus.REJECTED);
     expect(result.providerResponse).toEqual(
       expect.objectContaining({ cStat: '501', httpStatus: 400 }),
+    );
+  });
+
+  it('4xx JSON do SEFIN com erros Codigo/Descricao vira REJECTED (ex.: E1226)', async () => {
+    (http.request as jest.Mock).mockRejectedValue({
+      code: 'SEFIN_HTTP_ERROR',
+      status: 400,
+      message: 'Sefin API error: 400',
+      body: {
+        tipoAmbiente: 1,
+        versaoAplicativo: 'SefinNacional_1.6.0',
+        dataHoraProcessamento: '2026-08-04T17:05:44.0422736-03:00',
+        erros: [{ Codigo: 'E1226', Descricao: 'Estrutura descompactada mal formada.' }],
+      },
+    });
+
+    const result = await provider.emitirNfse(baseInput);
+
+    expect(result.status).toBe(NfseEmissionStatus.REJECTED);
+    expect(result.providerResponse).toEqual(
+      expect.objectContaining({
+        cStat: 'E1226',
+        xMotivo: 'Estrutura descompactada mal formada.',
+        httpStatus: 400,
+      }),
     );
   });
 
@@ -265,9 +290,13 @@ describe('LobonotasProvider', () => {
 
     const call = (http.registrarEvento as jest.Mock).mock.calls[0][0];
     expect(call.chave).toBe(CHAVE);
-    expect(call.body).toContain('<e101101>');
-    expect(call.body).toContain('<ds:Signature');
-    expect(call.body).toContain(`<chNFSe>${'1'.repeat(50)}</chNFSe>`);
+    expect(call.contentType).toBe('application/json');
+    const eventoXml = gzipBase64ToXml(
+      JSON.parse(call.body as string).pedidoRegistroEventoXmlGZipB64 as string,
+    );
+    expect(eventoXml).toContain('<e101101>');
+    expect(eventoXml).toContain('<ds:Signature');
+    expect(eventoXml).toContain(`<chNFSe>${'1'.repeat(50)}</chNFSe>`);
     expect(call.cert.certificatePem).toContain('CERTIFICATE');
 
     expect(result.protocol).toBe(CHAVE);

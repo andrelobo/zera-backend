@@ -165,7 +165,9 @@ export class LobonotasProvider implements FiscalProvider {
     const dpsId = extractDpsId(signedDps);
 
     const body =
-      cfg.nfseEnvelope === 'json' ? JSON.stringify({ dps: xmlToGzipBase64(signedDps) }) : signedDps;
+      cfg.nfseEnvelope === 'json'
+        ? JSON.stringify({ dpsXmlGZipB64: xmlToGzipBase64(signedDps) })
+        : signedDps;
     const contentType = cfg.nfseEnvelope === 'json' ? 'application/json' : 'application/xml';
 
     this.logger.log('Emitindo NFS-e via LOBONOTAS (Ambiente Nacional)', {
@@ -338,6 +340,12 @@ export class LobonotasProvider implements FiscalProvider {
       cert,
     );
 
+    const eventoBody =
+      cfg.nfseEnvelope === 'json'
+        ? JSON.stringify({ pedidoRegistroEventoXmlGZipB64: xmlToGzipBase64(eventoXml) })
+        : eventoXml;
+    const eventoContentType = cfg.nfseEnvelope === 'json' ? 'application/json' : 'application/xml';
+
     this.logger.log('Solicitando cancelamento via API Eventos (Ambiente Nacional)', {
       chave,
       evento: EVENTO_CANCELAMENTO_TAG,
@@ -346,7 +354,12 @@ export class LobonotasProvider implements FiscalProvider {
 
     let response;
     try {
-      response = await this.http.registrarEvento({ chave, body: eventoXml, cert });
+      response = await this.http.registrarEvento({
+        chave,
+        body: eventoBody,
+        contentType: eventoContentType,
+        cert,
+      });
     } catch (error: any) {
       if (error?.status === 404) {
         return {
