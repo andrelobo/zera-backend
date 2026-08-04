@@ -3,6 +3,18 @@
 > Leitura rapida operacional: veja `CURRENT_STATE.md` (snapshot atual).
 > Este documento (`CONTEXT.md`) permanece como historico completo e linha do tempo.
 
+## HANDOVER IMEDIATO (04/08/2026) - LOBONOTAS real pausado antes do codec GZip/Base64
+
+Leitura canonica detalhada: `CURRENT_STATE.md`, secao **RETOMAR DAQUI**.
+
+- NFS-e PlugNotas 47 (`6a71420f451c04dbcc7a438c`) foi autorizada e sera mantida.
+- Origem LOBONOTAS: `6a70eb85caa874f842b4a576`; **nao retentar novamente agora**.
+- Roteamento, endpoint e ambiente ja estao corrigidos: LOBONOTAS fixo, SEFIN producao, `tpAmb=1`, `/SefinNacional`, JSON.
+- Ultima DPS real: numero 60; resposta SEFIN `E1226 - Estrutura descompactada mal formada`.
+- Causa: `dps` ainda contem XML puro. Contrato oficial exige XML em GZip + Base64Binary, e a resposta compactada tambem precisa ser descompactada antes do mapper.
+- Retomada: implementar codec request/response + testes; deployar; somente depois autorizar uma unica tentativa real.
+- Backend pausado em `446a620` (deploy `30872158142` verde).
+
 
 ## ATUALIZACAO RAPIDA (2026-05-19) - role `readonly` criada para visualizacao segura do produto
 

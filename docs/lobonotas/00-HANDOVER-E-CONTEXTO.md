@@ -1,5 +1,22 @@
 # LOBONOTAS — 00. Handover e Contexto
 
+## Atualizacao operacional urgente (04/08/2026)
+
+O primeiro piloto direto real chegou ate a API oficial, mas esta **pausado** antes de nova tentativa:
+
+- origem: emissao `6a70eb85caa874f842b4a576`, provider original `LOBONOTAS`, R$ 1,00;
+- a reemissao que caiu indevidamente no PlugNotas gerou a NFS-e 47 (`6a71420f451c04dbcc7a438c`), que sera mantida;
+- fix de preservacao do provider: `c06749f`;
+- SEFIN efetiva: producao, `tpAmb=1`, `https://sefin.nfse.gov.br/SefinNacional`, envelope JSON;
+- DPS 58: 404 por base URL incompleta em producao restrita;
+- DPS 59: media type XML nao suportado;
+- DPS 60: `E1226 - Estrutura descompactada mal formada`;
+- causa pendente: API exige XML GZip + Base64Binary dentro do JSON; resposta compactada tambem precisa de gunzip/Base64 antes do mapper;
+- commit atual: `446a620`; deploy `30872158142` verde;
+- **nao fazer nova tentativa** antes de implementar/testar o codec de request e response.
+
+O roteiro detalhado de retomada esta no topo de `CURRENT_STATE.md`.
+
 > Frente: **LOBONOTAS** — novo motor fiscal do ZERA para integração direta com a NFS-e Padrão Nacional / SEFIN Nacional.
 > Etapa: **Documentação as-is (etapa 1) + Slices 1–4 implementados (01/08/2026)**. Código LOBONOTAS aditivo atrás de flag `SEFIN_ENABLED=false`; produção permanece em PlugNotas.
 > Data de referência: **01/08/2026**.

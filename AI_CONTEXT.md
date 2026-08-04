@@ -4,6 +4,17 @@ Versão: 2026-05-11
 
 ---
 
+# 0. ALERTA OPERACIONAL PARA A PROXIMA SESSAO (04/08/2026)
+
+- Ler primeiro `CURRENT_STATE.md` -> **RETOMAR DAQUI**.
+- Nao disparar nova emissao da origem `6a70eb85caa874f842b4a576` antes do codec GZip/Base64.
+- NFS-e PlugNotas 47 (`6a71420f451c04dbcc7a438c`) e valida e sera mantida.
+- LOBONOTAS ja esta fixado em producao (`tpAmb=1`, `/SefinNacional`, JSON), mas DPS 60 recebeu `E1226` porque o XML foi colocado cru no campo `dps`.
+- Proxima implementacao: gzipSync + Base64 no request, gunzip/Base64 no response, testes deterministas, deploy e somente uma tentativa real.
+- Commit operacional atual: `446a620`.
+
+---
+
 # 1. PREMISSAS CANÔNICAS
 
 O ZERA Backend Fiscal deve ser tratado como:
