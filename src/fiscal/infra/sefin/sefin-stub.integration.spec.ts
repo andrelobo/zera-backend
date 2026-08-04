@@ -279,6 +279,7 @@ describe('LobonotasProvider ponta a ponta via mTLS real (stub SEFIN)', () => {
         descricao: 'Consulta IR 2024',
         valor: 150,
         iss: { retido: false },
+        tributacaoTotal: { pTotTribSN: 6 },
       },
       referenciaExterna: 'sefin-stub-e2e-1',
     } as any);

@@ -226,6 +226,12 @@ function buildTrib(input: EmitirNfseInput): string {
   } else if (hasPercentual) {
     const pct = (v: number | undefined) => (v === undefined ? '0.00' : v.toFixed(2));
     totTrib = `<totTrib><pTotTrib><pTotTribFed>${pct(tot?.federal?.valorPercentual)}</pTotTribFed><pTotTribEst>${pct(tot?.estadual?.valorPercentual)}</pTotTribEst><pTotTribMun>${pct(tot?.municipal?.valorPercentual)}</pTotTribMun></pTotTrib></totTrib>`;
+  } else if (tot?.pTotTribSN !== undefined && tot.pTotTribSN !== null) {
+    totTrib = `<totTrib><pTotTribSN>${tot.pTotTribSN.toFixed(2)}</pTotTribSN></totTrib>`;
+  } else if (input.prestador.regimeTributarioSn?.opSimpNac === 3) {
+    throw new Error(
+      'ME/EPP (opSimpNac=3) não pode informar indTotTrib; informe servico.tributacaoTotal.pTotTribSN ou valores/percentuais (E0712)',
+    );
   } else {
     totTrib = `<totTrib><indTotTrib>0</indTotTrib></totTrib>`;
   }

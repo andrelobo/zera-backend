@@ -362,4 +362,53 @@ describe('EmitirNfseService idempotency', () => {
       }),
     );
   });
+
+  it('injects pTotTribSN from simplesSnapshot when ME/EPP has no tributacaoTotal (E0712)', async () => {
+    const created = { _id: { toString: () => 'em-794' } };
+    const repository = {
+      findByReference: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue(created),
+      updateEmission: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = {
+      providerName: 'LOBONOTAS',
+      emitirNfse: jest.fn().mockResolvedValue({
+        status: NfseEmissionStatus.PENDING,
+        provider: 'LOBONOTAS',
+        externalId: 'ext-794',
+      }),
+    };
+
+    const empresasService = {
+      getByCnpj: jest.fn().mockResolvedValue({
+        cnpj: '43521115000134',
+        providerData: { simples: { optante: true } },
+        simplesSnapshot: { aliquotaEfetiva: 0.06, valido: true },
+      }),
+      getCadastroResumoByCnpj: jest.fn().mockResolvedValue({
+        statusCadastro: 'COMPLETO',
+        prontoParaEmitir: true,
+        percentualCompletude: 100,
+        camposFaltantes: [],
+        camposFaltantesEmissao: [],
+      }),
+    };
+    const tomadoresService = makeTomadoresServiceMock();
+    const service = new EmitirNfseService(
+      provider as any,
+      repository as any,
+      empresasService as any,
+      tomadoresService as any,
+    );
+
+    const input = makeInput() as any;
+    input.prestador.regimeTributarioSn = { opSimpNac: 3, regApTribSN: 1, regEspTrib: 0 };
+    delete input.servico.tributacaoTotal;
+
+    await service.execute(input);
+
+    expect(provider.emitirNfse).toHaveBeenCalledTimes(1);
+    const payload = provider.emitirNfse.mock.calls[0][0];
+    expect(payload.servico.tributacaoTotal).toEqual({ pTotTribSN: 6 });
+  });
 });
