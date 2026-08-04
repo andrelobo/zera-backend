@@ -2,62 +2,56 @@
 
 Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
 
-## 0. RETOMAR DAQUI (04/08/2026) - contrato real corrigido: campo JSON e `dpsXmlGZipB64` (nao `dps`); validado 288 testes; proximo: deploy + tentativa real unica
+## 0. RETOMAR DAQUI (04/08/2026) - E1226 resolvido (dpsXmlGZipB64); E1228 resolvido (assinatura sem prefixo de namespace); proximo: deploy + tentativa real unica
 
-Fonte: `codigo local` + `testes locais` + `build local` + `lint local` + `resposta real da SEFIN Nacional` + SDKs publicos do Ambiente Nacional (`@useinvio/nfse-sdk@2.1.0`, `nfse-nacional@0.1.9`) + wikis de producao (`mupisystems/nfse_nacional`, `amaica/nfse2`).
+Fonte: `codigo local` + `testes locais` + `build local` + `lint local` + `resposta real da SEFIN Nacional` + manual oficial SN NFS-e + SDKs publicos do Ambiente Nacional.
 
-### Causa raiz do E1226 persistente (apos codec em producao)
+### Resultado real da tentativa com o envelope corrigido (emissao `6a724c06f7817a7586791763`)
 
-- A tentativa real pos-deploy (correlationId `23291338-0eea-4d83-81cf-53b3bde3f3a7`, `POST /nfse/6a70eb85caa874f842b4a576/reemitir`, 04/08/2026 17:05:44-03:00) retornou de novo:
-  `{"provider":{"tipoAmbiente":1,"versaoAplicativo":"SefinNacional_1.6.0","dataHoraProcessamento":"2026-08-04T17:05:44.0422736-03:00","erros":[{"Codigo":"E1226","Descricao":"Estrutura descompactada mal formada."}]}}`.
-- O codec (GZip+Base64) estava correto; **a chave JSON estava errada**: enviávamos `{ dps: ... }` e o contrato oficial exige **`{ dpsXmlGZipB64: ... }`**.
-- Contrato confirmado em 3 fontes independentes:
-  - `@useinvio/nfse-sdk@2.1.0` e `nfse-nacional@0.1.9` (baixados em `/tmp/opencode/nfse-sdk`): emissao `{ dpsXmlGZipB64 }` em `POST /nfse`; eventos `{ pedidoRegistroEventoXmlGZipB64 }` em `POST /nfse/{chave}/eventos`; retorno compactado `nfseXmlGZipB64`/`eventoXmlGZipB64`.
-  - wiki `mupisystems/nfse_nacional`: `{"dpsXmlGZipB64": "..."}`.
-  - wiki `amaica/nfse2`: `POST /sefinnacional/nfse` body `{dpsXmlGZipB64:"..."}`, sucesso HTTP 201.
-- Erros de validacao do SEFIN chegam como JSON `erros:[{Codigo,Descricao}]` (emissao) ou `erro:[{Codigo,Descricao}]` (eventos) — antes o mapper ignorava e o ZERA registrava erro generico.
+- Reemissao real de `6a70eb85caa874f842b4a576` (04/08/2026 ~17:31-03:00): **E1226 sumiu** — SEFIN aceitou `dpsXmlGZipB64`, descompactou e processou a DPS (DPS `62`).
+- Novo erro real: **E1228 - Xml declarado com prefixo de namespace** (`erros:[{Codigo:"E1228",Descricao:"Xml declarado com prefixo de namespace."}]`, httpStatus 400).
+- Causa raiz (manual oficial): o SN NFS-e **veda prefixos de namespace** e exige que a assinatura declare o namespace **na propria tag `Signature`** como **namespace default** (sem prefixo). O antigo E6155 foi renumerado para **E1228** na atualizacao do portal (24/04/2026).
 
-### Correcao implementada nesta rodada
+### Correcao desta rodada (assinatura sem prefixo)
 
-- `LobonotasProvider.emitirNfse`: envelope JSON agora envia `{ dpsXmlGZipB64: xmlToGzipBase64(signedDps) }` com `application/json`.
-- `solicitarCancelamentoNfse`: evento assinado passa a trafegar como `{ pedidoRegistroEventoXmlGZipB64: xmlToGzipBase64(eventoXml) }` com `application/json` (envelope json); `SefinMtlsHttp.registrarEvento` aceita `contentType`.
-- `sefin-mapper.ts`: novo `extractSefinErros` mapeia `erros/erro[{Codigo,Descricao}]` para `cStat`/`xMotivo`; `mapSefinNfseResponse` vira `REJECTED` nesse caso (ex.: E1226) e `mapSefinEventoRegistroResponse` captura o erro; `nfseXmlGZipB64` ja e descompactado por `extractEmbeddedXml`.
-- Stub SEFIN e specs atualizados para o contrato real: le `dpsXmlGZipB64`/`pedidoRegistroEventoXmlGZipB64` e responde `nfseXmlGZipB64` comprimido na emissao JSON.
+- `sefin-mapper.ts`: erros de validacao JSON `erros:[{Codigo,Descricao}]` (emissao) / `erro:[{Codigo,Descricao}]` (eventos) passaram a ser mapeados para `cStat`/`xMotivo` com status `REJECTED` — antes viravam erro generico (`BAD_REQUEST`, "LOBONOTAS rejected the request"). Isso ja entrou no commit `d12b272`.
+- `dps-signer.ts`: `computeSignature(..., { prefix: '' })` — a assinatura agora sai como `<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">` com elementos filhos **sem prefixo** (`SignedInfo`, `CanonicalizationMethod`, `SignatureValue`, `KeyInfo/X509Data`, ...), conforme o padrao do Nacional. Mesma rotina valida para DPS e eventos (`signXmlElement`).
+- `xml-crypto` produz esse formato nativamente com `prefix: ''` (signed-xml.js:674-691); assinatura verificada por `checkSignature` nos testes.
+- Specs atualizados para afirmar o formato sem prefixo e **negar** regressao (`not.toContain('xmlns:ds')`, `not.toMatch(/<ds:/)`).
 
 Validacao local:
-- suite completa: **288 testes / 37 suites** verdes (+4 novos: E1226 JSON, `nfseXmlGZipB64`, erro de evento JSON, envelope json de cancelamento).
+- suite completa: **288 testes / 37 suites** verdes (inclui `checkSignature` da DPS e do evento sem prefixo).
 - `npm run build` ok (inclui copia do catalogo LC116 para `dist/`).
 - `npm run lint` -> **0 erros** (225 warnings pre-existentes).
 
 ### Regra ao retomar
 
-- **NAO fazer nova tentativa real antes do deploy desta correcao e da confirmacao no container.**
+- **NAO fazer nova tentativa real antes do deploy desta correcao da assinatura e da confirmacao no container.**
 - A NFS-e PlugNotas numero **47**, documento ZERA `6a71420f451c04dbcc7a438c`, foi autorizada e o owner decidiu **mante-la**.
 - A tentativa original LOBONOTAS que serve de origem continua sendo `6a70eb85caa874f842b4a576` (R$ 1,00, BURGUS -> LEVACAR, servico `171901`).
-- Nova tentativa real = **uma unica** reemissao via frontend (owner dispara; sem credenciais neste contexto), acompanhando o correlationId nos logs da VPS.
+- Nova tentativa real = **uma unica** reemissao, acompanhando o correlationId nos logs da VPS.
 
 ### Linha do tempo real (contexto)
 
 1. A primeira reemissao caiu indevidamente no provider padrao `PLUGNOTAS` e gerou a NFS-e 47. Fix `c06749f`: reemissao passou a preservar `doc.provider`.
-2. DPS **58**, producao restrita: chamada na raiz errada -> HTML IIS `404`. Fixes `5722299`/`7ac1ebe`: endpoints oficiais + segredo do GitHub Environment `production` corrigido.
-3. DPS **59**: `application/xml` nao suportado. Fix `446a620`: envelope JSON ativado (`SEFIN_NFSE_ENVELOPE=json`).
+2. DPS **58**, producao restrita: chamada na raiz errada -> HTML IIS `404`. Fixes `5722299`/`7ac1ebe`.
+3. DPS **59**: `application/xml` nao suportado. Fix `446a620`: envelope JSON ativado.
 4. DPS **60**: JSON aceito, SEFIN respondeu `E1226` -> codec GZip+Base64 (commit `2924849`, PR #4).
-5. Tentativa real pos-codec (DPS reemissao, correlationId `23291338-...`): **E1226 de novo** -> causa raiz: chave JSON `dps` (corrigida para `dpsXmlGZipB64` nesta rodada).
+5. Reemissao real pos-codec: **E1226** -> causa raiz: chave JSON `dps` (corrigida para `dpsXmlGZipB64` em `d12b272`, PR #5).
+6. Reemissao real pos-PR5: **E1228** -> causa raiz: prefixo `ds:` na assinatura (corrigida nesta rodada: `prefix: ''`).
 
 ### Proximo passo tecnico exato
 
-1. Fechar a branch desta correcao (validada 288/288 testes, build e lint ok) e mergear na `main`.
-2. Disparar deploy; confirmar no container `zera-backend-api`: dist com `dpsXmlGZipB64`, `SEFIN_BASE_URL=https://sefin.nfse.gov.br/SefinNacional`, `SEFIN_ENV=producao`, `SEFIN_TP_AMB=1`, `SEFIN_NFSE_ENVELOPE=json`.
+1. Fechar a branch da correcao da assinatura (validada 288/288 testes, build e lint ok) e mergear na `main`.
+2. Disparar deploy; confirmar no container `zera-backend-api` que `dps-signer.js` contem `prefix: ""`.
 3. Fazer **uma unica** nova tentativa real via reemissao da origem `6a70eb85caa874f842b4a576` e acompanhar o correlationId nos logs.
-4. Se o `E1226` sumir, o proximo contrato real a diagnosticar sera o retorno compactado `nfseXmlGZipB64`/`eventoXmlGZipB64` da NFS-e autorizada.
+4. Se o `E1228` sumir, o proximo contrato real a diagnosticar sera o retorno `nfseXmlGZipB64` da NFS-e autorizada e o processamento/assinatura da NFS-e.
 
-### Estado de repositorio/deploy (04/08/2026 - codec em producao, campo de envelope a corrigir/deployar)
+### Estado de repositorio/deploy (04/08/2026)
 
-- PR #4 (`feat/sefin-gzip-base64`, commit `2924849`) mergeado na `main` e deployado: GitHub Actions `Deploy Oracle VPS` run `30927612670` -> **success**.
-- Container `zera-backend-api` confirmado via SSH em 04/08/2026 16:11 UTC: **running + healthy**, com `/app/dist/fiscal/infra/sefin/sefin-codec.js` contendo `xmlToGzipBase64`.
+- PR #4 (`2924849`, codec) e PR #5 (`d12b272`, `dpsXmlGZipB64` + mapper de erros) mergeados e deployados (runs `30927612670` e `30947820327` success).
 - Variaveis SEFIN confirmadas no container: `SEFIN_BASE_URL=https://sefin.nfse.gov.br/SefinNacional`, `SEFIN_ENV=producao`, `SEFIN_TP_AMB=1`, `SEFIN_NFSE_ENVELOPE=json`.
-- Commit `5f7130d` (docs-only do CURRENT_STATE) na `main` sem novo deploy (workflow ignora `*.md`).
-- Proximo passo operacional: **deploy da correcao do envelope** e, depois, **uma unica** tentativa real via reemissao da origem `6a70eb85caa874f842b4a576`, acompanhando o correlationId nos logs. Nao cancelar a NFS-e 47.
+- Proximo passo operacional: **deploy da correcao da assinatura (E1228)** e, depois, **uma unica** tentativa real. Nao cancelar a NFS-e 47.
 
 ## 0. Atualizacao rapida (03/08/2026) - reemissao segura de erro anterior a transmissao
 

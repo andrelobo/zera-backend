@@ -105,7 +105,8 @@ describe('LobonotasProvider', () => {
     const body = JSON.parse(requestCall.body as string).dpsXmlGZipB64 as string;
     const dpsXml = gzipBase64ToXml(body);
     expect(dpsXml).toContain('<DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">');
-    expect(dpsXml).toContain('<ds:Signature');
+    expect(dpsXml).toContain('<Signature');
+    expect(dpsXml).not.toMatch(/<ds:|xmlns:ds/);
     expect(dpsXml).toContain('<serie>00001</serie>');
     expect(requestCall.cert.privateKeyPem).toContain('PRIVATE KEY');
     expect(requestCall.cert.certificatePem).toContain('CERTIFICATE');
@@ -295,7 +296,8 @@ describe('LobonotasProvider', () => {
       JSON.parse(call.body as string).pedidoRegistroEventoXmlGZipB64 as string,
     );
     expect(eventoXml).toContain('<e101101>');
-    expect(eventoXml).toContain('<ds:Signature');
+    expect(eventoXml).toContain('<Signature');
+    expect(eventoXml).not.toMatch(/<ds:|xmlns:ds/);
     expect(eventoXml).toContain(`<chNFSe>${'1'.repeat(50)}</chNFSe>`);
     expect(call.cert.certificatePem).toContain('CERTIFICATE');
 

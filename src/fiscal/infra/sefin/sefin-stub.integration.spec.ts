@@ -143,7 +143,8 @@ describe('SefinMtlsHttp real mTLS contra stub SEFIN local (Ambiente Nacional sim
       (r) => r.method === 'POST' && r.path === `/nfse/${CHAVE}/eventos`,
     );
     expect(post).toBeDefined();
-    expect(post?.body).toContain('<ds:Signature');
+    expect(post?.body).toContain('<Signature');
+    expect(post?.body).not.toMatch(/<ds:|xmlns:ds/);
     expect(post?.clientCertCn).toBe('ZERA SEFIN TESTE');
   });
 
@@ -290,7 +291,8 @@ describe('LobonotasProvider ponta a ponta via mTLS real (stub SEFIN)', () => {
     expect(post).toBeDefined();
     const envelope = JSON.parse(post!.body);
     const dpsXml = gzipBase64ToXml(envelope.dpsXmlGZipB64);
-    expect(dpsXml).toContain('<ds:Signature');
+    expect(dpsXml).toContain('<Signature');
+    expect(dpsXml).not.toMatch(/<ds:|xmlns:ds/);
     expect(post?.clientCertCn).toBe('ZERA SEFIN TESTE');
   });
 
@@ -332,7 +334,8 @@ describe('LobonotasProvider ponta a ponta via mTLS real (stub SEFIN)', () => {
     const eventoXml = gzipBase64ToXml(
       JSON.parse(post!.body).pedidoRegistroEventoXmlGZipB64 as string,
     );
-    expect(eventoXml).toContain('<ds:Signature');
+    expect(eventoXml).toContain('<Signature');
+    expect(eventoXml).not.toMatch(/<ds:|xmlns:ds/);
     expect(post?.clientCertCn).toBe('ZERA SEFIN TESTE');
   });
 

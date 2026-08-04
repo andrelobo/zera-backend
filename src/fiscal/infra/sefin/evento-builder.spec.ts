@@ -15,7 +15,7 @@ import {
 const CHAVE = `NFS${'1'.repeat(50)}`;
 
 function extractSignatureElement(signedXml: string): string {
-  const match = /<ds:Signature[^>]*>[\s\S]*<\/ds:Signature>/.exec(signedXml);
+  const match = /<Signature[^>]*>[\s\S]*<\/Signature>/.exec(signedXml);
   if (!match) throw new Error('Signature element not found');
   return match[0];
 }
@@ -77,8 +77,10 @@ describe('evento-builder (TCEvento e101101)', () => {
     const signed = buildPedidoCancelamentoAssinado(options, cert);
     const id = buildTCEventoId(CHAVE);
 
-    expect(signed).toContain(`<ds:Reference URI="#${id}">`);
-    expect(signed.indexOf('<ds:Signature')).toBeGreaterThan(signed.indexOf('</infEvento>'));
+    expect(signed).toContain(`<Reference URI="#${id}">`);
+    expect(signed.indexOf('<Signature')).toBeGreaterThan(signed.indexOf('</infEvento>'));
+    expect(signed).not.toContain('xmlns:ds');
+    expect(signed).not.toMatch(/<ds:/);
     expect(extractEventoId(signed)).toBe(id);
 
     const verifier = new SignedXml({ publicCert: cert.certificatePem });
