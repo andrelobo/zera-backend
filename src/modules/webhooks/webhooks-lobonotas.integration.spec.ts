@@ -157,7 +157,7 @@ describe('LO BONOTAS integration: emissao piloto -> webhook forwarder -> AUTORIZ
     expect(output.result.externalId).toMatch(/^DPS\d{42}$/);
     expect(empresasService.reservarNumeracaoDps).toHaveBeenCalledWith('43521115000134');
     expect(http.request).toHaveBeenCalledWith(
-      expect.objectContaining({ method: 'POST', path: '/nfse', contentType: 'application/xml' }),
+      expect.objectContaining({ method: 'POST', path: '/nfse', contentType: 'application/json' }),
     );
 
     const emission = await repository.findById(output.emissionId);

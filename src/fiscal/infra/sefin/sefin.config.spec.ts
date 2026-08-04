@@ -32,9 +32,7 @@ describe('sefin.config', () => {
     const cfg = getSefinConfig();
     expect(cfg.enabled).toBe(false);
     expect(cfg.environment).toBe('producaorestrita');
-    expect(cfg.baseUrl).toBe(
-      'https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional',
-    );
+    expect(cfg.baseUrl).toBe('https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional');
     expect(cfg.adnBaseUrl).toBe('https://adn.producaorestrita.nfse.gov.br');
     expect(cfg.tpAmb).toBe('2');
     expect(cfg.timeoutMs).toBe(30000);

@@ -1,4 +1,5 @@
 import { NfseEmissionStatus } from '../../domain/types/nfse-emission-status';
+import { gzipBase64ToXml, looksLikeGzipBase64 } from './sefin-codec';
 import {
   extractAllTags,
   extractElementId,
@@ -113,6 +114,14 @@ function extractEmbeddedXml(json: any): string | undefined {
   const candidates: unknown[] = [];
   for (const value of Object.values(json)) {
     if (looksLikeXml(value)) return value as string;
+    if (looksLikeGzipBase64(value)) {
+      try {
+        const decompressed = gzipBase64ToXml(value as string);
+        if (looksLikeXml(decompressed)) return decompressed;
+      } catch {
+        // Não é XML comprimido válido, continua tentando
+      }
+    }
     if (value && typeof value === 'object') candidates.push(value);
   }
   for (const nested of candidates) {

@@ -1,4 +1,5 @@
 import { NfseEmissionStatus } from '../../domain/types/nfse-emission-status';
+import { xmlToGzipBase64 } from './sefin-codec';
 import {
   DPS_ID_PATTERN,
   NFSE_CHAVE_PATTERN,
@@ -128,5 +129,36 @@ describe('sefin-mapper', () => {
     expect(result.eventos).toHaveLength(1);
     expect(result.eventos[0].tipoEvento).toBe('e101101');
     expect(result.eventos[0].nProt).toBe('123456789012345');
+  });
+
+  it('descompacta XML GZip+Base64 embutido em resposta JSON', () => {
+    const compressed = xmlToGzipBase64(nfseXml);
+    const parsed = mapSefinNfseResponse({
+      text: '{"nfse":"indefinido"}',
+      json: { nfse: compressed },
+    });
+    expect(parsed.status).toBe(NfseEmissionStatus.AUTHORIZED);
+    expect(parsed.chaveAcesso).toBe(CHAVE);
+    expect(parsed.xml).toContain('<infNFSe');
+  });
+
+  it('descompacta XML GZip+Base64 aninhado em objeto JSON', () => {
+    const compressed = xmlToGzipBase64(nfseXml);
+    const parsed = mapSefinNfseResponse({
+      text: '{}',
+      json: { data: { nfse: compressed } },
+    });
+    expect(parsed.status).toBe(NfseEmissionStatus.AUTHORIZED);
+    expect(parsed.chaveAcesso).toBe(CHAVE);
+  });
+
+  it('trata Base64 não-XML como texto puro', () => {
+    const fakeBase64 = Buffer.from('não é XML comprimido mas é Base64').toString('base64');
+    const parsed = mapSefinNfseResponse({
+      text: nfseXml,
+      json: { nfse: fakeBase64 },
+    });
+    expect(parsed.status).toBe(NfseEmissionStatus.AUTHORIZED);
+    expect(parsed.xml).toContain('<infNFSe');
   });
 });
