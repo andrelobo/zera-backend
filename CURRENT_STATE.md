@@ -2,46 +2,48 @@
 
 Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
 
-## 0. RETOMAR DAQUI (04/08/2026) - piloto real LOBONOTAS pausado em E1226 (GZip + Base64 pendente)
+## 0. RETOMAR DAQUI (04/08/2026) - codec GZip+Base64 implementado e validado; proximo passo: deploy + tentativa real unica
 
-Fonte: `logs reais da VPS` + `respostas reais da SEFIN Nacional` + `XML autorizado` + `codigo/testes/build/deploy` + documentacao oficial do Portal Nacional NFS-e.
+Fonte: `codigo local` + `testes locais` + `build local` + `lint local` + `respostas reais da SEFIN Nacional` + documentacao oficial do Portal Nacional NFS-e.
 
-### Regra imediata ao retomar
+### Codec GZip+Base64 (E1226) - implementado em codigo, ainda nao em producao
 
-- **NAO clicar novamente em `Tentar emitir novamente`** ate concluir o codec GZip/Base64 e a leitura da resposta compactada.
+- `sefin-codec.ts`: `xmlToGzipBase64` (UTF-8 XML -> `gzipSync` -> Base64), `gzipBase64ToXml` (Base64 -> `gunzipSync` -> UTF-8 XML) e `looksLikeGzipBase64` (heuristico de Base64 puro).
+- `LobonotasProvider.emitirNfse`: envelope JSON envia `{ dps: xmlToGzipBase64(signedDps) }` com `application/json` quando `SEFIN_NFSE_ENVELOPE=json`.
+- `mapSefinNfseResponse`/`extractEmbeddedXml`: detecta o campo compactado de retorno (`nfse`/XML comprimido em Base64) na resposta JSON, descompacta e entao mapeia chave, numero e XML.
+- Stub SEFIN (`sefin-stub-server.ts`) passou a descompactar o body antes de extrair o DPS ID, exercitando o contrato novo de ponta a ponta.
+
+Validacao local:
+- suite completa: **284 testes / 37 suites** verdes.
+- `npm run build` ok (inclui copia do catalogo LC116 para `dist/`).
+- `npm run lint` -> **0 erros** (225 warnings pre-existentes).
+
+### Regra ao retomar
+
+- **NAO fazer nova tentativa real antes do deploy do codec e da confirmacao das quatro variaveis SEFIN no container.**
 - A NFS-e PlugNotas numero **47**, documento ZERA `6a71420f451c04dbcc7a438c`, foi autorizada e o owner decidiu **mante-la**.
 - A tentativa original LOBONOTAS que serve de origem continua sendo `6a70eb85caa874f842b4a576` (R$ 1,00, BURGUS -> LEVACAR, servico `171901`).
-- Nenhuma das tentativas diretas LOBONOTAS abaixo gerou NFS-e autorizada.
+- Nenhuma das tentativas diretas LOBONOTAS anteriores gerou NFS-e autorizada; a proxima sera a primeira trafegando GZip+Base64.
 
-### Linha do tempo real
+### Linha do tempo real (contexto)
 
-1. A primeira reemissao caiu indevidamente no provider padrao `PLUGNOTAS` e gerou a NFS-e 47. Causa: `reemitir` reutilizava o payload, mas o service recalculava o provider pelo ambiente.
-2. Fix `c06749f`: reemissao passou a preservar obrigatoriamente `doc.provider`; sem provider original, falha fechada. A idempotencia tambem passou a consultar o provider realmente selecionado.
-3. DPS **58**, LOBONOTAS em producao restrita: chamada foi para a raiz errada e recebeu HTML IIS `404`. Nao houve processamento fiscal.
-4. Fixes `5722299`/`7ac1ebe`: endpoints oficiais configurados e segredo correto do GitHub Environment `production` atualizado. Container confirmado com `SEFIN_BASE_URL=https://sefin.nfse.gov.br/SefinNacional`, `SEFIN_ENV=producao`, `SEFIN_TP_AMB=1`.
-5. DPS **59**, producao: JSON ainda nao estava ativo; SEFIN respondeu que `application/xml` nao era suportado.
-6. Fix `446a620`: envelope JSON ativado e confirmado no container (`SEFIN_NFSE_ENVELOPE=json`).
-7. DPS **60**, producao, JSON aceito: SEFIN respondeu `E1226 - Estrutura descompactada mal formada`.
-
-### Causa atual confirmada
-
-O codigo envia hoje `JSON.stringify({ dps: signedDps })`, isto e, XML assinado puro dentro de `dps`. O contrato oficial exige que documentos XML trafeguem em **GZip com representacao Base64Binary**. A resposta autorizada tambem pode retornar a NFS-e compactada no JSON; o mapper atual apenas procura XML puro e ainda nao descompacta esse campo.
+1. A primeira reemissao caiu indevidamente no provider padrao `PLUGNOTAS` e gerou a NFS-e 47. Fix `c06749f`: reemissao passou a preservar `doc.provider`.
+2. DPS **58**, producao restrita: chamada na raiz errada -> HTML IIS `404`. Fixes `5722299`/`7ac1ebe`: endpoints oficiais + segredo do GitHub Environment `production` corrigido.
+3. DPS **59**: `application/xml` nao suportado. Fix `446a620`: envelope JSON ativado (`SEFIN_NFSE_ENVELOPE=json`).
+4. DPS **60**: JSON aceito, SEFIN respondeu `E1226 - Estrutura descompactada mal formada` -> codec acima (commit `2924849`).
 
 ### Proximo passo tecnico exato
 
-1. Criar codec deterministico para `UTF-8 XML -> gzipSync -> Base64` e `Base64 -> gunzipSync -> UTF-8 XML`.
-2. Em `LobonotasProvider.emitirNfse`, enviar `{ dps: gzipBase64(signedDps) }` com `application/json`.
-3. Ensinar `mapSefinNfseResponse` (ou camada anterior) a detectar o campo compactado de retorno (`nfse`/campo oficial), descompactar e entao mapear chave, numero e XML.
-4. Adicionar testes de round-trip, envelope real e resposta compactada; executar suite focada + suite completa + build.
-5. Publicar/deployar; confirmar as quatro variaveis SEFIN no container.
-6. Somente entao fazer **uma unica** nova tentativa real e acompanhar o correlationId nos logs.
+1. Fechar a branch `feat/sefin-gzip-base64` com commit `2924849` validado (284/284 testes, build e lint ok).
+2. Mergear na `main` e disparar deploy; confirmar no container: `SEFIN_BASE_URL=https://sefin.nfse.gov.br/SefinNacional`, `SEFIN_ENV=producao`, `SEFIN_TP_AMB=1`, `SEFIN_NFSE_ENVELOPE=json`.
+3. Fazer **uma unica** nova tentativa real via reemissao da origem `6a70eb85caa874f842b4a576` e acompanhar o correlationId nos logs.
+4. Se o `E1226` sumir, o proximo contrato real a diagnosticar sera o campo compactado de retorno da NFS-e autorizada.
 
-### Estado de repositorio/deploy ao pausar
+### Estado de repositorio/deploy
 
-- `main` backend: `446a620 fix(sefin): envia DPS em envelope JSON` (deploy `30872158142` concluido com sucesso).
-- Config efetiva no container: provider fixado pela reemissao em `LOBONOTAS`, ambiente `producao`, `tpAmb=1`, endpoint `/SefinNacional`, envelope `json`.
-- Testes do ultimo ajuste: **23/23** focados verdes; build verde.
-- Nao cancelar a NFS-e 47 e nao reemitir novamente antes do codec.
+- Branch local `feat/sefin-gzip-base64` no commit `2924849 feat(sefin): comprime DPS em GZip+Base64 no envelope JSON (E1226)`.
+- `main` backend permanece em `446a620 fix(sefin): envia DPS em envelope JSON` (deploy `30872158142`).
+- Nao cancelar a NFS-e 47 e nao reemitir antes do deploy do codec.
 
 ## 0. Atualizacao rapida (03/08/2026) - reemissao segura de erro anterior a transmissao
 
