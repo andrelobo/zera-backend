@@ -397,6 +397,7 @@ describe('FiscalController', () => {
     repo.findById.mockResolvedValue({
       _id: { toString: () => 'em-error-1' },
       status: NfseEmissionStatus.ERROR,
+      provider: 'LOBONOTAS',
       externalId: null,
       providerResponse: null,
       idempotencyKey: 'nfse-piloto-original',
@@ -421,7 +422,27 @@ describe('FiscalController', () => {
         referenciaExterna: expect.stringMatching(/^nfse-piloto-original-retry-\d+$/),
         prestador: expect.objectContaining({ cnpj: '43521115000134' }),
       }),
+      { providerName: 'LOBONOTAS' },
     );
+  });
+
+  it('reemitir bloqueia tentativa sem provider original', async () => {
+    repo.findById.mockResolvedValue({
+      _id: { toString: () => 'em-error-sem-provider' },
+      status: NfseEmissionStatus.ERROR,
+      externalId: null,
+      providerResponse: null,
+      payload: {
+        prestador: { cnpj: '43521115000134' },
+        tomador: { cpfCnpj: '40672760000160' },
+        servico: { codigoNacional: '171901', descricao: 'Contabilidade.', valor: 1 },
+      },
+    });
+
+    await expect(controller.reemitir('em-error-sem-provider')).rejects.toMatchObject({
+      response: { code: 'REEMISSAO_PROVIDER_INDISPONIVEL' },
+    });
+    expect(emitirNfseService.execute).not.toHaveBeenCalled();
   });
 
   it('reemitir rejeita tentativa com externalId por risco de duplicidade', async () => {

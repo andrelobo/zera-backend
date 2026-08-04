@@ -265,10 +265,20 @@ export class FiscalController {
     const originalReference =
       original.referenciaExterna?.trim() || doc.idempotencyKey?.trim() || `nfse-${id}`;
 
-    return this.emitirNfseService.execute({
-      ...original,
-      referenciaExterna: `${originalReference}-retry-${Date.now()}`,
-    });
+    if (!doc.provider?.trim()) {
+      throw new BadRequestException({
+        code: 'REEMISSAO_PROVIDER_INDISPONIVEL',
+        message: 'A tentativa original nao possui provider; reemissao bloqueada',
+      });
+    }
+
+    return this.emitirNfseService.execute(
+      {
+        ...original,
+        referenciaExterna: `${originalReference}-retry-${Date.now()}`,
+      },
+      { providerName: doc.provider.trim().toUpperCase() },
+    );
   }
 
   @Post(':id/substituicao')

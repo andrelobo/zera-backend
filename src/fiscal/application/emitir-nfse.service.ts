@@ -79,18 +79,28 @@ export class EmitirNfseService {
     @Optional() private readonly resolver?: FiscalProviderResolver,
   ) {}
 
-  private providerFor(input: EmitirNfseInput): FiscalProvider {
+  private providerFor(input: EmitirNfseInput, providerName?: string): FiscalProvider {
+    if (providerName) {
+      if (this.resolver) return this.resolver.byProviderName(providerName);
+      if (this.provider.providerName === providerName) return this.provider;
+      throw Object.assign(new Error(`FiscalProvider indisponivel: ${providerName}`), {
+        code: 'FISCAL_PROVIDER_UNAVAILABLE',
+      });
+    }
     if (!this.resolver) return this.provider;
     return this.resolver.resolveProviderForCnpj(onlyDigits(input.prestador?.cnpj));
   }
 
-  async execute(input: EmitirNfseInput): Promise<{
+  async execute(
+    input: EmitirNfseInput,
+    options?: { providerName?: string },
+  ): Promise<{
     emissionId: string;
     result: EmitirNfseResult;
     idempotentReplay: boolean;
   }> {
     const enrichedInput = await this.enrichInputForProvider(input);
-    const provider = this.providerFor(enrichedInput);
+    const provider = this.providerFor(enrichedInput, options?.providerName);
     const tomadorEndereco = input?.tomador?.endereco;
     if (!tomadorEndereco) {
       throw new BadRequestException({
@@ -120,7 +130,7 @@ export class EmitirNfseService {
 
     if (idempotencyKey) {
       const existing = await this.repository.findByReference(
-        this.provider.providerName,
+        provider.providerName,
         idempotencyKey,
       );
 
