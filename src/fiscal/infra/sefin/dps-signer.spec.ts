@@ -64,7 +64,7 @@ const options: DpsBuilderOptions = {
 };
 
 function extractSignatureElement(signedXml: string): string {
-  const match = /<ds:Signature[^>]*>[\s\S]*<\/ds:Signature>/.exec(signedXml);
+  const match = /<Signature[^>]*>[\s\S]*<\/Signature>/.exec(signedXml);
   if (!match) throw new Error('Signature element not found');
   return match[0];
 }
@@ -92,14 +92,16 @@ describe('dps-signer', () => {
     const signed = signDps(dpsXml, extractKeyAndCert(material));
 
     expect(signed).toContain(`Id="${id}"`);
-    expect(signed).toContain(`<ds:Signature xmlns:ds="${DSIG_NAMESPACE}"`);
-    expect(signed).toContain(`<ds:CanonicalizationMethod Algorithm="${DSIG_C14N}"/>`);
-    expect(signed).toContain(`<ds:SignatureMethod Algorithm="${DSIG_RSA_SHA256}"/>`);
-    expect(signed).toContain(`<ds:DigestMethod Algorithm="${DSIG_SHA256}"/>`);
-    expect(signed).toContain(`<ds:Transform Algorithm="${DSIG_ENVELOPED}"/>`);
-    expect(signed).toContain(`<ds:Reference URI="#${id}">`);
-    expect(signed).toContain('<ds:KeyInfo><ds:X509Data><ds:X509Certificate>');
-    expect(signed.indexOf('<ds:Signature')).toBeGreaterThan(signed.indexOf('</infDPS>'));
+    expect(signed).toContain(`<Signature xmlns="${DSIG_NAMESPACE}">`);
+    expect(signed).toContain(`<CanonicalizationMethod Algorithm="${DSIG_C14N}"/>`);
+    expect(signed).toContain(`<SignatureMethod Algorithm="${DSIG_RSA_SHA256}"/>`);
+    expect(signed).toContain(`<DigestMethod Algorithm="${DSIG_SHA256}"/>`);
+    expect(signed).toContain(`<Transform Algorithm="${DSIG_ENVELOPED}"/>`);
+    expect(signed).toContain(`<Reference URI="#${id}">`);
+    expect(signed).toContain('<KeyInfo><X509Data><X509Certificate>');
+    expect(signed.indexOf('<Signature')).toBeGreaterThan(signed.indexOf('</infDPS>'));
+    expect(signed).not.toContain('xmlns:ds');
+    expect(signed).not.toMatch(/<ds:/);
   });
 
   it('produces a cryptographically valid signature (checkSignature true)', () => {

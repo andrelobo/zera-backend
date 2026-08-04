@@ -79,7 +79,7 @@ export function signXmlElement(input: {
 
   signedXml.computeSignature(input.xml, {
     location: { reference: '/*', action: 'append' },
-    prefix: 'ds',
+    prefix: '',
   });
 
   return signedXml.getSignedXml();
