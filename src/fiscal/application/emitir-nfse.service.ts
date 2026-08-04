@@ -129,10 +129,7 @@ export class EmitirNfseService {
     const bi = this.buildBiSnapshot(enrichedInput);
 
     if (idempotencyKey) {
-      const existing = await this.repository.findByReference(
-        provider.providerName,
-        idempotencyKey,
-      );
+      const existing = await this.repository.findByReference(provider.providerName, idempotencyKey);
 
       if (existing) {
         return {

@@ -8,6 +8,7 @@ import { NfseEmissionRepository } from '../mongo/repositories/nfse-emission.repo
 import { buildDps, type DpsBuilderOptions } from './dps-builder';
 import { extractDpsId, extractKeyAndCert, signDps, type DpsCertMaterialPem } from './dps-signer';
 import { EVENTO_CANCELAMENTO_TAG, buildPedidoCancelamentoAssinado } from './evento-builder';
+import { xmlToGzipBase64 } from './sefin-codec';
 import {
   looksLikeDpsId,
   looksLikeNfseChave,
@@ -163,7 +164,8 @@ export class LobonotasProvider implements FiscalProvider {
     const signedDps = signDps(dpsXml, pem);
     const dpsId = extractDpsId(signedDps);
 
-    const body = cfg.nfseEnvelope === 'json' ? JSON.stringify({ dps: signedDps }) : signedDps;
+    const body =
+      cfg.nfseEnvelope === 'json' ? JSON.stringify({ dps: xmlToGzipBase64(signedDps) }) : signedDps;
     const contentType = cfg.nfseEnvelope === 'json' ? 'application/json' : 'application/xml';
 
     this.logger.log('Emitindo NFS-e via LOBONOTAS (Ambiente Nacional)', {

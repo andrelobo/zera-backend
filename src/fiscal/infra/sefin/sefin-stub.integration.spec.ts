@@ -8,6 +8,7 @@ import { NfseEmissionRepository } from '../mongo/repositories/nfse-emission.repo
 import { buildPedidoCancelamentoAssinado } from './evento-builder';
 import { SefinMtlsHttp } from './sefin-mtls.http';
 import { LobonotasProvider } from './sefin.provider';
+import { gzipBase64ToXml } from './sefin-codec';
 
 const CHAVE = `NFS${'1'.repeat(50)}`;
 const CHAVE_CANCELADA = `NFS${'7'.repeat(50)}`;
@@ -287,7 +288,9 @@ describe('LobonotasProvider ponta a ponta via mTLS real (stub SEFIN)', () => {
 
     const post = stub.requests.find((r) => r.method === 'POST' && r.path === '/nfse');
     expect(post).toBeDefined();
-    expect(post?.body).toContain('<ds:Signature');
+    const envelope = JSON.parse(post!.body);
+    const dpsXml = gzipBase64ToXml(envelope.dps);
+    expect(dpsXml).toContain('<ds:Signature');
     expect(post?.clientCertCn).toBe('ZERA SEFIN TESTE');
   });
 

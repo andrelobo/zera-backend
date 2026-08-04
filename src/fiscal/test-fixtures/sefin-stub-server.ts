@@ -4,6 +4,7 @@ import type { TLSSocket } from 'node:tls';
 
 import type { TestPki } from './test-cert';
 import { extractDpsId } from '../infra/sefin/dps-signer';
+import { gzipBase64ToXml, looksLikeGzipBase64 } from '../infra/sefin/sefin-codec';
 
 export interface StubRequestLog {
   method: string;
@@ -139,7 +140,16 @@ export class SefinStubServer {
     this.requests.push({ method: req.method ?? '', path: pathname, body, clientCertCn });
 
     if (req.method === 'POST' && pathname === '/nfse') {
-      const dpsId = extractDpsId(body);
+      let dpsXml = body;
+      try {
+        const parsed = JSON.parse(body);
+        if (parsed.dps && looksLikeGzipBase64(parsed.dps)) {
+          dpsXml = gzipBase64ToXml(parsed.dps);
+        }
+      } catch {
+        // não é JSON, tenta usar o body como XML direto
+      }
+      const dpsId = extractDpsId(dpsXml);
       this.dpsToChave.set(dpsId, this.chave);
       this.send(res, 200, authorizedNfseXml(this.chave), 'application/xml');
       return;

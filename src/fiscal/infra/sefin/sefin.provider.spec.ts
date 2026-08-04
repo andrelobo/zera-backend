@@ -1,6 +1,7 @@
 import { EmpresasService } from '../../../modules/empresas/empresas.service';
 import { createTestCert, toPem } from '../../test-fixtures/test-cert';
 import { NfseEmissionStatus } from '../../domain/types/nfse-emission-status';
+import { gzipBase64ToXml } from './sefin-codec';
 import { NfseEmissionRepository } from '../mongo/repositories/nfse-emission.repository';
 import { SefinMtlsHttp } from './sefin-mtls.http';
 import { LobonotasProvider } from './sefin.provider';
@@ -102,9 +103,10 @@ describe('LobonotasProvider', () => {
 
     const requestCall = (http.request as jest.Mock).mock.calls[0][0];
     const body = JSON.parse(requestCall.body as string).dps as string;
-    expect(body).toContain('<DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">');
-    expect(body).toContain('<ds:Signature');
-    expect(body).toContain('<serie>00001</serie>');
+    const dpsXml = gzipBase64ToXml(body);
+    expect(dpsXml).toContain('<DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">');
+    expect(dpsXml).toContain('<ds:Signature');
+    expect(dpsXml).toContain('<serie>00001</serie>');
     expect(requestCall.cert.privateKeyPem).toContain('PRIVATE KEY');
     expect(requestCall.cert.certificatePem).toContain('CERTIFICATE');
 
