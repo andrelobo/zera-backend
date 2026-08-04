@@ -1,4 +1,11 @@
-import { buildDps, buildDpsId, DPS_NAMESPACE, DPS_VERSION, DpsBuilderOptions } from './dps-builder';
+import {
+  buildDps,
+  buildDpsId,
+  DPS_NAMESPACE,
+  DPS_VERSION,
+  DpsBuilderOptions,
+  toDateTimeLocal,
+} from './dps-builder';
 
 const baseInput = {
   prestador: {
@@ -153,5 +160,21 @@ describe('buildDps', () => {
   it('usa dCompet da competência quando informada', () => {
     const xml = buildDps(baseInput as any, { ...options, dCompet: '2026-01-21' });
     expect(xml).toContain('<dCompet>2026-01-21</dCompet>');
+  });
+
+  it('emite dhEmi em hora local (America/Manaus, -04:00) para nao parecer posterior ao processamento (E0008)', () => {
+    const xml = buildDps(baseInput as any, { ...options, dhEmi: '2026-08-03T12:00:00+00:00' });
+    expect(xml).toContain('<dhEmi>2026-08-03T08:00:00-04:00</dhEmi>');
+    expect(xml).not.toMatch(/<dhEmi>[^<]*\+00:00/);
+
+    const agora = buildDps(baseInput as any, options);
+    const dhEmi = /<dhEmi>([^<]+)<\/dhEmi>/.exec(agora)?.[1];
+    expect(dhEmi).toBeDefined();
+    expect(dhEmi).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}-04:00$/);
+  });
+
+  it('toDateTimeLocal converte instante para o fuso local padrao', () => {
+    expect(toDateTimeLocal('2026-08-03T12:00:00Z')).toBe('2026-08-03T08:00:00-04:00');
+    expect(toDateTimeLocal('2026-08-03T12:00:00+00:00')).toBe('2026-08-03T08:00:00-04:00');
   });
 });

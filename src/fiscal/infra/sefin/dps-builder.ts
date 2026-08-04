@@ -41,17 +41,54 @@ function toData(value?: string): string | undefined {
   return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
 }
 
-function toDateTimeUtc(value?: string): string {
-  if (!value) {
-    return new Date().toISOString().replace(/\.\d{3}Z$/, '+00:00');
+const EMISSAO_TIME_ZONE = 'America/Manaus';
+
+function toDate(value?: string): Date {
+  if (!value) return new Date();
+  const cleaned = value.replace(/\.\d{3}Z$/, 'Z').replace(/\.\d{3}[+-]\d{2}:\d{2}$/, 'Z');
+  const date = new Date(cleaned);
+  return Number.isNaN(date.getTime()) ? new Date() : date;
+}
+
+function formatZonedDateTime(date: Date, timeZone: string): string {
+  const dtf = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  });
+  const parts: Record<string, string> = {};
+  for (const part of dtf.formatToParts(date)) {
+    parts[part.type] = part.value;
   }
-  const cleaned = value.replace(/\.\d{3}Z$/, 'Z').replace(/\.\d{3}[+-]\d{2}:\d{2}$/, '+00:00');
-  const hasOffset = /[+-]\d{2}:\d{2}$/.test(cleaned);
-  const candidate = hasOffset ? cleaned : `${cleaned.replace('Z', '')}+00:00`;
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/.test(candidate)) {
-    return candidate;
-  }
-  return new Date().toISOString().replace(/\.\d{3}Z$/, '+00:00');
+  const wallMs = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second),
+  );
+  const offsetMs = wallMs - (date.getTime() - date.getMilliseconds());
+  const sign = offsetMs < 0 ? '-' : '+';
+  const abs = Math.abs(offsetMs);
+  const hh = String(Math.floor(abs / 3_600_000)).padStart(2, '0');
+  const mm = String(Math.floor((abs % 3_600_000) / 60_000)).padStart(2, '0');
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${sign}${hh}:${mm}`;
+}
+
+/**
+ * Data/hora no fuso local de emissão (America/Manaus, UTC-4). O Ambiente
+ * Nacional compara o relógio de parede sem normalizar offsets: valores em UTC
+ * (+00:00) parecem ser "posteriores" ao processamento local (-03:00) e são
+ * rejeitados com E0008. Os retornos reais do SEFIN também chegam em -04:00.
+ */
+export function toDateTimeLocal(value?: string, timeZone: string = EMISSAO_TIME_ZONE): string {
+  return formatZonedDateTime(toDate(value), timeZone);
 }
 
 export function buildDpsId(opts: {
@@ -231,7 +268,7 @@ export function buildDps(input: EmitirNfseInput, options: DpsBuilderOptions): st
   }
 
   const id = buildDpsId({ cLocEmi, cnpjPrestador, serie, nDPS: nDps });
-  const dhEmi = toDateTimeUtc(options.dhEmi);
+  const dhEmi = toDateTimeLocal(options.dhEmi);
   const dCompet =
     toData(options.dCompet) ??
     toData(input.competencia) ??

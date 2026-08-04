@@ -48,11 +48,11 @@ describe('evento-builder (TCEvento e101101)', () => {
     expect(xml).toContain('<verAplic>ZERA-1.0</verAplic>');
     expect(xml).toContain('<ambGer>2</ambGer>');
     expect(xml).toContain('<nSeqEvento>1</nSeqEvento>');
-    expect(xml).toContain('<dhProc>2026-08-03T12:00:00+00:00</dhProc>');
+    expect(xml).toContain('<dhProc>2026-08-03T08:00:00-04:00</dhProc>');
     expect(xml).toContain('<nDFSe>7</nDFSe>');
     expect(xml).toContain(`<infPedReg Id="pedRegEvento${'1'.repeat(50)}">`);
     expect(xml).toContain('<tpAmb>2</tpAmb>');
-    expect(xml).toContain('<dhEvento>2026-08-03T12:00:00+00:00</dhEvento>');
+    expect(xml).toContain('<dhEvento>2026-08-03T08:00:00-04:00</dhEvento>');
     expect(xml).toContain('<CNPJAutor>43521115000134</CNPJAutor>');
     expect(xml).toContain(`<chNFSe>${'1'.repeat(50)}</chNFSe>`);
     expect(xml).toContain(`<${EVENTO_CANCELAMENTO_TAG}>`);
