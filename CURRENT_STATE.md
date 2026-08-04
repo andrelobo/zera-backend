@@ -19,6 +19,11 @@ Validacao local:
 - `npm run build` -> ok
 - `npm run lint` -> **0 erros** (223 warnings pre-existentes)
 
+Deploy de producao:
+- push da `main` no commit `f991bba`
+- GitHub Actions `Deploy Oracle VPS` run `30866860926` -> **success** (build, sync e deploy concluidos)
+- health publico apos deploy: `https://manaus-nfse-dashboard.vercel.app/api/health` -> `status: ok`, `env: production`
+
 Leitura operacional correta:
 1. DANFSe/PDF deixou de ser pendencia de codigo do Slice 7
 2. producao continua no PlugNotas; LOBONOTAS segue protegido por flag/allowlist
