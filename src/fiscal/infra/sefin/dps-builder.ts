@@ -99,7 +99,7 @@ export function buildDpsId(opts: {
 }): string {
   const cMun = onlyDigits(opts.cLocEmi).padStart(7, '0');
   const inscricao = onlyDigits(opts.cnpjPrestador);
-  const tipoInscricao = inscricao.length === 14 ? '1' : '2';
+  const tipoInscricao = inscricao.length === 14 ? '2' : '1';
   const inscricao14 = inscricao.padStart(14, '0');
   const serie = onlyDigits(opts.serie).padStart(5, '0');
   const nDps = onlyDigits(opts.nDPS).padStart(15, '0');

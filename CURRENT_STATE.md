@@ -2,56 +2,55 @@
 
 Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
 
-## 0. RETOMAR DAQUI (04/08/2026) - E1228 resolvido (assinatura sem prefixo); E0008 resolvido (dhEmi em hora local -04:00); proximo: deploy + tentativa real unica
+## 0. RETOMAR DAQUI (04/08/2026) - E1228 resolvido; E0008 resolvido (dhEmi local); E0004 resolvido (tipo de inscricao CNPJ=2 no Id); proximo: deploy + tentativa real unica
 
 Fonte: `codigo local` + `testes locais` + `build local` + `lint local` + `resposta real da SEFIN Nacional` + manual oficial SN NFS-e + SDKs publicos do Ambiente Nacional.
 
-### Resultado real da tentativa com a assinatura sem prefixo (emissao `6a724eade0a5fd596880c5a0`)
+### Resultado real da tentativa com dhEmi local (emissao `6a7250df65c391be2ab8556f`)
 
-- Reemissao real pos-PR #6 (04/08/2026 ~20:42-03:00): **E1228 sumiu** — a SEFIN aceitou `<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">` (namespace default, sem prefixo) e processou a DPS.
-- Novo erro real: **E0008 - A data de emissão da DPS não pode ser posterior à data do seu processamento.** (`erros:[{Codigo:"E0008",Descricao:"A data de emissão da DPS não pode ser posterior à data do seu processamento."}]`, httpStatus 400).
-- Causa raiz do E0008: o Ambiente Nacional **compara o relógio de parede sem normalizar offsets**. Nossa DPS saia com `dhEmi=...T20:42:22+00:00` (UTC) e o SEFIN processava `...T17:42:22-03:00` (mesmo instante): como `20:42 > 17:42`, o dhEmi "parecia" posterior.
+- Reemissao real pos-PR #7 (04/08/2026 ~20:51-03:00): **E0008 sumiu** — SEFIN aceitou `dhEmi=...T16:51:44-04:00`.
+- Novo erro real: **E0004 - Conteúdo do identificador informado na DPS difere da concatenação dos campos correspondentes.**
+- Causa raiz do E0004: o **digito de tipo de inscricao no Id da DPS estava invertido**. `buildDpsId` usava `'1'` para CNPJ e `'2'` para CPF; o padrao nacional usa **`2` = CNPJ, `1` = CPF** (confirmado no SDK `open-nfse@0.10.1` `dps-id.js` e num Id real do PlugNotas em `nfse.mapper.spec.ts`: `DPS130260324352111500013400001000000000000038`).
 
-### Correcao desta rodada (dhEmi/dhEvento em hora local)
+### Correcao desta rodada (tipo de inscricao no Id da DPS)
 
-- `dps-builder.ts`: novo `toDateTimeLocal(value?, timeZone='America/Manaus')` usando `Intl.DateTimeFormat` (calcula offset a partir da diferenca entre relogio de parede local e UTC). `dhEmi` agora sai em **America/Manaus (-04:00)** — o local real de emissao (`cLocEmi=1302603`) e o mesmo fuso usado nos retornos reais do SEFIN (`danfse.spec.ts` ja usava `-04:00`).
-- `evento-builder.ts`: `dhEvento`/`dhProc` usam `toDateTimeLocal` (mesmo racional para eventos).
-- Com -04:00, o relogio de parede do dhEmi (16:42) fica sempre **antes** do processamento local do SEFIN (17:42), eliminando o E0008 sob qualquer interpretacao (wall-clock ou instante).
+- `dps-builder.ts` `buildDpsId`: `tipoInscricao = inscricao.length === 14 ? '2' : '1'` (era `'1' : '2'`). CPF continua preenchido para 14 com zeros à esquerda (padrao nacional).
+- `dps-builder.spec.ts`: assercao do Id atualizada (`...1302603` + `2` + `43521115000134` + `00001` + `000000000000001`).
 
 Validacao local:
-- suite completa: **290 testes / 37 suites** verdes (+2 novos: dhEmi -04:00 default e conversao `toDateTimeLocal`; 288->290).
+- suite completa: **290 testes / 37 suites** verdes.
 - `npm run build` ok (inclui copia do catalogo LC116 para `dist/`).
 - `npm run lint` -> **0 erros** (227 warnings pre-existentes).
 
 ### Regra ao retomar
 
-- **NAO fazer nova tentativa real antes do deploy desta correcao do dhEmi e da confirmacao no container.**
+- **NAO fazer nova tentativa real antes do deploy desta correcao do Id e da confirmacao no container.**
 - A NFS-e PlugNotas numero **47**, documento ZERA `6a71420f451c04dbcc7a438c`, foi autorizada e o owner decidiu **mante-la**.
 - A tentativa original LOBONOTAS que serve de origem continua sendo `6a70eb85caa874f842b4a576` (R$ 1,00, BURGUS -> LEVACAR, servico `171901`).
 - Nova tentativa real = **uma unica** reemissao, acompanhando o correlationId nos logs da VPS.
 
 ### Linha do tempo real (contexto)
 
-1. A primeira reemissao caiu indevidamente no provider padrao `PLUGNOTAS` e gerou a NFS-e 47. Fix `c06749f`: reemissao passou a preservar `doc.provider`.
-2. DPS **58**, producao restrita: chamada na raiz errada -> HTML IIS `404`. Fixes `5722299`/`7ac1ebe`.
-3. DPS **59**: `application/xml` nao suportado. Fix `446a620`: envelope JSON ativado.
-4. DPS **60**: JSON aceito, SEFIN respondeu `E1226` -> codec GZip+Base64 (commit `2924849`, PR #4).
-5. Reemissao real pos-codec: **E1226** -> chave JSON `dps` (corrigida para `dpsXmlGZipB64` em `d12b272`, PR #5).
-6. Reemissao real pos-PR5: **E1228** -> prefixo `ds:` na assinatura (corrigido em `4e98953`, PR #6).
-7. Reemissao real pos-PR6: **E0008** -> `dhEmi` em UTC parecia posterior ao processamento (corrigido nesta rodada: hora local -04:00).
+1. Reemissao caiu no provider padrao e gerou a NFS-e 47 (PlugNotas). Fix `c06749f`: preservar `doc.provider`.
+2. DPS **58**: raiz errada -> HTML IIS `404`. Fixes `5722299`/`7ac1ebe`.
+3. DPS **59**: `application/xml` nao suportado. Fix `446a620`: envelope JSON.
+4. DPS **60**: **E1226** -> codec GZip+Base64 (`2924849`, PR #4); chave `dps` -> `dpsXmlGZipB64` (`d12b272`, PR #5).
+5. Pos-PR5: **E1228** (prefixo `ds:`) -> `prefix: ''` na assinatura (`4e98953`, PR #6).
+6. Pos-PR6: **E0008** (dhEmi UTC parecia posterior) -> dhEmi local -04:00 (`743ff6d`, PR #7).
+7. Pos-PR7: **E0004** (tipo de inscricao invertido no Id) -> CNPJ=2/CPF=1 nesta rodada.
 
 ### Proximo passo tecnico exato
 
-1. Fechar a branch da correcao do dhEmi (validada 290/290 testes, build e lint ok) e mergear na `main`.
-2. Disparar deploy; confirmar no container `zera-backend-api` que `dps-builder.js` contem `America/Manaus` e `toDateTimeLocal`.
+1. Fechar a branch da correcao do Id (validada 290/290 testes, build e lint ok) e mergear na `main`.
+2. Disparar deploy; confirmar no container `zera-backend-api` que `dps-builder.js` usa `'2' : '1'`.
 3. Fazer **uma unica** nova tentativa real via reemissao da origem `6a70eb85caa874f842b4a576` e acompanhar o correlationId nos logs.
-4. Se o `E0008` sumir, o proximo contrato real a diagnosticar sera o retorno `nfseXmlGZipB64` da NFS-e autorizada e o processamento/assinatura da NFS-e.
+4. Se o `E0004` sumir, o proximo contrato real a diagnosticar sera o retorno `nfseXmlGZipB64` da NFS-e autorizada e o processamento/assinatura da NFS-e.
 
 ### Estado de repositorio/deploy (04/08/2026)
 
-- PR #4 (`2924849`, codec), PR #5 (`d12b272`, envelope real) e PR #6 (`4e98953`, assinatura sem prefixo) mergeados e deployados (runs `30927612670`, `30947820327` e `30948692601` success).
+- PR #4 (`2924849`, codec), PR #5 (`d12b272`, envelope real), PR #6 (`4e98953`, assinatura sem prefixo) e PR #7 (`743ff6d`, dhEmi local) mergeados e deployados (runs `30927612670`, `30947820327`, `30948692601` e `30949413817` success).
 - Variaveis SEFIN confirmadas no container: `SEFIN_BASE_URL=https://sefin.nfse.gov.br/SefinNacional`, `SEFIN_ENV=producao`, `SEFIN_TP_AMB=1`, `SEFIN_NFSE_ENVELOPE=json`.
-- Proximo passo operacional: **deploy da correcao do dhEmi (E0008)** e, depois, **uma unica** tentativa real. Nao cancelar a NFS-e 47.
+- Proximo passo operacional: **deploy da correcao do Id da DPS (E0004)** e, depois, **uma unica** tentativa real. Nao cancelar a NFS-e 47.
 
 ## 0. Atualizacao rapida (03/08/2026) - reemissao segura de erro anterior a transmissao
 
