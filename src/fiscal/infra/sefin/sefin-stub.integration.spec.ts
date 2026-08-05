@@ -255,9 +255,12 @@ describe('LobonotasProvider ponta a ponta via mTLS real (stub SEFIN)', () => {
     process.env.SEFIN_BASE_URL = baseUrl;
     process.env.SEFIN_VERIFY_CERT = 'false';
 
-    empresasService.obterMaterialCertificado.mockResolvedValue(pki.clientPfx);
-    empresasService.reservarNumeracaoDps.mockResolvedValue({ serie: '1', nDPS: '1' });
-    repository.findByExternalId.mockResolvedValue({ empresaCnpj: '43521115000134' });
+    (empresasService.obterMaterialCertificado as jest.Mock).mockResolvedValue(pki.clientPfx);
+    (empresasService.reservarNumeracaoDps as jest.Mock).mockResolvedValue({
+      serie: '1',
+      nDPS: '1',
+    });
+    (repository.findByExternalId as jest.Mock).mockResolvedValue({ empresaCnpj: '43521115000134' });
 
     provider = new LobonotasProvider(empresasService, new SefinMtlsHttp(), repository);
   });
@@ -287,7 +290,7 @@ describe('LobonotasProvider ponta a ponta via mTLS real (stub SEFIN)', () => {
 
     expect(result.status).toBe(NfseEmissionStatus.AUTHORIZED);
     expect(result.externalId).toBe(CHAVE);
-    expect(result.providerResponse.chaveAcesso).toBe(CHAVE);
+    expect(result.providerResponse?.chaveAcesso).toBe(CHAVE);
 
     const post = stub.requests.find((r) => r.method === 'POST' && r.path === '/nfse');
     expect(post).toBeDefined();

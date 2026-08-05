@@ -9,7 +9,7 @@ function buildHost(input?: { correlationId?: string }) {
     header: jest.fn().mockReturnValue(input?.correlationId),
   };
   const res = { status };
-  const host: ArgumentsHost = {
+  const host = {
     switchToHttp: () => ({
       getRequest: () => req,
       getResponse: () => res,
@@ -24,7 +24,7 @@ function buildHost(input?: { correlationId?: string }) {
       getPattern: () => undefined,
     }),
     getType: () => 'http',
-  };
+  } as unknown as ArgumentsHost;
 
   return { host, status, json };
 }

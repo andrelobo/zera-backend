@@ -28,6 +28,7 @@ import { EmitirNfseService } from '../../fiscal/application/emitir-nfse.service'
 import { EmitirNfseQuickService } from '../../fiscal/application/emitir-nfse-quick.service';
 import { ServicoCatalogService } from '../../fiscal/application/servico-catalog.service';
 import { SyncNfseArtifactsService } from '../../fiscal/application/sync-nfse-artifacts.service';
+import { Throttle } from '@nestjs/throttler';
 import { EmitirNfseDto } from './dtos/emitir-nfse.dto';
 import { EmitirNfseQuickDto } from './dtos/emitir-nfse-quick.dto';
 import { EmitirNfseResponseDto } from './dtos/emitir-nfse.response.dto';
@@ -216,6 +217,7 @@ export class FiscalController {
 
   @Post('emitir')
   @Roles('admin', 'manager', 'user')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @ApiOperation({ summary: 'Emitir NFSe (DPS)' })
   @ApiBody({ type: EmitirNfseDto })
   @ApiResponse({ status: 201, type: EmitirNfseResponseDto })
@@ -225,6 +227,7 @@ export class FiscalController {
 
   @Post('quick')
   @Roles('admin', 'manager', 'user')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Emitir NFSe de forma ultra-simplificada (quick)',
     description:
@@ -238,6 +241,7 @@ export class FiscalController {
 
   @Post(':id/reemitir')
   @Roles('admin', 'manager', 'user')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Reemitir tentativa que falhou antes da transmissao',
     description:
@@ -296,6 +300,7 @@ export class FiscalController {
 
   @Post(':id/substituicao')
   @Roles('admin', 'manager', 'user')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Emitir nota substituta por emissão interna',
     description:
@@ -334,6 +339,7 @@ export class FiscalController {
 
   @Post(':id/cancelamento')
   @Roles('admin', 'manager', 'user')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Solicitar cancelamento da NFSe por emissão interna',
     description:
@@ -710,6 +716,7 @@ export class FiscalController {
 
   @Post(':id/sync-artifacts')
   @Roles('admin', 'manager', 'user')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Sync XML/PDF artifacts on demand',
     description:

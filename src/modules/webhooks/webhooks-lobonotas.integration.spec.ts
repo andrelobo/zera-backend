@@ -133,7 +133,7 @@ describe('LO BONOTAS integration: emissao piloto -> webhook forwarder -> AUTORIZ
       resolver.resolve(),
       repository,
       empresasService,
-      tomadoresService,
+      tomadoresService as any,
       resolver,
     );
 

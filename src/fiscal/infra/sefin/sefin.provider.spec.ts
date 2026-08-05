@@ -79,9 +79,12 @@ describe('LobonotasProvider', () => {
     delete process.env.SEFIN_CMUN_IBGE;
     delete process.env.SEFIN_CODIGO_TRIBUTACAO_NACIONAL;
     delete process.env.SEFIN_VERIFY_CERT;
-    empresasService.obterMaterialCertificado.mockResolvedValue(material);
-    empresasService.reservarNumeracaoDps.mockResolvedValue({ serie: '1', nDPS: '1' });
-    repository.findByExternalId.mockResolvedValue({ empresaCnpj: '43521115000134' });
+    (empresasService.obterMaterialCertificado as jest.Mock).mockResolvedValue(material);
+    (empresasService.reservarNumeracaoDps as jest.Mock).mockResolvedValue({
+      serie: '1',
+      nDPS: '1',
+    });
+    (repository.findByExternalId as jest.Mock).mockResolvedValue({ empresaCnpj: '43521115000134' });
     provider = new LobonotasProvider(empresasService, http, repository);
   });
 
@@ -189,7 +192,7 @@ describe('LobonotasProvider', () => {
   });
 
   it('sem certificado local lança SEFIN_CERT_NOT_FOUND', async () => {
-    empresasService.obterMaterialCertificado.mockResolvedValue(null);
+    (empresasService.obterMaterialCertificado as jest.Mock).mockResolvedValue(null);
 
     await expect(provider.emitirNfse(baseInput)).rejects.toMatchObject({
       code: 'SEFIN_CERT_NOT_FOUND',

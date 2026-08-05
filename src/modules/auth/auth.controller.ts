@@ -9,6 +9,7 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dtos/login.dto';
@@ -37,6 +38,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'Login and receive access token' })
   @ApiBody({
     type: LoginDto,
@@ -56,6 +58,7 @@ export class AuthController {
   }
 
   @Post('accept-invite')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'Accept user invite and set first password' })
   @ApiBody({ type: AcceptInviteDto })
   @ApiResponse({ status: 201, description: 'Invite accepted and access token returned' })
@@ -64,6 +67,7 @@ export class AuthController {
   }
 
   @Post('bootstrap')
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @ApiOperation({ summary: 'Create the first admin user' })
   @ApiBody({ type: BootstrapAdminDto })
   @ApiResponse({ status: 201, description: 'Admin created' })
@@ -85,6 +89,7 @@ export class AuthController {
   }
 
   @Post('admin/reset-password')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({ summary: 'Reset admin password via setup token' })
   @ApiBody({ type: ResetAdminPasswordDto })
   @ApiResponse({ status: 200, description: 'Admin password reset' })

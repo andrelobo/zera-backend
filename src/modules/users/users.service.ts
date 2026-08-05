@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import { hashPassword } from '../auth/password';
-import { User, UserDocument } from '../auth/schemas/user.schema';
+import { User, UserDocument, UserRole } from '../auth/schemas/user.schema';
 import {
   buildInviteUrl,
   generateInviteToken,
@@ -82,7 +82,7 @@ export class UsersService {
     name: string,
     email: string,
     password: string,
-    role = 'user',
+    role: UserRole = 'user',
     status: 'active' | 'inactive' = 'active',
   ): Promise<PublicUser> {
     const normalized = email.trim().toLowerCase();
@@ -107,7 +107,7 @@ export class UsersService {
     }
   }
 
-  async invite(name: string, email: string, role = 'user'): Promise<InviteUserResult> {
+  async invite(name: string, email: string, role: UserRole = 'user'): Promise<InviteUserResult> {
     const normalized = email.trim().toLowerCase();
     const inviteToken = generateInviteToken();
     const now = new Date();
