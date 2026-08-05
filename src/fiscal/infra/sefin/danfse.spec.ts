@@ -135,6 +135,80 @@ const richInfNfse = `
 
 const richXml = wrapSefin(richInfNfse);
 
+const realXml = wrapSefin(`
+  <infNFSe Id="NFS13026032243521115000134000000000004826089378783140">
+    <xLocEmi>Manaus</xLocEmi>
+    <xLocPrestacao>Manaus</xLocPrestacao>
+    <nNFSe>48</nNFSe>
+    <cLocIncid>1302603</cLocIncid>
+    <xLocIncid>Manaus</xLocIncid>
+    <xTribNac>Contabilidade, inclusive serviços técnicos e auxiliares.</xTribNac>
+    <xTribMun>Contabilidade, inclusive serviços técnicos e auxiliares.</xTribMun>
+    <verAplic>SefinNacional_1.6.0</verAplic>
+    <ambGer>2</ambGer>
+    <tpEmis>1</tpEmis>
+    <procEmi>1</procEmi>
+    <cStat>100</cStat>
+    <dhProc>2026-08-04T18:42:04-03:00</dhProc>
+    <emit>
+      <CNPJ>43521115000134</CNPJ>
+      <IM>51754301</IM>
+      <xNome>BURGUS LTDA</xNome>
+      <enderNac>
+        <xLgr>RUA SALDANHA MARINHO</xLgr>
+        <nro>606</nro>
+        <xBairro>CENTRO</xBairro>
+        <cMun>1302603</cMun>
+        <UF>AM</UF>
+        <CEP>69010040</CEP>
+      </enderNac>
+    </emit>
+    <valores><vLiq>1.00</vLiq></valores>
+    <DPS versao="1.01">
+      <infDPS Id="DPS130260324352111500013400001000000000000068">
+        <tpAmb>1</tpAmb>
+        <dhEmi>2026-08-04T17:42:04-04:00</dhEmi>
+        <serie>00001</serie>
+        <nDPS>68</nDPS>
+        <dCompet>2026-08-04</dCompet>
+        <tpEmit>1</tpEmit>
+        <prest>
+          <CNPJ>43521115000134</CNPJ>
+          <IM>51754301</IM>
+          <regTrib>
+            <opSimpNac>3</opSimpNac>
+            <regApTribSN>1</regApTribSN>
+            <regEspTrib>0</regEspTrib>
+          </regTrib>
+        </prest>
+        <toma>
+          <CNPJ>40672760000160</CNPJ>
+          <IM>49188501</IM>
+          <xNome>LEVACAR PROMOCOES E EVENTOS LTDA</xNome>
+          <email>econtabilis@gmail.com</email>
+        </toma>
+        <serv>
+          <locPrest><cLocPrestacao>1302603</cLocPrestacao></locPrest>
+          <cServ>
+            <cTribNac>171901</cTribNac>
+            <cTribMun>100</cTribMun>
+            <xDescServ>Contabilidade.</xDescServ>
+          </cServ>
+        </serv>
+        <valores>
+          <vServPrest><vServ>1.00</vServ></vServPrest>
+          <trib>
+            <tribMun>
+              <tribISSQN>1</tribISSQN>
+              <tpRetISSQN>1</tpRetISSQN>
+            </tribMun>
+            <totTrib><pTotTribSN>6.00</pTotTribSN></totTrib>
+          </trib>
+        </valores>
+      </infDPS>
+    </DPS>
+  </infNFSe>`);
+
 describe('parseNfseToDanfse', () => {
   it('extrai chave de acesso sem o prefixo NFS e os dados principais', () => {
     const data = parseNfseToDanfse(richXml);
@@ -203,6 +277,25 @@ describe('parseNfseToDanfse', () => {
     expect(data.totais.vServ).toBe('-');
     expect(data.iss?.vISSQN).toBe('-');
   });
+
+  it('complementa o prestador pelo bloco emit e usa nome/local/vServ do XML real', () => {
+    const data = parseNfseToDanfse(realXml);
+    expect(data.prest.documento).toBe('43.521.115/0001-34');
+    expect(data.prest.im).toBe('51754301');
+    expect(data.prest.xNome).toBe('BURGUS LTDA');
+    expect(data.prest.endereco).toBe('RUA SALDANHA MARINHO, 606, CENTRO');
+    expect(data.prest.municipioUf).toBe('Manaus / AM');
+    expect(data.prest.cep).toBe('69010-040');
+    expect(data.prestSn?.regApTribSN).toContain('Simples Nacional');
+    expect(data.toma?.xNome).toBe('LEVACAR PROMOCOES E EVENTOS LTDA');
+    expect(data.serv.xLocPrestacao).toBe('Manaus');
+    expect(data.serv.cTribNac).toBe('171901');
+    expect(data.serv.xDescServ).toBe('Contabilidade.');
+    expect(data.totais.vServ).toBe('1,00');
+    expect(data.totais.vLiq).toBe('1,00');
+    expect(data.totais.vTotNF).toBe('-');
+    expect(data.iss?.tribISSQN).toBe('Operação tributável');
+  });
 });
 
 describe('detectDanfseSituacao', () => {
@@ -264,6 +357,11 @@ describe('gerarDanfsePdf', () => {
       `<xDescServ>${longDesc}</xDescServ>`,
     );
     const pdf = await pdfOf(xml);
+    expect(pdf.getPageCount()).toBe(1);
+  });
+
+  it('mantém 1 página no XML real do SEFIN Nacional (emit no infNFSe)', async () => {
+    const pdf = await pdfOf(realXml);
     expect(pdf.getPageCount()).toBe(1);
   });
 });

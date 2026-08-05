@@ -253,7 +253,7 @@ function fmtPct(value: string | undefined): string {
 
 function parsePessoa(sub: string | undefined): DanfsePessoa | undefined {
   if (!sub || !sub.trim()) return undefined;
-  const endNac = extractTag(sub, 'endNac');
+  const endNac = extractTag(sub, 'endNac') ?? extractTag(sub, 'enderNac');
   const endExt = extractTag(sub, 'endExt');
   const end = endNac ?? endExt ?? '';
   const endereco = [
@@ -285,6 +285,17 @@ function parsePessoa(sub: string | undefined): DanfsePessoa | undefined {
   };
 }
 
+function mergePessoa(...pess: (DanfsePessoa | undefined)[]): DanfsePessoa {
+  const out: DanfsePessoa = {};
+  for (const p of pess) {
+    if (!p) continue;
+    for (const [k, v] of Object.entries(p)) {
+      if (v !== undefined) (out as Record<string, unknown>)[k] = v;
+    }
+  }
+  return out;
+}
+
 export function detectDanfseSituacao(xml: string): DanfseSituacao | undefined {
   if (hasElement(xml, 'e105102')) return 'SUBSTITUIDA';
   if (hasElement(xml, 'e101101')) return 'CANCELADA';
@@ -304,7 +315,17 @@ export function parseNfseToDanfse(xml: string): DanfseData {
     '',
   );
 
-  const prest = parsePessoa(extractTag(dps, 'prest')) ?? {};
+  const prest = mergePessoa(
+    parsePessoa(extractTag(nfse, 'emit')),
+    parsePessoa(extractTag(dps, 'prest')),
+  );
+  if (prest.municipioUf === prest.uf && prest.uf !== undefined) {
+    const xLoc =
+      extractTag(nfse, 'xLocIncid') ??
+      extractTag(nfse, 'xLocEmi') ??
+      extractTag(nfse, 'xLocPrestacao');
+    if (xLoc) prest.municipioUf = `${xLoc} / ${prest.uf}`;
+  }
 
   const regTrib = extractTag(dps, 'regTrib');
   const prestSn = {
@@ -390,7 +411,7 @@ export function parseNfseToDanfse(xml: string): DanfseData {
       cTribNac: extractTag(cServ, 'cTribNac'),
       cTribMun: extractTag(cServ, 'cTribMun'),
       cNBS: extractTag(nfse, 'xNBS'),
-      xLocPrestacao: extractTag(locPrest, 'cLocPrestacao'),
+      xLocPrestacao: extractTag(nfse, 'xLocPrestacao') ?? extractTag(locPrest, 'cLocPrestacao'),
       xTribNac: unescapeXml(extractTag(nfse, 'xTribNac')),
       xTribMun: unescapeXml(extractTag(nfse, 'xTribMun')),
       xDescServ: unescapeXml(extractTag(cServ, 'xDescServ')),
@@ -438,7 +459,10 @@ export function parseNfseToDanfse(xml: string): DanfseData {
       vCBS: fmtMoney(extractTag(gCBS, 'vCBS')),
     },
     totais: {
-      vServ: fmtMoney(extractTag(nfseValores, 'vServ')),
+      vServ: fmtMoney(
+        extractTag(nfseValores, 'vServ') ??
+          extractTag(extractTag(dpsValores, 'vServPrest') ?? '', 'vServ'),
+      ),
       vDescIncond: fmtMoney(extractTag(nfseValores, 'vDescIncond')),
       vDescCond: fmtMoney(extractTag(nfseValores, 'vDescCond')),
       vTotalRet: fmtMoney(extractTag(nfseValores, 'vTotalRet')),
@@ -526,7 +550,7 @@ class DanfseRenderer {
   ): void {
     this.page.drawText(text, {
       x: xCm * CM,
-      y: PAGE_H - (yTopCm + (size / 72) * CM) * CM,
+      y: PAGE_H - (yTopCm + (size / 72) * 2.54) * CM,
       size,
       font,
       color,
@@ -562,7 +586,7 @@ class DanfseRenderer {
       if (lines.length > maxRowLines) maxRowLines = lines.length;
     }
 
-    const rowH = Math.max(0.7, contentH * maxRowLines + (labelSize / 72) * CM + padCm * 2);
+    const rowH = Math.max(0.7, contentH * maxRowLines + (labelSize / 72) * 2.54 + padCm * 2);
     let x = x0;
     for (const cell of cells) {
       const value = cell.value === undefined || cell.value === '' ? '-' : cell.value;
@@ -572,12 +596,12 @@ class DanfseRenderer {
       }
       const maxWidth = (cell.wCm - padCm * 2) * CM;
       const lines = wrapText(this.font, value, maxWidth, contentSize).slice(0, maxLines);
-      const lineHeight = (contentSize / 72) * CM + 0.18;
+      const lineHeight = (contentSize / 72) * 2.54 + 0.18;
       lines.forEach((line, i) => {
         this.text(
           line,
           x + padCm,
-          this.yTop + padCm + (labelSize / 72) * CM + 0.06 + i * lineHeight,
+          this.yTop + padCm + (labelSize / 72) * 2.54 + 0.06 + i * lineHeight,
           contentSize,
           this.font,
         );
@@ -654,11 +678,11 @@ export async function gerarDanfsePdf(xml: string): Promise<Uint8Array> {
     errorCorrectionLevel: 'M',
   });
   const qrImage = await pdfDoc.embedPng(qrPng);
-  const qrSize = 1.52 * CM;
+  const qrSize = 1.42 * CM;
   r.text('QR Code', rightColX + 0.1, r.getYTop() + 0.0, 6, bold);
   page.drawImage(qrImage, {
     x: rightColX * CM + 0.2 * CM,
-    y: PAGE_H - (r.getYTop() + 0.5) * CM - qrSize,
+    y: PAGE_H - (r.getYTop() + 0.25) * CM - qrSize,
     width: qrSize,
     height: qrSize,
   });
