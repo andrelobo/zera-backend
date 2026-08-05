@@ -2,6 +2,17 @@
 
 Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
 
+## 0. ATUALIZACAO (05/08/2026) - DANFSE DIAGRAMADO E COM DADOS DO XML REAL (commit `2a28dc4`)
+
+Fonte: `inspecao do stream PDF (zlib)` + `pdftotext -bbox` + `pdftoppm` + XML real da NFS-e 48 (`nfse-6a725cab7aa43f7ecdaaa64f.xml`).
+
+- O DANFSe baixado pela tela era **valido mas mal diagramado**: textos sobrepostos ("DANFSe v2.0" sobre "Documento Auxiliar da NFS-e", "ManausProdução", valores sobre cabecalhos da linha seguinte) e secoes de servico/valores/canhoto com coordenadas negativas, cortadas fora da pagina A4.
+- **Causa raiz**: conversao pontos<->centimetros invertida em `danfse.ts` (`(size/72)*CM` onde o correto e `/2.54`) em 4 pontos (baseline do `text()`, `rowH`, `lineHeight`, offset do valor em `drawCells`) -> cada texto posicionado ~2,4-5cm abaixo do correto.
+- **Dados faltando**: `emit` do `infNFSe` (xNome BURGUS LTDA, enderNac) nao alimentava o prestador; `xLocPrestacao` mostrava o codigo IBGE (1302603); `totais.vServ` saia "-" (o XML traz `DPS/infDPS/valores/vServPrest/vServ`).
+- **Correcao**: `parsePessoa` aceita `enderNac`; novo `mergePessoa` combina `emit` + `prest` (sem sobrescrever com undefined); `xLocPrestacao` usa o nome (`nfse/xLocPrestacao`); `vServ` cai para `vServPrest/vServ`; Municipio/UF do prestador usa `xLocIncid`/`xLocEmi` como fallback de nome; QR Code reposicionado dentro do cabecalho.
+- **Validacao**: 119 testes/sefin verdes (14 do `danfse.spec.ts`, incluindo novo fixture do XML real), lint 0 erros, build ok; PDF regenerado com o XML real -> **0 sobreposicoes** em `pdftotext -bbox`, pagina unica A4, secoes Dados/Prestador/Tomador/Servico/ISSQN/Valor/Canhoto completas e ordenadas (y 2..828 de 841.89pt).
+- Commit `2a28dc4` pushado em `main` (`07948d2..2a28dc4`).
+
 ## 0. ATUALIZACAO (05/08/2026) - VALIDACAO REAL DE XML/PDF CONCLUIDA NA NFS-e 48 (SEFIN)
 
 Fonte: `execucao real em producao` + `curl na API` + `resposta real da SEFIN Nacional`.

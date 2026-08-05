@@ -10,7 +10,8 @@ Leitura canonica detalhada: `CURRENT_STATE.md`, secao **ATUALIZACAO (05/08/2026)
 - NFS-e real autorizada: PlugNotas 47 (`6a71420f451c04dbcc7a438c`) e SEFIN 48 (emissao `6a725cab7aa43f7ecdaaa64f`, chave `NFS13026032243521115000134000000000004826089378783140`). Manter ambas.
 - **Validacao real concluida em producao**: emissao 48 ja com artefatos persistidos (`sync-artifacts` -> `already_present`, `hasXml:true`, `hasPdf:true`); `GET /nfse/:id/xml` -> 200 (9070 bytes, XML assinado SERPRO, `cStat=100`, `nNFSe=48`); `GET /nfse/:id/pdf` -> 200 (10213 bytes, DANFSe v2.0 local); downloads OK nas tres camadas (backend direto, proxy Vercel `/api`, `https://www.zera.net.br`) + preflight OPTIONS/CORS OK.
 - Causa-raiz do fix #11 confirmada: chave com prefixo `NFS` (E2406) e envelope JSON `nfseXmlGZipB64` sem descomprimir — resolvidos por `toApiChave()` + `mapSefinNfseResponse`.
-- **Causa-raiz do "download nao baixa na tela" e do FRONTEND**: `URL.revokeObjectURL(url)` imediato apos `a.click()` em `zera-frontend2` (`NfseDetailPage.tsx`/`NfseListPage.tsx`) — fix aplicado (revogacao adiada 60s) e pendente de commit/deploy no front.
+- **Causa-raiz do "download nao baixa na tela" e do FRONTEND**: `URL.revokeObjectURL(url)` imediato apos `a.click()` em `zera-frontend2` (`NfseDetailPage.tsx`/`NfseListPage.tsx`) — fix aplicado (revogacao adiada 60s) e commitado/deployado no front (`b952e91`).
+- **DANFSe corrigido** (commit `2a28dc4`): o PDF baixado era valido mas mal diagramado (conversao pt<->cm invertida em `danfse.ts` -> textos sobrepostos e secoes fora da pagina) e com dados faltando (emit/endereco do prestador, nome do local de prestacao, vServ). PDF regenerado com o XML real: **0 sobreposicoes**, pagina unica A4, secoes completas.
 - Nao usar PlugNotas em novas emissoes; LOBONOTAS (SEFIN Nacional) e o caminho de emissao.
 - Proximas emissoes LOBONOTAS devem fechar o ciclo de artefatos pelo mesmo caminho (`sync-artifacts`/webhook/polling).
 
