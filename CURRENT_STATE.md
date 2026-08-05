@@ -2,9 +2,29 @@
 
 Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
 
+## 0. ATUALIZACAO (05/08/2026) - VALIDACAO REAL DE XML/PDF CONCLUIDA NA NFS-e 48 (SEFIN)
+
+Fonte: `execucao real em producao` + `curl na API` + `resposta real da SEFIN Nacional`.
+
+Estado atual:
+- a validacao pendente do fix de artefatos (PR #11, commit `96f738f`) foi **concluida em producao**:
+  - emissao `6a725cab7aa43f7ecdaaa64f` (NFS-e 48, LOBONOTAS) ja estava com `xmlBase64`/`pdfBase64` persistidos (`POST /nfse/:id/sync-artifacts` retornou `already_present` / `hasXml:true` / `hasPdf:true`);
+  - `GET /nfse/:id/xml` -> **200, 9070 bytes**, `Content-Type: application/xml`, XML `NFSe versao=1.01` assinado pelo SERPRO com `cStat=100`, `nNFSe=48`, DPS 68 embutida;
+  - `GET /nfse/:id/pdf` -> **200, 10213 bytes**, `Content-Type: application/pdf`, PDF valido (DANFSe v2.0 gerado localmente);
+  - downloads confirmados nas tres camadas: backend direto (`136.248.90.172:3000`), proxy Vercel (`/api`) e dominio `https://www.zera.net.br`; preflight OPTIONS/CORS OK.
+  - **front atual da UI = `https://manaus-nfse-dashboard.vercel.app`** (proxy Vercel) — validar download na tela la apos o deploy do fix no front.
+- O `GET /nfse/:id/artifacts` retorna `{ hasXml:true, hasPdf:true, status:"AUTHORIZED", externalId:"NFS13026..." }`.
+
+Leitura operacional correta:
+1. o ciclo LOBONOTAS agora produz XML e PDF baixaveis para notas ja autorizadas — sem precisar emitir nota nova;
+2. causa-raiz restante do "baixar nao funciona" na UI era do **frontend** (revogacao imediata do blob URL) — fix em `zera-frontend2` `NfseDetailPage.tsx`/`NfseListPage.tsx` (ver CURRENT_STATE.md do front);
+3. proximas emissoes LOBONOTAS novas devem fechar o ciclo de artefatos pelo mesmo caminho (`sync-artifacts`/webhook/polling).
+
 ## 0. RETOMAR DAQUI (04/08/2026) - FIX ARTEFATOS XML/PDF DEPLOYADO; VALIDACAO REAL PENDENTE
 
 Fonte: `codigo local` + `testes locais` + `build local` + `lint local` + `reproducao real da API SEFIN Nacional` + `deploy GitHub Actions`.
+
+> **Superado em 05/08/2026** — ver secao "ATUALIZACAO (05/08/2026)" acima. Mantido abaixo apenas como historico.
 
 ### Problema diagnosticado (XML/PDF nao gerados)
 
