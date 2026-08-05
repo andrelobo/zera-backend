@@ -12,6 +12,7 @@ Leitura canonica detalhada: `CURRENT_STATE.md`, secao **ATUALIZACAO (05/08/2026)
 - Causa-raiz do fix #11 confirmada: chave com prefixo `NFS` (E2406) e envelope JSON `nfseXmlGZipB64` sem descomprimir — resolvidos por `toApiChave()` + `mapSefinNfseResponse`.
 - **Causa-raiz do "download nao baixa na tela" e do FRONTEND**: `URL.revokeObjectURL(url)` imediato apos `a.click()` em `zera-frontend2` (`NfseDetailPage.tsx`/`NfseListPage.tsx`) — fix aplicado (revogacao adiada 60s) e commitado/deployado no front (`b952e91`).
 - **DANFSe corrigido** (commit `2a28dc4`): o PDF baixado era valido mas mal diagramado (conversao pt<->cm invertida em `danfse.ts` -> textos sobrepostos e secoes fora da pagina) e com dados faltando (emit/endereco do prestador, nome do local de prestacao, vServ). PDF regenerado com o XML real: **0 sobreposicoes**, pagina unica A4, secoes completas.
+- **DANFSe novo validado em producao** (commit `2f3c25d`): `GET /pdf` serve o `pdfBase64` persistido, entao foi adicionado `POST /nfse/:id/sync-artifacts?force=true` para regenerar XML/PDF de emissoes ja autorizadas. Rodado na NFS-e 48 (`synced:true`) e download agora retorna **10457 bytes, 0 sobreposicoes, dados completos** (proxy e backend direto).
 - Nao usar PlugNotas em novas emissoes; LOBONOTAS (SEFIN Nacional) e o caminho de emissao.
 - Proximas emissoes LOBONOTAS devem fechar o ciclo de artefatos pelo mesmo caminho (`sync-artifacts`/webhook/polling).
 

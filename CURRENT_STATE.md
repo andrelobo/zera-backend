@@ -2,6 +2,14 @@
 
 Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
 
+## 0. ATUALIZACAO (05/08/2026) - DANFSE NOVO VALIDADO EM PRODUCAO + SYNC-ARTIFACTS?FORCE (commit `2f3c25d`)
+
+- `GET /nfse/:id/pdf` serve o `pdfBase64` persistido (nao regera no download); o DANFSe corrigido so chegava em novas emissoes. Adicionado `POST /nfse/:id/sync-artifacts?force=true` (commit `2f3c25d`) que **regera XML/PDF** mesmo quando os artefatos ja existem (idempotente sem `force`; somente leitura na SEFIN + geracao local do PDF; respeita rate limit).
+- Deploy `31019815366` -> **success**.
+- Regeneracao real na NFS-e 48: `POST .../sync-artifacts?force=true` -> `{"synced":true,"reason":"ok","artifactId":"NFS13026..."}`.
+- Download em producao: proxy Vercel e backend direto -> **200, 10457 bytes** (antes 10213), pagina unica A4, `pdftotext -bbox` com **0 sobreposicoes** e todos os dados (BURGUS LTDA, LEVACAR, RUA SALDANHA MARINHO 606, Manaus/AM, 69010-040, 1,00, canhoto). Render: `/tmp/opencode/prod-danfse-new-1.png`.
+- Suite 4 testes do `sync-nfse-artifacts` (novo caso `force=true`) + 14 do `danfse.spec.ts` verdes; build ok; lint 0 erros.
+
 ## 0. ATUALIZACAO (05/08/2026) - DANFSE DIAGRAMADO E COM DADOS DO XML REAL (commit `2a28dc4`)
 
 Fonte: `inspecao do stream PDF (zlib)` + `pdftotext -bbox` + `pdftoppm` + XML real da NFS-e 48 (`nfse-6a725cab7aa43f7ecdaaa64f.xml`).
