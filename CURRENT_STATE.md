@@ -2,6 +2,18 @@
 
 Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
 
+## 0. ATUALIZACAO (05/08/2026) - PLUGNOTAS PERMANENTEMENTE DESATIVADO (KILL SWITCH + BARREIRA DUPLA)
+
+Fonte: `codigo local` + `testes locais` + `build local` + `lint local`.
+
+Politica aplicada e validada:
+- **PLUGNOTAS desabilitado como provider operacional.** Provider ativo exclusivo = LOBONOTAS (SEFIN Nacional). Codigo PlugNotas (mappers/parsers/payloads/testes) permanece SOMENTE como leitura historica/parser/evidencia de auditoria — nao remover. Registros MongoDB de notas PlugNotas NAO sao alterados.
+- **Kill switch unico**: `PlugNotasHttp.assertEnabled()` no inicio de `request()` lanca `PLUGNOTAS_DISABLED` (409). Cobre `PlugNotasNfseApi`, `PlugNotasCompanyApi`, `PlugNotasCnpjApi` e `PlugNotasProvider` — funil unico de saida externa PlugNotas.
+- **Barreira dupla**: `fiscal-provider.resolver.ts` (`activeProviderName()` sempre LOBONOTAS) + guardas por controller/servico: `emitir-nfse.service.providerFor()` rejeita `providerName: 'PLUGNOTAS'`; `fiscal.controller.assertNotPlugNotas(doc)` bloqueia reemissao, cancelamento e downloads remotos; `empresas.controller` bloqueia `plugnotas/sync`. PLUGNOTAS **nunca e fallback**.
+- Artefatos historicos: `GET /nfse/:id/xml` e `/pdf` seguem servindo somente o que ja esta persistido; nenhum download remoto PlugNotas.
+- Validacao: **303 testes verdes** (novos casos `PLUGNOTAS_DISABLED` em `fiscal.controller.spec.ts` e `emitir-nfse.service.spec.ts`); `npm run lint` 0 erros (246 warnings pre-existentes); `npm run build` ok (com copia de `servicos_lc116_v2.json`).
+- Proximas emissoes LOBONOTAS fecham artefatos pelo caminho ja validado (`sync-artifacts`/webhook/polling).
+
 ## 0. ATUALIZACAO (05/08/2026) - DANFSE NOVO VALIDADO EM PRODUCAO + SYNC-ARTIFACTS?FORCE (commit `2f3c25d`)
 
 - `GET /nfse/:id/pdf` serve o `pdfBase64` persistido (nao regera no download); o DANFSe corrigido so chegava em novas emissoes. Adicionado `POST /nfse/:id/sync-artifacts?force=true` (commit `2f3c25d`) que **regera XML/PDF** mesmo quando os artefatos ja existem (idempotente sem `force`; somente leitura na SEFIN + geracao local do PDF; respeita rate limit).

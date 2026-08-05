@@ -31,5 +31,6 @@
 
 - Tratar o ZERA como sistema em producao (usuarios e emissoes reais).
 - Preservar emissao, integracoes, observabilidade; evitar regressao.
-- Producao fiscal segue PLUGNOTAS (`FISCAL_PROVIDER_ACTIVE` ausente/vazio). Nao remover codigo PlugNotas.
+- **Politica fiscal (05/08/2026)**: PLUGNOTAS esta permanentemente desabilitado como provider operacional. Provider ativo exclusivo = LOBONOTAS (SEFIN Nacional). Codigo PlugNotas (mappers/parsers/payloads/testes) permanece SOMENTE como leitura historica/parser/evidencia de auditoria — nao remover. Registros MongoDB de notas PlugNotas nao sao alterados.
+- **Nunca usar PlugNotas como fallback** de provider, download remoto ou reemissao. Toda chamada externa PlugNotas passa pelo kill switch `PlugNotasHttp.assertEnabled()` (`PLUGNOTAS_DISABLED`, 409). Barreira dupla: resolver sempre retorna LOBONOTAS + guardas por controller/servico (`PLUGNOTAS_DISABLED`).
 - Nao commitar segredos; guardar chaves em `.env` / secret manager.

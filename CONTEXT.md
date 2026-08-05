@@ -3,6 +3,19 @@
 > Leitura rapida operacional: veja `CURRENT_STATE.md` (snapshot atual).
 > Este documento (`CONTEXT.md`) permanece como historico completo e linha do tempo.
 
+## HANDOVER IMEDIATO (05/08/2026) - PLUGNOTAS PERMANENTEMENTE DESATIVADO (KILL SWITCH + BARREIRA DUPLA)
+
+Fonte: `codigo local` + `testes locais` + `build local` + `lint local`. Validacao completa: **303 testes verdes**, lint 0 erros, build ok.
+
+Leitura canonica detalhada: `CURRENT_STATE.md`, secao **ATUALIZACAO (05/08/2026) - PLUGNOTAS DESATIVADO** (topo).
+
+- **Politica**: PLUGNOTAS desabilitado como provider operacional; LOBONOTAS (SEFIN Nacional) e o unico provider ativo. PLUGNOTAS permanece como adaptador historico/parser/evidencia — mappers, payloads e testes preservados; registros MongoDB de notas antigas NAO sao alterados.
+- **Kill switch unico**: `PlugNotasHttp.assertEnabled()` no inicio de `request()` -> `PLUGNOTAS_DISABLED` (409). Cobre `PlugNotasNfseApi`, `PlugNotasCompanyApi`, `PlugNotasCnpjApi` e `PlugNotasProvider`.
+- **Barreira dupla**: resolver (`activeProviderName()` sempre LOBONOTAS) + guardas por controller/servico (emissao, reemissao, cancelamento, downloads remotos, sync de empresa). PLUGNOTAS **nunca e fallback**; artefatos historicos so servidos se ja persistidos.
+- Arquivos-chave: `plugnotas.http.ts`, `fiscal-provider.resolver.ts`, `emitir-nfse.service.ts`, `fiscal.controller.ts`, `empresas.controller.ts`.
+- Validacao: 303 testes verdes (inclui novos casos `PLUGNOTAS_DISABLED` em `fiscal.controller.spec.ts` e `emitir-nfse.service.spec.ts`); lint 0 erros (246 warnings pre-existentes); build ok.
+- Proximas emissoes LOBONOTAS fecham o ciclo de artefatos pelo caminho ja validado (`sync-artifacts`/webhook/polling).
+
 ## HANDOVER IMEDIATO (05/08/2026) - VALIDACAO REAL DE XML/PDF CONCLUIDA (NFS-e 48)
 
 Leitura canonica detalhada: `CURRENT_STATE.md`, secao **ATUALIZACAO (05/08/2026)** (topo).
