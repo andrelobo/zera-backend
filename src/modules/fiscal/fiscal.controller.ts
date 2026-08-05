@@ -698,15 +698,24 @@ export class FiscalController {
   @ApiOperation({
     summary: 'Sync XML/PDF artifacts on demand',
     description:
-      'Idempotent manual recovery endpoint. Keeps polling for PENDING as default flow and does not reopen ERROR to PENDING.',
+      'Idempotent manual recovery endpoint. Keeps polling for PENDING as default flow and does not reopen ERROR to PENDING. Pass force=true to regenerate XML/PDF even when artifacts already exist.',
   })
   @ApiResponse({ status: 200, type: SyncNfseArtifactsResponseDto })
   @ApiResponse({ status: 429, description: 'Rate limited for this emission' })
-  async syncArtifacts(@Param('id') id: string, @Req() req: Request) {
+  async syncArtifacts(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Query('force') force?: string,
+  ) {
     const user = (req as any)?.user;
     const requestedBy = user?.email ?? user?.sub ?? null;
     const ip = req.ip ?? null;
-    return this.syncNfseArtifactsService.execute({ emissionId: id, requestedBy, ip });
+    return this.syncNfseArtifactsService.execute({
+      emissionId: id,
+      requestedBy,
+      ip,
+      force: force === 'true' || force === '1',
+    });
   }
 
   @Get(':id')

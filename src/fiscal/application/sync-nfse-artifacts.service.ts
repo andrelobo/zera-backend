@@ -40,12 +40,17 @@ export class SyncNfseArtifactsService {
     @Optional() private readonly resolver?: FiscalProviderResolver,
   ) {}
 
-  async execute(input: { emissionId: string; requestedBy?: string | null; ip?: string | null }) {
+  async execute(input: {
+    emissionId: string;
+    requestedBy?: string | null;
+    ip?: string | null;
+    force?: boolean;
+  }) {
     const now = new Date();
     const doc = await this.repo.findById(input.emissionId);
     if (!doc) return { found: false };
 
-    if (doc.xmlBase64 && doc.pdfBase64) {
+    if (doc.xmlBase64 && doc.pdfBase64 && !input.force) {
       await this.repo.appendArtifactSyncAudit(doc._id.toString(), {
         at: now,
         outcome: 'noop_already_present',

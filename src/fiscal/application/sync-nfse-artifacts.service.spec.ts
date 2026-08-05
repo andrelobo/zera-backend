@@ -26,6 +26,39 @@ describe('SyncNfseArtifactsService', () => {
     expect(repo.appendArtifactSyncAudit).toHaveBeenCalled();
   });
 
+  it('regenerates artifacts when force=true even if already present', async () => {
+    const repo = {
+      findById: jest.fn().mockResolvedValue({
+        _id: { toString: () => 'em-4' },
+        status: NfseEmissionStatus.AUTHORIZED,
+        externalId: 'ext-4',
+        xmlBase64: 'abc',
+        pdfBase64: 'def',
+        lastArtifactSyncAt: null,
+      }),
+      saveArtifactsById: jest.fn().mockResolvedValue(undefined),
+      appendArtifactSyncAudit: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = {
+      consultarNfse: jest.fn().mockResolvedValue({
+        status: NfseEmissionStatus.AUTHORIZED,
+        providerResponse: { idNota: 'id-nota-4' },
+      }),
+      baixarXmlNfse: jest.fn().mockResolvedValue(new Uint8Array([1, 1])),
+      baixarPdfNfse: jest.fn().mockResolvedValue(new Uint8Array([2, 2])),
+    };
+
+    const service = new SyncNfseArtifactsService(repo as any, provider as any);
+    const result = await service.execute({ emissionId: 'em-4', force: true });
+
+    expect(result.synced).toBe(true);
+    expect(result.reason).toBe('ok');
+    expect(provider.consultarNfse).toHaveBeenCalled();
+    expect(repo.saveArtifactsById).toHaveBeenCalledWith(
+      expect.objectContaining({ xmlBase64: 'AQE=', pdfBase64: 'AgI=' }),
+    );
+  });
+
   it('rate limits repeated manual sync attempts', async () => {
     const now = Date.now();
     const repo = {
