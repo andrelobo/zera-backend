@@ -411,4 +411,30 @@ describe('EmitirNfseService idempotency', () => {
     const payload = provider.emitirNfse.mock.calls[0][0];
     expect(payload.servico.tributacaoTotal).toEqual({ pTotTribSN: 6 });
   });
+
+  it('rejeita providerName explicito PLUGNOTAS (PLUGNOTAS_DISABLED)', async () => {
+    const repository = {
+      findByReference: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue({ _id: { toString: () => 'em-795' } }),
+      updateEmission: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = {
+      providerName: 'PLUGNOTAS',
+      emitirNfse: jest.fn(),
+    };
+
+    const service = new EmitirNfseService(
+      provider as any,
+      repository as any,
+      makeEmpresasServiceMock() as any,
+      makeTomadoresServiceMock() as any,
+    );
+
+    await expect(
+      service.execute(makeInput() as any, { providerName: 'PLUGNOTAS' }),
+    ).rejects.toMatchObject({
+      code: 'PLUGNOTAS_DISABLED',
+    });
+    expect(provider.emitirNfse).not.toHaveBeenCalled();
+  });
 });

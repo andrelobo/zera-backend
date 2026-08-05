@@ -6,6 +6,38 @@ describe('SyncNfseArtifactsService', () => {
     process.env.NFSE_SYNC_ARTIFACTS_MIN_INTERVAL_MS = '60000';
   });
 
+  it('bloqueia sincronizacao de notas historicas PlugNotas (PLUGNOTAS_DISABLED)', async () => {
+    const repo = {
+      findById: jest.fn().mockResolvedValue({
+        _id: { toString: () => 'em-plug' },
+        status: NfseEmissionStatus.AUTHORIZED,
+        provider: 'PLUGNOTAS',
+        externalId: 'ext-plug',
+        xmlBase64: null,
+        pdfBase64: null,
+        lastArtifactSyncAt: null,
+      }),
+      appendArtifactSyncAudit: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = {
+      consultarNfse: jest.fn().mockResolvedValue({}),
+      baixarXmlNfse: jest.fn(),
+      baixarPdfNfse: jest.fn(),
+    };
+    const service = new SyncNfseArtifactsService(repo as any, provider as any);
+
+    await expect(service.execute({ emissionId: 'em-plug', force: true })).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'PLUGNOTAS_DISABLED' }),
+    });
+    expect(provider.consultarNfse).not.toHaveBeenCalled();
+    expect(provider.baixarXmlNfse).not.toHaveBeenCalled();
+    expect(provider.baixarPdfNfse).not.toHaveBeenCalled();
+    expect(repo.appendArtifactSyncAudit).toHaveBeenCalledWith(
+      'em-plug',
+      expect.objectContaining({ outcome: 'blocked_plugnotas_disabled' }),
+    );
+  });
+
   it('is idempotent when artifacts already exist', async () => {
     const repo = {
       findById: jest.fn().mockResolvedValue({

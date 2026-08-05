@@ -37,6 +37,7 @@ import type { NfseEmissionDocument } from '../../fiscal/infra/mongo/schemas/nfse
 import type { FiscalProvider } from '../../fiscal/domain/fiscal-provider.interface';
 import type { EmitirNfseInput } from '../../fiscal/domain/types/emitir-nfse.types';
 import { NfseEmissionStatus } from '../../fiscal/domain/types/nfse-emission-status';
+import { PLUGNOTAS_PROVIDER } from '../../fiscal/domain/provider-names';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/guards/roles.decorator';
@@ -115,6 +116,16 @@ export class FiscalController {
     @Inject('FiscalProvider')
     private readonly provider: FiscalProvider,
   ) {}
+
+  private assertNotPlugNotas(doc: NfseEmissionDocument): void {
+    if (doc.provider?.trim().toUpperCase() === PLUGNOTAS_PROVIDER) {
+      throw new BadRequestException({
+        code: 'PLUGNOTAS_DISABLED',
+        message:
+          'Operacao desabilitada para notas historicas PlugNotas: nenhuma chamada externa a PlugNotas e permitida',
+      });
+    }
+  }
 
   private buildObservabilityResponse(doc: NfseEmissionDocument) {
     const createdAt = (doc as any).createdAt ?? null;
@@ -251,6 +262,8 @@ export class FiscalController {
       });
     }
 
+    this.assertNotPlugNotas(doc);
+
     const providerPayload = Array.isArray((doc.providerRequest as any)?.payload)
       ? (doc.providerRequest as any).payload[0]
       : undefined;
@@ -339,6 +352,8 @@ export class FiscalController {
         message: 'Somente notas com status AUTHORIZED podem ser canceladas',
       });
     }
+
+    this.assertNotPlugNotas(doc);
 
     const idNota = extractIdNota(doc.providerResponse) ?? doc.externalId ?? null;
     if (!idNota) {
@@ -938,6 +953,8 @@ export class FiscalController {
       throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
     }
 
+    this.assertNotPlugNotas(doc);
+
     const idNota = extractIdNota(doc.providerResponse);
     if (!idNota) {
       throw new BadRequestException({
@@ -960,6 +977,8 @@ export class FiscalController {
     if (!doc) {
       throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
     }
+
+    this.assertNotPlugNotas(doc);
 
     const idNota = extractIdNota(doc.providerResponse);
     if (!idNota) {

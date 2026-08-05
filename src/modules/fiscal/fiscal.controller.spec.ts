@@ -445,6 +445,58 @@ describe('FiscalController', () => {
     expect(emitirNfseService.execute).not.toHaveBeenCalled();
   });
 
+  it('reemitir bloqueia notas historicas PlugNotas (PLUGNOTAS_DISABLED)', async () => {
+    repo.findById.mockResolvedValue({
+      _id: { toString: () => 'em-error-plugnotas' },
+      status: NfseEmissionStatus.ERROR,
+      provider: 'PLUGNOTAS',
+      externalId: null,
+      providerResponse: null,
+      payload: {
+        referenciaExterna: 'nfse-plugnotas-original',
+        prestador: { cnpj: '43521115000134' },
+        tomador: { cpfCnpj: '40672760000160' },
+        servico: { codigoNacional: '171901', descricao: 'Contabilidade.', valor: 1 },
+      },
+    });
+
+    await expect(controller.reemitir('em-error-plugnotas')).rejects.toMatchObject({
+      response: { code: 'PLUGNOTAS_DISABLED' },
+    });
+    expect(emitirNfseService.execute).not.toHaveBeenCalled();
+  });
+
+  it('solicitarCancelamento bloqueia notas historicas PlugNotas (PLUGNOTAS_DISABLED)', async () => {
+    repo.findById.mockResolvedValue({
+      _id: { toString: () => 'em-auth-plugnotas' },
+      status: NfseEmissionStatus.AUTHORIZED,
+      provider: 'PLUGNOTAS',
+      externalId: 'ext-plugnotas',
+      providerResponse: { id: 'nota-plugnotas' },
+    });
+
+    await expect(controller.solicitarCancelamento('em-auth-plugnotas')).rejects.toMatchObject({
+      response: { code: 'PLUGNOTAS_DISABLED' },
+    });
+    expect(provider.solicitarCancelamentoNfse).not.toHaveBeenCalled();
+  });
+
+  it('downloadXmlFromProvider bloqueia notas historicas PlugNotas (PLUGNOTAS_DISABLED)', async () => {
+    repo.findById.mockResolvedValue({
+      _id: { toString: () => 'em-xml-plugnotas' },
+      provider: 'PLUGNOTAS',
+      status: NfseEmissionStatus.AUTHORIZED,
+      externalId: 'ext-plugnotas',
+      providerResponse: { id: 'nota-plugnotas' },
+    });
+
+    await expect(
+      controller.downloadXmlFromProvider('em-xml-plugnotas', {} as any),
+    ).rejects.toMatchObject({
+      response: { code: 'PLUGNOTAS_DISABLED' },
+    });
+  });
+
   it('reemitir rejeita tentativa com externalId por risco de duplicidade', async () => {
     repo.findById.mockResolvedValue({
       _id: { toString: () => 'em-error-transmitida' },

@@ -10,6 +10,7 @@ import type { FiscalProvider } from '../domain/fiscal-provider.interface';
 import { NfseEmissionStatus } from '../domain/types/nfse-emission-status';
 import { NfseEmissionRepository } from '../infra/mongo/repositories/nfse-emission.repository';
 import { FiscalProviderResolver } from './fiscal-provider.resolver';
+import { PLUGNOTAS_PROVIDER } from '../domain/provider-names';
 
 function toBase64(data: Uint8Array) {
   return Buffer.from(data).toString('base64');
@@ -66,6 +67,20 @@ export class SyncNfseArtifactsService {
         hasXml: true,
         hasPdf: true,
       };
+    }
+
+    if (doc.provider?.trim().toUpperCase() === PLUGNOTAS_PROVIDER) {
+      await this.repo.appendArtifactSyncAudit(doc._id.toString(), {
+        at: now,
+        outcome: 'blocked_plugnotas_disabled',
+        requestedBy: input.requestedBy ?? null,
+        ip: input.ip ?? null,
+      });
+      throw new BadRequestException({
+        code: 'PLUGNOTAS_DISABLED',
+        message:
+          'Sincronizacao desabilitada para notas historicas PlugNotas; artefatos sao servidos somente se ja persistidos',
+      });
     }
 
     const minIntervalMs = Number(process.env.NFSE_SYNC_ARTIFACTS_MIN_INTERVAL_MS ?? 60000);

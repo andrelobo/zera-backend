@@ -41,6 +41,23 @@ function parseJson(data: Uint8Array): unknown {
 export class PlugNotasHttp {
   private readonly logger = new Logger(PlugNotasHttp.name);
 
+  private static readonly disabledError = Object.assign(
+    new Error(
+      'Operacoes externas com a PlugNotas desabilitadas permanentemente; o unico provider operacional e LOBONOTAS',
+    ),
+    { code: 'PLUGNOTAS_DISABLED', status: 409 },
+  );
+
+  /**
+   * Kill switch permanente: garante que nenhum fluxo (emissao, sincronizacao,
+   * cancelamento, polling ou download) consiga chamar a API externa da PlugNotas.
+   * A PlugNotas permanece apenas como adaptador historico/parser/evidencia de
+   * auditoria para leitura de notas antigas; nenhuma operacao externa passa por aqui.
+   */
+  private assertEnabled(): void {
+    throw PlugNotasHttp.disabledError;
+  }
+
   private buildUrl(path: string, query?: Record<string, any>) {
     const cfg = getPlugNotasConfig();
     const url = new URL(`${cfg.baseUrl}${path}`);
@@ -126,6 +143,8 @@ export class PlugNotasHttp {
       maxDelayMs?: number;
     };
   }): Promise<T> {
+    this.assertEnabled();
+
     const cfg = getPlugNotasConfig();
     const url = this.buildUrl(input.path, input.query);
 

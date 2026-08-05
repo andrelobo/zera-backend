@@ -23,13 +23,15 @@ describe('FiscalProviderResolver', () => {
     process.env = { ...originalEnv };
   });
 
-  it('default resolve retorna PLUGNOTAS (comportamento legado)', () => {
-    expect(makeResolver().resolve()).toBe(plugNotasProvider);
+  it('resolve sempre retorna LOBONOTAS (unico provider operacional)', () => {
+    expect(makeResolver().resolve()).toBe(lobonotasProvider);
   });
 
-  it('SEFIN_ENABLED=true (env legado) resolve LOBONOTAS', () => {
-    process.env.SEFIN_ENABLED = 'true';
-    expect(makeResolver().resolve()).toBe(lobonotasProvider);
+  it('PLUGNOTAS nunca e ativo, mesmo com env explicito FISCAL_PROVIDER_ACTIVE=PLUGNOTAS', () => {
+    process.env.FISCAL_PROVIDER_ACTIVE = PLUGNOTAS_PROVIDER;
+    const resolver = makeResolver();
+    expect(resolver.resolve()).toBe(lobonotasProvider);
+    expect(resolver.isActive(PLUGNOTAS_PROVIDER)).toBe(false);
   });
 
   it('FISCAL_PROVIDER_ACTIVE=LOBONOTAS resolve LOBONOTAS', () => {
@@ -37,20 +39,20 @@ describe('FiscalProviderResolver', () => {
     expect(makeResolver().resolve()).toBe(lobonotasProvider);
   });
 
-  it('FISCAL_PROVIDER_ACTIVE desconhecido falha fechado (FISCAL_PROVIDER_UNKNOWN)', () => {
-    process.env.FISCAL_PROVIDER_ACTIVE = 'NUVERFISCAL';
-    expect(() => makeResolver().resolve()).toThrow(
-      expect.objectContaining({ code: 'FISCAL_PROVIDER_UNKNOWN' }),
-    );
+  it('SEFIN_ENABLED (env legado) nao muda o provider operacional', () => {
+    process.env.SEFIN_ENABLED = 'false';
+    expect(makeResolver().resolve()).toBe(lobonotasProvider);
+    process.env.SEFIN_ENABLED = 'true';
+    expect(makeResolver().resolve()).toBe(lobonotasProvider);
   });
 
-  it('isActive reflete o provider ativo', () => {
+  it('isActive reflete apenas LOBONOTAS', () => {
     const resolver = makeResolver();
-    expect(resolver.isActive(PLUGNOTAS_PROVIDER)).toBe(true);
-    expect(resolver.isActive(LOBONOTAS_PROVIDER)).toBe(false);
+    expect(resolver.isActive(PLUGNOTAS_PROVIDER)).toBe(false);
+    expect(resolver.isActive(LOBONOTAS_PROVIDER)).toBe(true);
   });
 
-  it('byProviderName retorna provider registrado e falha para desconhecido', () => {
+  it('byProviderName mantem PLUGNOTAS registrado para leitura historica e falha para desconhecido', () => {
     const resolver = makeResolver();
     expect(resolver.byProviderName(PLUGNOTAS_PROVIDER)).toBe(plugNotasProvider);
     expect(() => resolver.byProviderName('X')).toThrow(
@@ -58,32 +60,23 @@ describe('FiscalProviderResolver', () => {
     );
   });
 
-  it('piloto desligado: CNPJ da allowlist não é roteado para LOBONOTAS', () => {
-    process.env.LOBONOTAS_CNPJS_MANAUS = '12.345.678/0001-90';
-    const resolver = makeResolver();
-    expect(resolver.resolveProviderForCnpj('12345678000190')).toBe(plugNotasProvider);
-  });
-
-  it('piloto ligado: CNPJ da allowlist vai para LOBONOTAS, fora dela permanece PLUGNOTAS', () => {
+  it('resolveProviderForCnpj sempre roteia para LOBONOTAS, independente do piloto', () => {
     process.env.LOBONOTAS_PILOT_ENABLED = 'true';
     process.env.LOBONOTAS_CNPJS_MANAUS = '12.345.678/0001-90';
     const resolver = makeResolver();
     expect(resolver.resolveProviderForCnpj('12345678000190')).toBe(lobonotasProvider);
-    expect(resolver.resolveProviderForCnpj('43521115000134')).toBe(plugNotasProvider);
-    expect(resolver.resolveProviderForCnpj(undefined)).toBe(plugNotasProvider);
+    expect(resolver.resolveProviderForCnpj('43521115000134')).toBe(lobonotasProvider);
+    expect(resolver.resolveProviderForCnpj(undefined)).toBe(lobonotasProvider);
+
+    process.env.LOBONOTAS_PILOT_ENABLED = 'false';
+    expect(resolver.resolveProviderForCnpj('43521115000134')).toBe(lobonotasProvider);
   });
 
-  it('pollingProviderNames cobre ativo e o provider piloto quando habilitado', () => {
+  it('pollingProviderNames cobre apenas LOBONOTAS (PlugNotas nunca e poliada)', () => {
     const resolver = makeResolver();
-    expect(resolver.pollingProviderNames()).toEqual([PLUGNOTAS_PROVIDER]);
-
-    process.env.FISCAL_PROVIDER_ACTIVE = LOBONOTAS_PROVIDER;
     expect(resolver.pollingProviderNames()).toEqual([LOBONOTAS_PROVIDER]);
 
-    delete process.env.FISCAL_PROVIDER_ACTIVE;
-    process.env.LOBONOTAS_PILOT_ENABLED = 'true';
-    expect(resolver.pollingProviderNames()).toEqual(
-      expect.arrayContaining([PLUGNOTAS_PROVIDER, LOBONOTAS_PROVIDER]),
-    );
+    process.env.FISCAL_PROVIDER_ACTIVE = PLUGNOTAS_PROVIDER;
+    expect(resolver.pollingProviderNames()).toEqual([LOBONOTAS_PROVIDER]);
   });
 });

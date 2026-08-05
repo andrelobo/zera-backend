@@ -7,6 +7,7 @@ import { NfseEmissionRepository } from '../infra/mongo/repositories/nfse-emissio
 import { EmpresasService } from '../../modules/empresas/empresas.service';
 import { TomadoresService } from '../../modules/tomadores/tomadores.service';
 import { FiscalProviderResolver } from './fiscal-provider.resolver';
+import { PLUGNOTAS_PROVIDER } from '../domain/provider-names';
 
 function normalizeIdempotencyKey(value: string): string | undefined {
   const normalized = value?.trim();
@@ -81,8 +82,15 @@ export class EmitirNfseService {
 
   private providerFor(input: EmitirNfseInput, providerName?: string): FiscalProvider {
     if (providerName) {
-      if (this.resolver) return this.resolver.byProviderName(providerName);
-      if (this.provider.providerName === providerName) return this.provider;
+      const normalized = providerName.trim().toUpperCase();
+      if (normalized === PLUGNOTAS_PROVIDER) {
+        throw Object.assign(new Error('PLUGNOTAS desativado para operacoes externas'), {
+          code: 'PLUGNOTAS_DISABLED',
+          status: 409,
+        });
+      }
+      if (this.resolver) return this.resolver.byProviderName(normalized);
+      if (this.provider.providerName === normalized) return this.provider;
       throw Object.assign(new Error(`FiscalProvider indisponivel: ${providerName}`), {
         code: 'FISCAL_PROVIDER_UNAVAILABLE',
       });

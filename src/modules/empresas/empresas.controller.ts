@@ -106,16 +106,30 @@ export class EmpresasController {
 
   @Post(':id/plugnotas/sync')
   @Roles('admin')
-  @ApiOperation({ summary: 'Sincronizar prestador e certificado com a PlugNotas por id' })
+  @ApiOperation({
+    summary: 'Sincronizar prestador e certificado com a PlugNotas por id (desabilitado)',
+  })
   syncPlugNotasById(@Param('id') id: string) {
-    return this.empresas.syncPlugNotasCadastroById(id);
+    void id;
+    return this.plugNotasSyncDisabled();
   }
 
   @Post('cnpj/:cnpj/plugnotas/sync')
   @Roles('admin')
-  @ApiOperation({ summary: 'Sincronizar prestador e certificado com a PlugNotas por CNPJ' })
+  @ApiOperation({
+    summary: 'Sincronizar prestador e certificado com a PlugNotas por CNPJ (desabilitado)',
+  })
   syncPlugNotasByCnpj(@Param('cnpj') cnpj: string) {
-    return this.empresas.syncPlugNotasCadastroByCnpj(cnpj);
+    void cnpj;
+    return this.plugNotasSyncDisabled();
+  }
+
+  private plugNotasSyncDisabled() {
+    throw new BadRequestException({
+      code: 'PLUGNOTAS_DISABLED',
+      message:
+        'Sincronizacao com a PlugNotas desabilitada permanentemente; operacoes externas com a PlugNotas foram encerradas',
+    });
   }
 
   @Get()
