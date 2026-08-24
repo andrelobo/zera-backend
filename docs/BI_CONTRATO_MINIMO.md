@@ -7,6 +7,11 @@ Objetivo:
 - separar claramente campos de `emissão`, `analytics` e `dependência contábil`;
 - reduzir retrabalho entre backend, frontend e dashboard.
 
+Este contrato materializa o posicionamento do ZERA como plataforma SaaS fiscal
+multiempresa: a emissao e uma capacidade central, enquanto analytics, relatorios e
+inteligencia tributaria formam uma camada de produto propria. B.I. nao altera a
+verdade fiscal deterministica nem autoriza inferencias contabeis sem validacao.
+
 ## 1. Princípio canônico
 
 - `Emissão` usa apenas os campos necessários para autorizar e acompanhar a nota.
