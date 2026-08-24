@@ -1,191 +1,261 @@
-# Backend da plataforma (`zera-backend`)
+<div align="center">
+  <img src="./docs/brand/jupati-readme.svg" width="760" alt="Jupati — sua operação, bem conectada." />
+</div>
 
-Backend da plataforma fiscal ainda mantido no repositório histórico `zera-backend`.
-O sistema opera em produção, atende múltiplas empresas prestadoras e tem o
-**LOBONOTAS** como motor fiscal próprio para a NFS-e Padrão Nacional.
+<p align="center">
+  Plataforma brasileira de operação e inteligência para empresas e contabilidades,<br />
+  com núcleo fiscal próprio integrado à NFS-e Padrão Nacional.
+</p>
 
-Emissão e gestão de NFS-e formam o núcleo operacional do produto, mas não o
-resumem. A plataforma também cobre onboarding fiscal, tomadores, observabilidade,
-B.I., relatórios e diagnóstico operacional assistido.
+<p align="center">
+  <strong>Backend oficial</strong> · NestJS · TypeScript · MongoDB · LOBONOTAS · IA assistiva
+</p>
 
-## Estado canônico
+---
 
-Política vigente desde **05/08/2026**:
+## Jupati
 
-- provider operacional ativo e exclusivo: **LOBONOTAS (SEFIN Nacional)**;
+**Jupati** conecta empresas, pessoas, clientes, serviços, documentos, dados e
+inteligência em uma operação fiscal segura e compreensível. A emissão de NFS-e é
+uma capacidade central, mas não limita o produto: a plataforma também cobre
+onboarding fiscal, gestão multiempresa, observabilidade, B.I., relatórios e
+diagnóstico operacional assistido.
+
+> **Sua operação, bem conectada.**
+
+Este repositório conserva o nome técnico histórico `zera-backend`. A marca do
+produto é Jupati; renomear repositórios, rotas, collections ou contratos depende de
+um plano de migração próprio e não faz parte do rebranding visual.
+
+### Arquitetura de marca
+
+| Camada | Nome | Papel |
+|---|---|---|
+| Plataforma | **Jupati** | Produto percebido pelo usuário |
+| Motor fiscal | **LOBONOTAS** | Integração própria com o Ambiente Nacional |
+| Empresa | **Muirakitan Tecnologia** | Responsabilidade institucional e jurídica |
+| Provider histórico | **PlugNotas** | Compatibilidade histórica; `LEGACY_DISABLED` |
+
+## Identidade visual
+
+A identidade combina fibras entrelaçadas da jupati, o fluxo dos rios amazônicos e
+módulos de dados conectados. Ela comunica confiança, clareza operacional, conexão,
+inteligência e origem amazônica contemporânea — sem competir com os dados fiscais.
+
+| Token | Cor | Uso |
+|---|---:|---|
+| `night-950` | `#071020` | Fundo institucional |
+| `forest-700` | `#384E37` | Marca em fundo claro |
+| `leaf-500` | `#6CA65D` | Destaque, foco e seleção |
+| `sage-400` | `#829B7F` | Informação secundária |
+| `silver-300` | `#C3C5B6` | Trama, divisores e detalhes |
+| `ivory-100` | `#EBE6DE` | Texto e superfícies de marca |
+| `warm-50` | `#F7F5F0` | Fundo operacional claro |
+
+O símbolo representa uma trama resistente de elementos conectados. A assinatura
+técnica deste repositório está em
+[`docs/brand/jupati-readme.svg`](./docs/brand/jupati-readme.svg).
+
+## LOBONOTAS
+
+**LOBONOTAS** é o motor fiscal próprio da Jupati. Ele integra o backend diretamente
+ao Ambiente Nacional da NFS-e, sem delegar a operação a um provider comercial.
+
+O ciclo validado em produção compreende:
+
+1. validação do prestador e reserva atômica da numeração da DPS;
+2. construção e assinatura da DPS 1.01 com certificado A1;
+3. transmissão mTLS para a SEFIN em envelope GZip + Base64;
+4. autorização e reconciliação por webhook ou polling;
+5. persistência do XML oficial assinado;
+6. geração local do DANFSe v2.0;
+7. cancelamento por eventos do Ambiente Nacional.
+
+A primeira emissão LOBONOTAS real foi autorizada no Ambiente Nacional em agosto de
+2026. XML e DANFSe foram validados no backend, no proxy Vercel e no domínio público.
+
+### Política fiscal vigente
+
+- provider operacional ativo e exclusivo: **LOBONOTAS**;
 - PlugNotas está permanentemente **`LEGACY_DISABLED`**;
-- PlugNotas nunca é fallback de emissão, reemissão, cancelamento, sincronização
-  ou download remoto;
-- código, parsers, testes, registros e artefatos PlugNotas antigos permanecem
-  preservados somente para compatibilidade histórica e auditoria;
-- registros MongoDB de emissões PlugNotas não devem ser alterados ou removidos.
-
-O LOBONOTAS já concluiu em produção o ciclo de construção e assinatura da DPS,
-transmissão mTLS, autorização no Ambiente Nacional e obtenção de XML e DANFSe. A
-NFS-e 48 foi autorizada em **04/08/2026**, e seus artefatos foram validados nas
-camadas backend direto, proxy Vercel e domínio público. A validação visual do fluxo
-de download no frontend depende do deploy registrado no `CURRENT_STATE.md` do front.
-
-Este é um sistema fiscal em produção. Toda mudança deve preservar integridade
-fiscal, idempotência, rastreabilidade e continuidade operacional.
-
-## O produto
-
-A plataforma é um SaaS de operação inteligente para empresas e contabilidades.
-Seus eixos atuais são:
-
-- operação multi-prestador, com dados e certificado isolados por empresa;
-- emissão normal e rápida de NFS-e;
-- motor fiscal próprio integrado diretamente ao Ambiente Nacional;
-- gestão de empresas, tomadores, usuários e convites;
-- reconciliação por webhook e polling;
-- XML, DANFSe, cancelamento e trilha de observabilidade;
-- contrato analítico para dashboards, B.I. e inteligência tributária;
-- diagnóstico operacional read-only, sem delegar decisões fiscais à IA.
-
-A regra arquitetural é: **IA interpreta e explica; o motor determinístico continua
-sendo a fonte da verdade fiscal**.
-
-## Naming em avaliação
-
-**JUPATI** é o candidato principal para a marca comercial, com a assinatura
-proposta **"Jupati — sua operação, bem conectada."**. O nome representa os elementos
-conectados da plataforma: empresas, pessoas, clientes, serviços, documentos, dados,
-inteligência, automações e operação fiscal.
-
-O naming ainda **não está congelado**. Antes da migração de marca, permanecem
-pendentes a busca formal de marcas semelhantes no INPI — especialmente nas classes
-9, 35 e 42 — e a verificação de domínios, redes sociais e variações relevantes.
-
-Arquitetura de marca proposta:
-
-| Camada | Nome |
-|---|---|
-| Plataforma comercial | **JUPATI** — candidato principal, pendente de validação |
-| Motor fiscal próprio | **LOBONOTAS** |
-| Empresa responsável | **Muirakitan Tecnologia** |
-| Provider histórico | **PlugNotas — `LEGACY_DISABLED`** |
-
-O candidato anterior **MMIT/EMMIT/EMIT está descartado**: restringe a percepção do
-produto ao ato de emitir e apresenta colisão mercadológica no setor fiscal. Ele não
-deve ser usado em novos textos, interfaces ou artefatos de marca.
-
-Decisão e critérios completos: [`../documentacao/md/05-naming-jupati.md`](../documentacao/md/05-naming-jupati.md).
+- PlugNotas nunca pode ser fallback, reemissão, cancelamento, sincronização ou
+  download remoto;
+- parsers, testes e registros PlugNotas permanecem como evidência histórica;
+- documentos PlugNotas persistidos no MongoDB não são alterados;
+- timeout após transmissão exige reconciliação — nunca reenvio cego.
 
 ## Arquitetura
 
 ```text
-zera-frontend2 (React/Vite, Vercel)
+Jupati Web (React + Vite, Vercel)
         |
         | HTTPS / proxy /api
         v
-zera-backend (NestJS, Oracle VPS, Docker)
+Jupati Backend (NestJS, Oracle VPS, Docker)
         |
         +-- MongoDB Atlas
         |
         +-- LOBONOTAS
               |
-              | mTLS + certificado A1 do prestador
+              | DPS 1.01 + assinatura A1 + mTLS
               v
         SEFIN / Ambiente Nacional da NFS-e
 ```
 
-O frontend usa o backend como fachada para os serviços externos. O backend
-normaliza os contratos, aplica as regras determinísticas, persiste a trilha fiscal e
-orquestra o LOBONOTAS.
+O backend é a fachada das integrações externas. Ele normaliza contratos, aplica
+regras determinísticas, protege segredos, persiste a trilha fiscal e orquestra o
+LOBONOTAS.
 
-### Ciclo fiscal LOBONOTAS
+## Capacidades
 
-1. O backend valida o prestador e reserva a numeração da DPS de forma atômica.
-2. O LOBONOTAS constrói a DPS 1.01 e a assina com o certificado A1.
-3. A DPS segue para a SEFIN por mTLS, em envelope GZip + Base64.
-4. Webhook ou polling reconcilia o documento até o estado final.
-5. O XML oficial é persistido e o DANFSe v2.0 é gerado localmente.
-6. Timeout após transmissão exige reconciliação; nunca reenvio cego.
+### Operação fiscal
 
-## Capacidades implementadas
+- emissão normal e rápida de NFS-e;
+- idempotência e reemissão fail-closed antes da transmissão;
+- webhook, polling e reconciliação pós-timeout;
+- cancelamento, substituição e histórico de eventos;
+- XML oficial, DANFSe e regeneração controlada de artefatos;
+- catálogo LC116 e contrato canônico neutro de provider.
 
-### Fiscal
-
-- emissão normal (`POST /nfse/emitir`) e rápida (`POST /nfse/quick`);
-- reemissão fail-closed apenas quando não há evidência de transmissão;
-- idempotência, status, webhook, polling e reconciliação pós-timeout;
-- cancelamento por evento do Ambiente Nacional;
-- substituição e preservação do vínculo com o documento anterior;
-- sincronização e regeneração de XML/DANFSe;
-- catálogo LC116 e autocomplete de serviços;
-- contrato canônico neutro de provider.
-
-### Operação multiempresa
+### Plataforma multiempresa
 
 - cadastro e completude fiscal de prestadores;
 - certificado A1 por empresa, cifrado em repouso;
-- tomadores isolados por `empresaCnpj`;
-- lookup de CNPJ, CPF, CEP, municípios e CNAE;
+- tomadores, serviços e parâmetros isolados por prestador;
+- lookups de CNPJ, CPF, CEP, municípios e CNAE;
 - perfis `admin`, `manager`, `user` e `readonly`;
 - onboarding por convite com expiração.
 
-### Observabilidade, B.I. e IA
+### Inteligência e governança
 
-- timeline de emissão, origem da atualização e auditoria de artefatos;
-- resumo analítico de faturamento, ISS, retenções, tomadores e localidades;
-- snapshots do Simples Nacional e indicadores de completude para B.I.;
-- diagnóstico determinístico e read-only de emissões em
-  `POST /ai/diagnostics/emission`;
-- nenhuma heurística de IA altera emissão ou substitui regra contábil/fiscal.
+- observabilidade e timeline por emissão;
+- indicadores de faturamento, ISS, retenções, tomadores e localidades;
+- snapshots do Simples Nacional e prontidão para B.I.;
+- diagnóstico determinístico e read-only de emissões;
+- nenhuma heurística de IA altera emissão ou substitui validação fiscal/contábil.
+
+## IA na Jupati
+
+A IA é uma camada assistiva e governada. Ela interpreta evidências, explica falhas
+e organiza contexto; não decide regra fiscal, não assina DPS e não transmite ou
+cancela documentos por conta própria.
+
+### Capacidades e maturidade
+
+| Capacidade | Estado | Evidência / direção |
+|---|---|---|
+| Contexto canônico | **Em uso** | `AI_CONTEXT.md`, `CURRENT_STATE.md` e `CONTEXT.md` |
+| Skills especializadas | **Em uso no desenvolvimento** | instruções locais por domínio e risco |
+| `DiagnoseAgent` | **Implementado** | diagnóstico determinístico e read-only de emissão |
+| Tool calling | **Governado** | somente ferramentas explícitas, tipadas e auditáveis |
+| Memória operacional | **Documentada / incremental** | estado recente separado de histórico e evidência |
+| RAG | **Planejado** | recuperação de normas, contratos e evidências com fonte |
+| Workflows de IA | **Planejados** | cadeias supervisionadas de diagnóstico e recomendação |
+| Multiagentes | **Arquitetura futura** | agentes especializados, sem autonomia fiscal irreversível |
+| Provider LLM | **Opcional / desacoplado** | o core fiscal não depende de LLM em runtime |
+
+### Skills
+
+Skills encapsulam instruções especializadas para tarefas como contexto fiscal,
+segurança, testes, documentação, observabilidade e operação. Elas tornam o processo
+repetível sem transformar conhecimento em permissão irrestrita.
+
+Regras:
+
+- selecionar a skill pelo domínio da tarefa;
+- ler integralmente suas instruções antes de agir;
+- preservar escopo e guardrails do repositório;
+- validar toda alteração com evidência proporcional ao risco;
+- nunca usar uma skill para contornar autorização, segredo ou regra fiscal.
+
+### Agentes e multiagentes
+
+O agente implementado hoje é o `DiagnoseAgent`, exposto de forma read-only por
+`POST /ai/diagnostics/emission`. A evolução prevê agentes especializados para
+payloads rejeitados, comparação com emissões aceitas, provider, artefatos e B.I.
+
+Multiagentes só fazem sentido quando as subtarefas são independentes e auditáveis.
+Um orquestrador deve consolidar resultados, resolver conflitos e manter decisão
+humana em qualquer ação fiscal irreversível.
+
+### RAG e memória
+
+O RAG planejado deve recuperar somente fontes identificáveis — legislação, manuais
+SEFIN, XSDs, ADRs, contratos e evidências operacionais — com metadados de versão,
+data e origem. Conteúdo recuperado apoia explicação; não substitui o motor fiscal.
+
+A memória é separada em:
+
+- **curto prazo:** contexto da sessão e operação atual;
+- **operacional:** decisões, incidentes e estado vigente;
+- **longo prazo:** documentação versionada e evidências estáveis.
+
+Dados pessoais, certificados, senhas, tokens e XML bruto não devem compor memória
+de IA nem logs de prompts.
+
+## SDD — Specification-Driven Development
+
+O projeto usa **SDD** para transformar contexto operacional em mudanças pequenas,
+rastreáveis e verificáveis. A especificação versionada vem antes da implementação;
+o código e os testes demonstram aderência à decisão registrada.
+
+```text
+Contexto canônico
+      ↓
+Especificação / ADR / contrato
+      ↓
+Slice pequeno em branch própria
+      ↓
+Testes + build + lint
+      ↓
+Pull request e revisão
+      ↓
+Deploy controlado
+      ↓
+Evidência operacional e atualização do contexto
+```
+
+Princípios:
+
+- especificar regra, contrato e critério de aceite antes de alterar;
+- uma mudança de risco por slice;
+- usar fonte oficial, versão e data para regras fiscais;
+- marcar `[PENDENTE]` quando não existir evidência suficiente;
+- preservar compatibilidade de forma aditiva;
+- operar em fail-closed diante de incerteza pós-transmissão;
+- fechar o ciclo com testes, CI, health check e evidência real.
+
+Documentos centrais:
+
+- [`AGENTS.md`](./AGENTS.md) — workflow e gates de qualidade;
+- [`CURRENT_STATE.md`](./CURRENT_STATE.md) — snapshot operacional;
+- [`CONTEXT.md`](./CONTEXT.md) — handover e linha do tempo;
+- [`AI_CONTEXT.md`](./AI_CONTEXT.md) — arquitetura e limites da IA;
+- [`docs/lobonotas/`](./docs/lobonotas/) — specs, ADR, contrato e operação;
+- [`docs/BI_CONTRATO_MINIMO.md`](./docs/BI_CONTRATO_MINIMO.md) — contrato analítico.
 
 ## Stack
 
 - Node.js 20.x
-- NestJS e TypeScript
-- MongoDB Atlas e Mongoose
+- NestJS + TypeScript
+- MongoDB Atlas + Mongoose
 - Jest
-- Docker e Docker Compose
+- Docker + Docker Compose
 - GitHub Actions
-- Oracle VPS
+- Oracle Cloud VPS
 
 ## Desenvolvimento local
-
-### Pré-requisitos
-
-- Node.js 20.x
-- npm
-- MongoDB acessível
-
-### Configuração
 
 ```bash
 cp .env.example .env
 npm install
-```
-
-Preencha o `.env` com valores locais ou segredos fornecidos pelo ambiente. Nunca
-grave credenciais reais em documentação, exemplos, fixtures ou commits.
-
-Variáveis centrais incluem:
-
-- `MONGO_URI`
-- `JWT_SECRET`
-- `ADMIN_SETUP_TOKEN`
-- `EMPRESA_CERT_ENCRYPTION_KEY`
-- `WEBHOOK_SHARED_SECRET`
-- `CORS_ORIGINS`
-- `FISCAL_PROVIDER_ACTIVE=LOBONOTAS`
-- configurações `SEFIN_*`
-
-Variáveis PlugNotas permanecem no ambiente apenas por compatibilidade histórica.
-Elas não reativam o provider: chamadas externas continuam bloqueadas pelo kill
-switch `PLUGNOTAS_DISABLED`.
-
-### Execução
-
-```bash
 npm run start:dev
 ```
 
-A API local responde, por padrão, em `http://localhost:3000`.
+A API responde por padrão em `http://localhost:3000`. Nunca grave credenciais reais
+em documentação, fixtures ou commits.
 
-### Validação
+### Qualidade
 
 ```bash
 npm test -- --runInBand
@@ -193,77 +263,52 @@ npm run build
 npm run lint
 ```
 
-O `build` também copia o catálogo LC116 para `dist/`. O lint roda com `--fix`; revise
-o diff depois da execução.
+Baseline validado em **24/08/2026**:
 
-O último baseline registrado em **05/08/2026** foi de 303 testes verdes, build OK
-e lint sem erros, com warnings preexistentes de tipagem estrita.
-
-## Docker e deploy
-
-Execução local com Docker:
-
-```bash
-docker compose up -d --build
-```
-
-Produção usa Oracle VPS com Docker Compose. O deploy automatizado está em
-`.github/workflows/deploy-oracle.yml`; o host não funciona como checkout Git.
-
-Consulte:
-
-- [`docs/DEPLOY_ORACLE_VPS.md`](./docs/DEPLOY_ORACLE_VPS.md)
-- [`docs/lobonotas/05-OPERACAO-ORACLE-VPS.md`](./docs/lobonotas/05-OPERACAO-ORACLE-VPS.md)
+- **304 testes** aprovados em 38 suítes;
+- build NestJS aprovado, incluindo o catálogo LC116;
+- lint com zero erros;
+- deploy Oracle VPS concluído em 5min15s;
+- container `zera-backend-api` saudável em produção.
 
 ## Endpoints principais
 
-| Domínio | Endpoints |
+| Domínio | Superfície |
 |---|---|
 | Saúde | `GET /health` |
 | Autenticação | `/auth/login`, `/auth/me`, `/auth/accept-invite` |
 | Usuários | `/users`, `/users/invite` |
-| Empresas | `/empresas`, `/empresas/preview`, `/empresas/certificado/import` |
-| Lookups | `/empresas/lookup/municipios`, `/empresas/lookup/cep/:cep`, `/empresas/lookup/cnae-anexo` |
-| Tomadores | `/tomadores`, `/tomadores/autocomplete`, `/tomadores/lookup/cpf` |
+| Empresas | `/empresas`, certificado e lookups |
+| Tomadores | `/tomadores`, autocomplete e lookup de CPF |
 | Emissão | `POST /nfse/emitir`, `POST /nfse/quick`, `POST /nfse/:id/reemitir` |
-| Eventos | `POST /nfse/:id/cancelamento`, `POST /nfse/:id/substituicao` |
-| Artefatos | `GET /nfse/:id/xml`, `GET /nfse/:id/pdf`, `POST /nfse/:id/sync-artifacts` |
-| Observabilidade | `GET /nfse/:id/observability`, `GET /nfse/webhook/diagnostico` |
+| Eventos | cancelamento e substituição em `/nfse/:id/*` |
+| Artefatos | XML, PDF e `sync-artifacts` em `/nfse/:id/*` |
+| Observabilidade | timeline e diagnóstico fiscal em `/nfse/*` |
 | B.I. | `GET /nfse/bi/summary` |
-| IA operacional | `POST /ai/diagnostics/emission` |
-| Webhook fiscal | `POST /webhooks/fiscal` |
+| IA | `POST /ai/diagnostics/emission` |
+| Webhook | `POST /webhooks/fiscal` |
 
-As rotas remotas preservadas para documentos PlugNotas históricos não fazem
-chamada externa: o backend responde `PLUGNOTAS_DISABLED`. XML e PDF antigos só são
-servidos quando já estiverem persistidos.
+## Deploy
+
+Produção usa Docker Compose na Oracle VPS. O GitHub Actions valida, sincroniza o
+projeto por SSH, reconstrói o container e confirma `/health`.
+
+- [`docs/DEPLOY_ORACLE_VPS.md`](./docs/DEPLOY_ORACLE_VPS.md)
+- [`docs/lobonotas/05-OPERACAO-ORACLE-VPS.md`](./docs/lobonotas/05-OPERACAO-ORACLE-VPS.md)
 
 ## Segurança operacional
 
-- JWT obrigatório e autorização por papel;
-- DTOs validados e contrato de erro com `correlationId`;
+- JWT e autorização por papel;
+- validação global de DTOs e erros com `correlationId`;
 - certificado A1 e senha cifrados em repouso com AES-256-GCM;
-- token bruto de convite nunca persistido;
 - CORS com allowlist explícita;
+- redaction de certificados, senhas e XMLs em logs;
 - kill switch e barreira dupla contra uso operacional de PlugNotas;
-- segredos somente em `.env` local ou secret manager.
+- segredos somente em `.env` ou secret manager.
 
-Se uma credencial aparecer em documentação versionada, trate como comprometida:
-remova-a do conteúdo atual, rotacione-a e faça a limpeza do histórico Git em uma
-frente de segurança coordenada.
+---
 
-## Hierarquia documental
-
-Use esta ordem ao resolver divergências:
-
-1. [`AGENTS.md`](./AGENTS.md) e o topo de [`CURRENT_STATE.md`](./CURRENT_STATE.md)
-   para política e estado operacional vigente;
-2. [`CONTEXT.md`](./CONTEXT.md) para handover recente e linha do tempo;
-3. [`AI_CONTEXT.md`](./AI_CONTEXT.md) para limites da camada de IA;
-4. [`docs/lobonotas/`](./docs/lobonotas/) para contrato e operação do motor fiscal;
-5. [`docs/BI_CONTRATO_MINIMO.md`](./docs/BI_CONTRATO_MINIMO.md) para o contrato
-   analítico;
-6. relatórios PlugNotas e seções antigas datadas somente como evidência histórica.
-
-Quando uma entrada histórica disser que PlugNotas estava ativo, ela descreve aquele
-momento da migração e não revoga a política vigente. PlugNotas permanece
-permanentemente `LEGACY_DISABLED`.
+<p align="center">
+  <strong>Jupati</strong> · Sua operação, bem conectada.<br />
+  Uma solução Muirakitan Tecnologia.
+</p>

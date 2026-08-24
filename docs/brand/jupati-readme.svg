@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 280" role="img" aria-labelledby="title desc">
+  <title id="title">JUPATI</title>
+  <desc id="desc">Jupati, sua operação, bem conectada.</desc>
+  <rect width="960" height="280" rx="24" fill="#071020"/>
+  <g transform="translate(105 72) scale(1.15)" fill="none" stroke-linecap="round" stroke-width="5">
+    <path d="M8 24C34 24 42 72 66 72S96 24 120 24" stroke="#C3C5B6"/>
+    <path d="M8 36C32 36 43 64 64 64s33-28 56-28" stroke="#D8D7CF"/>
+    <path d="M8 48c24 0 35 8 56 8s34-8 56-8" stroke="#EBE6DE"/>
+    <path d="M8 60c24 0 35-28 56-28s33 28 56 28" stroke="#829B7F"/>
+    <path d="M8 72c24 0 31-48 56-48s31 48 56 48" stroke="#6CA65D"/>
+  </g>
+  <text x="300" y="137" fill="#EBE6DE" font-family="Manrope, Inter, sans-serif" font-size="62" font-weight="600" letter-spacing="12">JUPATI</text>
+  <text x="304" y="181" fill="#C3C5B6" font-family="Inter, sans-serif" font-size="20" letter-spacing="2">Sua operação, bem conectada.</text>
+  <text x="304" y="218" fill="#829B7F" font-family="Inter, sans-serif" font-size="14" letter-spacing="1.5">UMA SOLUÇÃO MUIRAKITAN TECNOLOGIA</text>
+</svg>
