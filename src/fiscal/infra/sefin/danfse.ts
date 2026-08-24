@@ -647,8 +647,8 @@ export async function gerarDanfsePdf(xml: string): Promise<Uint8Array> {
   const data = parseNfseToDanfse(xml);
 
   const pdfDoc = await PDFDocument.create();
-  pdfDoc.setProducer('ZERA LOBONOTAS');
-  pdfDoc.setCreator('ZERA LOBONOTAS');
+  pdfDoc.setProducer('JUPATI LOBONOTAS');
+  pdfDoc.setCreator('JUPATI LOBONOTAS');
   const page = pdfDoc.addPage([PAGE_W, PAGE_H]);
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);

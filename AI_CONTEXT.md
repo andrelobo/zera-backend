@@ -1,17 +1,20 @@
 # AI_CONTEXT.md
 # ZERA AI CONTEXT
-Versão: 2026-05-11
+Versão: 2026-08-07
 
 ---
 
-# 0. ALERTA OPERACIONAL PARA A PROXIMA SESSAO (04/08/2026)
+# 0. ESTADO OPERACIONAL CANONICO (05/08/2026)
 
-- Ler primeiro `CURRENT_STATE.md` -> **RETOMAR DAQUI**.
-- Nao disparar nova emissao da origem `6a70eb85caa874f842b4a576` antes do codec GZip/Base64.
-- NFS-e PlugNotas 47 (`6a71420f451c04dbcc7a438c`) e valida e sera mantida.
-- LOBONOTAS ja esta fixado em producao (`tpAmb=1`, `/SefinNacional`, JSON), mas DPS 60 recebeu `E1226` porque o XML foi colocado cru no campo `dps`.
-- Proxima implementacao: gzipSync + Base64 no request, gunzip/Base64 no response, testes deterministas, deploy e somente uma tentativa real.
-- Commit operacional atual: `446a620`.
+- Ler primeiro o topo de `CURRENT_STATE.md` e `AGENTS.md`.
+- Provider operacional ativo e exclusivo: **LOBONOTAS (SEFIN Nacional)**.
+- PlugNotas esta permanentemente **`LEGACY_DISABLED`** e nunca pode ser usado como
+  fallback, reemissao, cancelamento, sincronizacao ou download remoto.
+- Codigo, parsers, testes, registros e artefatos PlugNotas antigos permanecem somente
+  para compatibilidade historica e auditoria; nao remover nem alterar os registros.
+- O ciclo LOBONOTAS de emissao, autorizacao e artefatos XML/PDF foi validado em
+  producao. Entradas posteriores deste arquivo que descrevam etapas de transicao sao
+  historicas e nao substituem esta secao.
 
 ---
 
@@ -29,7 +32,7 @@ A prioridade arquitetural máxima é:
 1. preservar emissão
 2. preservar integridade fiscal
 3. preservar rastreabilidade
-4. preservar fallback operacional
+4. preservar reconciliacao e continuidade operacional no mesmo provider
 5. evitar regressões
 
 ---
@@ -177,7 +180,8 @@ CURRENT_STATE.md representa:
 - leitura operacional prioritária
 
 Quando houver conflito:
-- CURRENT_STATE possui prioridade sobre histórico antigo.
+- o topo de `CURRENT_STATE.md` e `AGENTS.md` possui prioridade sobre historico antigo;
+- nenhuma entrada historica pode reativar PlugNotas.
 
 ---
 

@@ -497,6 +497,40 @@ describe('FiscalController', () => {
     });
   });
 
+  it('identifica artefatos LOBONOTAS sem alterar os bytes do XML fiscal', async () => {
+    const xml = Buffer.from('<?xml version="1.0"?><NFSe><infNFSe Id="NFS123"/></NFSe>');
+    repo.findById.mockResolvedValue({
+      _id: { toString: () => 'em-lobonotas' },
+      provider: 'LOBONOTAS',
+      externalId: 'NFS123',
+      xmlBase64: xml.toString('base64'),
+      pdfBase64: Buffer.from('%PDF-test').toString('base64'),
+    });
+    const xmlResponse = {
+      setHeader: jest.fn(),
+      send: jest.fn((value: Buffer) => value),
+    };
+    const pdfResponse = {
+      setHeader: jest.fn(),
+      send: jest.fn((value: Buffer) => value),
+    };
+
+    await controller.downloadXml('em-lobonotas', xmlResponse as any);
+    await controller.downloadPdf('em-lobonotas', pdfResponse as any);
+
+    expect(xmlResponse.setHeader).toHaveBeenCalledWith('X-Fiscal-Provider', 'LOBONOTAS');
+    expect(xmlResponse.setHeader).toHaveBeenCalledWith(
+      'Content-Disposition',
+      'attachment; filename="lobonotas-nfse-NFS123.xml"',
+    );
+    expect(xmlResponse.send).toHaveBeenCalledWith(xml);
+    expect(pdfResponse.setHeader).toHaveBeenCalledWith('X-Fiscal-Provider', 'LOBONOTAS');
+    expect(pdfResponse.setHeader).toHaveBeenCalledWith(
+      'Content-Disposition',
+      'attachment; filename="lobonotas-nfse-NFS123.pdf"',
+    );
+  });
+
   it('reemitir rejeita tentativa com externalId por risco de duplicidade', async () => {
     repo.findById.mockResolvedValue({
       _id: { toString: () => 'em-error-transmitida' },
