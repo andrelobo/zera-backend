@@ -320,12 +320,14 @@ describe('gerarDanfsePdf', () => {
   async function pdfOf(xml: string) {
     const bytes = await gerarDanfsePdf(xml);
     expect(Buffer.from(bytes).slice(0, 5).toString()).toBe('%PDF-');
-    return PDFDocument.load(bytes);
+    return PDFDocument.load(bytes, { updateMetadata: false });
   }
 
   it('gera um PDF A4 de uma única página (QR embutido sem erro)', async () => {
     const pdf = await pdfOf(richXml);
     expect(pdf.getPageCount()).toBe(1);
+    expect(pdf.getProducer()).toBe('JUPATI LOBONOTAS');
+    expect(pdf.getCreator()).toBe('JUPATI LOBONOTAS');
     const { width, height } = pdf.getPage(0).getSize();
     expect(width).toBeCloseTo(595.28, 0);
     expect(height).toBeCloseTo(841.89, 0);

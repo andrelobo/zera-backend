@@ -38,7 +38,7 @@ import type { NfseEmissionDocument } from '../../fiscal/infra/mongo/schemas/nfse
 import type { FiscalProvider } from '../../fiscal/domain/fiscal-provider.interface';
 import type { EmitirNfseInput } from '../../fiscal/domain/types/emitir-nfse.types';
 import { NfseEmissionStatus } from '../../fiscal/domain/types/nfse-emission-status';
-import { PLUGNOTAS_PROVIDER } from '../../fiscal/domain/provider-names';
+import { LOBONOTAS_PROVIDER, PLUGNOTAS_PROVIDER } from '../../fiscal/domain/provider-names';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/guards/roles.decorator';
@@ -73,6 +73,15 @@ function extractIdNota(providerResponse: any): string | null {
     normalized?.nota?.idNota ??
     null
   );
+}
+
+function artifactFileName(
+  provider: string | null | undefined,
+  id: string,
+  extension: 'xml' | 'pdf',
+): string {
+  const prefix = provider?.trim().toUpperCase() === LOBONOTAS_PROVIDER ? 'lobonotas-nfse' : 'nfse';
+  return `${prefix}-${id}.${extension}`;
 }
 
 type EmissionTimelineItem = {
@@ -919,9 +928,10 @@ export class FiscalController {
 
     const buf = Buffer.from(doc.xmlBase64, 'base64');
     res.setHeader('Content-Type', 'application/xml');
+    res.setHeader('X-Fiscal-Provider', doc.provider ?? 'UNKNOWN');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="nfse-${doc.externalId ?? doc._id.toString()}.xml"`,
+      `attachment; filename="${artifactFileName(doc.provider, doc.externalId ?? doc._id.toString(), 'xml')}"`,
     );
     return res.send(buf);
   }
@@ -944,9 +954,10 @@ export class FiscalController {
 
     const buf = Buffer.from(doc.pdfBase64, 'base64');
     res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('X-Fiscal-Provider', doc.provider ?? 'UNKNOWN');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="nfse-${doc.externalId ?? doc._id.toString()}.pdf"`,
+      `attachment; filename="${artifactFileName(doc.provider, doc.externalId ?? doc._id.toString(), 'pdf')}"`,
     );
     return res.send(buf);
   }
@@ -972,7 +983,11 @@ export class FiscalController {
 
     const buf = await this.provider.baixarXmlNfse(idNota);
     res.setHeader('Content-Type', 'application/xml');
-    res.setHeader('Content-Disposition', `attachment; filename="nfse-${idNota}.xml"`);
+    res.setHeader('X-Fiscal-Provider', LOBONOTAS_PROVIDER);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${artifactFileName(LOBONOTAS_PROVIDER, idNota, 'xml')}"`,
+    );
     return res.send(Buffer.from(buf));
   }
 
@@ -997,7 +1012,11 @@ export class FiscalController {
 
     const buf = await this.provider.baixarPdfNfse(idNota);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="nfse-${idNota}.pdf"`);
+    res.setHeader('X-Fiscal-Provider', LOBONOTAS_PROVIDER);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${artifactFileName(LOBONOTAS_PROVIDER, idNota, 'pdf')}"`,
+    );
     return res.send(Buffer.from(buf));
   }
 }
