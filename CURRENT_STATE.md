@@ -60,7 +60,7 @@ Fonte: `codigo local` + `testes locais` + `build local` + `lint local` + `reprod
 ### Problema diagnosticado (XML/PDF nao gerados)
 
 - A emissao real `6a725cab7aa43f7ecdaaa64f` (NFS-e 48 autorizada) ficou sem `xmlBase64`/`pdfBase64` persistidos; `POST /nfse/:id/sync-artifacts` falhava com 500 (`artifactSyncAudit.outcome=failed`, `message="Sefin API error: 400"`).
-- **Causa raiz 1 (E2406)**: os paths usavam a chave com prefixo `NFS`, mas a API SEFIN Nacional exige **somente os 50 dígitos** — `GET /nfse/{50 digitos}` -> 200 OK; com `NFS...` -> 400 E2406 `"A chave de acesso consultada deve conter 50 números."` (reproduzido em 04/08 com o certificado real, password `12345678`).
+- **Causa raiz 1 (E2406)**: os paths usavam a chave com prefixo `NFS`, mas a API SEFIN Nacional exige **somente os 50 dígitos** — validação reproduzida com credenciais obtidas exclusivamente pelo secret manager; nenhuma senha deve ser registrada neste documento.
 - **Causa raiz 2 (envelope)**: `baixarXmlNfse`/`baixarPdfNfse` devolviam o corpo cru (envelope JSON `{nfseXmlGZipB64}`) sem extrair/descomprimir o XML.
 - `gerarDanfsePdf` local com o XML real da NFS-e 48 funciona (PDF 10215 bytes); o problema nao era o gerador.
 
@@ -80,7 +80,7 @@ Fonte: `codigo local` + `testes locais` + `build local` + `lint local` + `reprod
 ### Pendente ao retomar
 
 - **Validacao real do sync**: apos o deploy o ambiente ficou inacessivel para login/uso — NAO testado ainda. Retomar com:
-  1. Confirmar health/login no ambiente (`136.248.90.172:3000` / domain); token via `POST /auth/login` `{email:"loboandre@hotmail.com", password:"Nhaca70x07@"}`.
+  1. Confirmar health/login no ambiente usando credenciais fornecidas pelo secret manager; nunca registrar email, senha ou token neste arquivo.
   2. Disparar `POST /nfse/6a725cab7aa43f7ecdaaa64f/sync-artifacts` (1 tentativa real por vez).
   3. Confirmar `xmlBase64`/`pdfBase64` persistidos e `GET /nfse/:id/xml` e `/pdf` (DANFSe v2.0 local).
 - Regras do piloto mantidas: NAO cancelar NFS-e 47; UMA tentativa real por vez; NAO usar PlugNotas em novas emissoes.

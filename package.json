@@ -23,7 +23,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "openapi:export": "node scripts/export-openapi.mjs",
     "openapi:types": "node scripts/generate-openapi-types.mjs",
-    "openapi:sync": "npm run openapi:export && npm run openapi:types"
+    "openapi:sync": "npm run openapi:export && npm run openapi:types",
+    "security:secrets": "git ls-files -z | node scripts/scan-secrets.mjs --stdin0"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

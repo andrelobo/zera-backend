@@ -46,8 +46,8 @@ export class AuthController {
       default: {
         summary: 'Login user example',
         value: {
-          email: 'loboandre@hotmail.com',
-          password: 'sua-senha-aqui',
+          email: 'usuario@example.com',
+          password: '<PASSWORD>',
         },
       },
     },

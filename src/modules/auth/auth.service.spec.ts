@@ -30,7 +30,7 @@ describe('AuthService', () => {
   });
 
   it('accepts valid invite, activates user and returns access token', async () => {
-    const token = 'valid-invite-token';
+    const token = 'valid-invite-token'; // secret-scan: allow-test-fixture
     const invited = makeUserDoc({
       status: 'inactive',
       onboardingStatus: 'invited',
