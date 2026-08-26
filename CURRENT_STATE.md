@@ -1571,3 +1571,21 @@ Fonte: `codigo local` + `git log` em `main` (sem alterações locais).
 - Última atualização: 2026-03-05T09:30:00-04:00
 - Responsável: Codex (GPT-5)
 - Tipo de atualização: consolidação canônica do estado pós-ciclo de emissão/cancelamento/BI.
+
+## 19. Checkpoint da auditoria (26/08/2026)
+
+- Estado examinado: `docs/readme-jupati-sdd` em `e38dbfd`.
+- Auditoria somente leitura; nenhuma correcao funcional aplicada.
+- Validacao: secret scan, 304 testes, build e mTLS/LOBONOTAS aprovados.
+- P0 preliminares: isolamento multi-tenant ausente; documentos/artefatos fiscais
+  sem escopo por empresa do usuario; webhook fail-open; transporte HTTP padrao
+  no proxy do frontend.
+- Outros riscos: revogacao JWT tardia, reset admin habilitado por padrao,
+  dependencias vulneraveis, deploy sem gates e polling sem coordenacao distribuida.
+- Fiscal confirmado: LOBONOTAS exclusivo, PlugNotas desativado, idempotencia e
+  numeracao DPS atomica implementadas, assinatura XML e mTLS testados.
+- Fiscal pendente: CNPJ alfanumerico, IBS/CBS, retry HTTP e validacao oficial.
+- Secrets: arvore atual sanitizada; historico anterior e rotacao permanecem
+  pendentes. Nunca registrar valores nos docs.
+- Proxima retomada: matriz fiscal; frontend/WCAG; testes/escala; produto;
+  relatorio e roadmap P0-P3 antes de implementar correcoes.
