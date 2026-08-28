@@ -101,7 +101,7 @@ export class TomadoresService {
     }
   }
 
-  async list(input?: { empresaCnpj?: string; q?: string }) {
+  async list(input?: { empresaCnpj?: string; q?: string; allowedCompanyCnpjs?: string[] }) {
     const filter: Record<string, any> = {};
 
     if (input?.empresaCnpj) {
@@ -113,6 +113,8 @@ export class TomadoresService {
         });
       }
       filter.empresaCnpj = empresaCnpj;
+    } else if (Array.isArray(input?.allowedCompanyCnpjs)) {
+      filter.empresaCnpj = { $in: input.allowedCompanyCnpjs.map(onlyDigits) };
     }
 
     if (input?.q?.trim()) {

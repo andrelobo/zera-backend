@@ -2,6 +2,20 @@
 
 Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
 
+## 0. ATUALIZACAO (28/08/2026) - ISOLAMENTO MULTIEMPRESA FAIL-CLOSED (P0)
+
+Estado da implementacao na branch `fix/multitenancy-authorization`:
+- usuarios possuem `allowedCompanyCnpjs`; administradores mantem acesso global e os demais perfis acessam somente empresas explicitamente vinculadas;
+- o `JwtStrategy` recarrega status, papel e escopo no MongoDB a cada requisicao, evitando autorizacao por claims obsoletos;
+- empresas, tomadores, emissoes fiscais, artefatos e diagnosticos de IA validam o escopo antes de listar ou devolver dados;
+- consultas globais sensiveis de cancelamento e diagnosticos de webhook ficaram restritas a administradores;
+- logs de requisicao registram `actorId` e `actorRole`, sem e-mail ou token;
+- politica de migracao: usuarios nao administradores existentes recebem `allowedCompanyCnpjs=[]` e ficam bloqueados ate um administrador atribuir explicitamente os CNPJs permitidos. Nao usar acesso global implicito como compatibilidade;
+- a consulta externa de tomador por CPF agora exige `empresaCnpj`; o frontend deve enviar esse contexto antes do deploy conjunto;
+- validacao local: **314 testes / 40 suites verdes**, incluindo o stub mTLS real; build e varredura de segredos verdes; lint sem erros (warnings pre-existentes).
+
+Proximo passo antes do deploy: concluir a compatibilidade do frontend e executar os gates dos dois repositorios. O suporte a CNPJ alfanumerico sera entregue em slice separado.
+
 ## 0. ATUALIZACAO (05/08/2026) - PLUGNOTAS PERMANENTEMENTE DESATIVADO (KILL SWITCH + BARREIRA DUPLA)
 
 Fonte: `codigo local` + `testes locais` + `build local` + `lint local`.

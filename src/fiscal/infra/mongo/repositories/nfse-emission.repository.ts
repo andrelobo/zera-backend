@@ -303,6 +303,7 @@ export class NfseEmissionRepository {
     provider?: string;
     status?: NfseEmissionStatus;
     empresaCnpj?: string;
+    allowedCompanyCnpjs?: string[];
     createdFrom?: Date;
     createdTo?: Date;
   }): Promise<{
@@ -320,6 +321,7 @@ export class NfseEmissionRepository {
     if (input?.provider) filter.provider = input.provider;
     if (input?.status) filter.status = input.status;
     if (input?.empresaCnpj) filter.empresaCnpj = input.empresaCnpj;
+    else if (input?.allowedCompanyCnpjs) filter.empresaCnpj = { $in: input.allowedCompanyCnpjs };
     if (input?.createdFrom || input?.createdTo) {
       filter.createdAt = {};
       if (input.createdFrom) filter.createdAt.$gte = input.createdFrom;
@@ -348,6 +350,7 @@ export class NfseEmissionRepository {
     createdFrom?: Date;
     createdTo?: Date;
     empresaCnpj?: string;
+    allowedCompanyCnpjs?: string[];
     codigoServico?: string;
   }): Promise<{
     totals: {
@@ -405,6 +408,7 @@ export class NfseEmissionRepository {
     if (input?.provider) filter.provider = input.provider;
     if (input?.status) filter.status = input.status;
     if (input?.empresaCnpj) filter.empresaCnpj = input.empresaCnpj;
+    else if (input?.allowedCompanyCnpjs) filter.empresaCnpj = { $in: input.allowedCompanyCnpjs };
     if (input?.codigoServico) filter.codigoServico = input.codigoServico;
     if (input?.createdFrom || input?.createdTo) {
       filter.createdAt = {};

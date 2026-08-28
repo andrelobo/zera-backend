@@ -1,8 +1,10 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../modules/auth/guards/jwt-auth.guard';
 import { Roles } from '../modules/auth/guards/roles.decorator';
 import { RolesGuard } from '../modules/auth/guards/roles.guard';
+import { assertCompanyAccess, type AuthenticatedUser } from '../modules/auth/company-access';
 import { DiagnoseAgent } from './agents/diagnose.agent';
 import { DiagnoseEmissionDto } from './dto/diagnose-emission.dto';
 
@@ -19,7 +21,12 @@ export class AiController {
     summary: 'Diagnosticar uma emissão com heurística determinística e contexto operacional',
   })
   @ApiBody({ type: DiagnoseEmissionDto })
-  diagnoseEmission(@Body() dto: DiagnoseEmissionDto) {
-    return this.diagnoseAgent.diagnoseEmission(dto);
+  async diagnoseEmission(@Body() dto: DiagnoseEmissionDto, @Req() req?: Request) {
+    const result = await this.diagnoseAgent.diagnoseEmission(dto);
+    assertCompanyAccess(
+      (req as any)?.user as AuthenticatedUser,
+      result.evidence.empresaCnpj ?? undefined,
+    );
+    return result;
   }
 }

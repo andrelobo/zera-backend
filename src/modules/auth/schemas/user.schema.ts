@@ -22,6 +22,9 @@ export class User {
   @Prop({ required: true, type: String, enum: ['active', 'inactive'], default: 'active' })
   status: UserStatus;
 
+  @Prop({ type: [String], default: [] })
+  allowedCompanyCnpjs: string[];
+
   @Prop({ type: String, enum: ['manual', 'invited', 'accepted'], default: 'manual' })
   onboardingStatus?: UserOnboardingStatus;
 

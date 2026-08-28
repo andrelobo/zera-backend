@@ -392,7 +392,7 @@ export class EmpresasService {
     };
   }
 
-  async list(filters?: { q?: string; limit?: number }) {
+  async list(filters?: { q?: string; limit?: number; allowedCompanyCnpjs?: string[] }) {
     const q = String(filters?.q ?? '').trim();
     const limit = this.normalizeLimit(filters?.limit, q.length > 0);
     const searchConditions: Record<string, unknown>[] = [];
@@ -410,7 +410,12 @@ export class EmpresasService {
       searchConditions.push({ nome_fantasia: { $regex: this.escapeRegex(q), $options: 'i' } });
     }
 
-    const query = searchConditions.length > 0 ? { $or: searchConditions } : {};
+    const allowedCompanyCnpjs = Array.isArray(filters?.allowedCompanyCnpjs)
+      ? filters.allowedCompanyCnpjs.map((value) => this.onlyDigits(value)).filter(Boolean)
+      : undefined;
+    const query: Record<string, unknown> = {};
+    if (searchConditions.length > 0) query.$or = searchConditions;
+    if (allowedCompanyCnpjs) query.cnpj = { $in: allowedCompanyCnpjs };
     const listQuery = this.empresaModel.find(query).sort({ createdAt: -1 });
     if (hasSearch) {
       listQuery.select({

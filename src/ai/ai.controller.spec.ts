@@ -1,6 +1,14 @@
 import { AiController } from './ai.controller';
 
 describe('AiController', () => {
+  const scopedReq = {
+    user: {
+      id: 'user-1',
+      email: 'user@jupati.local',
+      role: 'user',
+      allowedCompanyCnpjs: ['43521115000134'],
+    },
+  } as any;
   const diagnoseAgent = {
     diagnoseEmission: jest.fn(),
   };
@@ -22,13 +30,13 @@ describe('AiController', () => {
       summary: 'ok',
       recommendedActions: [],
       confidence: 0.99,
-      evidence: {},
+      evidence: { empresaCnpj: '43521115000134' },
       references: [],
     });
 
     const dto = { emissionId: '680a7fb7b68434370d8a4cd2' };
 
-    await expect(controller.diagnoseEmission(dto)).resolves.toEqual(
+    await expect(controller.diagnoseEmission(dto, scopedReq)).resolves.toEqual(
       expect.objectContaining({
         agent: 'DiagnoseAgent',
         probableCause: 'webhook_operational',
@@ -47,18 +55,30 @@ describe('AiController', () => {
       summary: 'indisponivel',
       recommendedActions: ['retentar depois'],
       confidence: 0.93,
-      evidence: {},
+      evidence: { empresaCnpj: '43521115000134' },
       references: [],
     });
 
     const dto = { externalId: 'quick-15000134-20260511120000-ab12cd' };
 
-    await expect(controller.diagnoseEmission(dto)).resolves.toEqual(
+    await expect(controller.diagnoseEmission(dto, scopedReq)).resolves.toEqual(
       expect.objectContaining({
         agent: 'DiagnoseAgent',
         probableLayer: 'provider',
       }),
     );
     expect(diagnoseAgent.diagnoseEmission).toHaveBeenCalledWith(dto);
+  });
+
+  it('blocks diagnostics for an emission from another company', async () => {
+    diagnoseAgent.diagnoseEmission.mockResolvedValue({
+      evidence: { empresaCnpj: '99888777000166' },
+    });
+
+    await expect(
+      controller.diagnoseEmission({ emissionId: 'em-other' }, scopedReq),
+    ).rejects.toMatchObject({
+      response: { code: 'COMPANY_ACCESS_DENIED' },
+    });
   });
 });

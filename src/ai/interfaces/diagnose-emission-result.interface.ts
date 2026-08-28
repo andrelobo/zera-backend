@@ -11,6 +11,7 @@ export type AiProbableLayer =
 export interface DiagnoseEmissionEvidence {
   emissionId: string;
   externalId: string | null;
+  empresaCnpj: string | null;
   status: string;
   lastUpdateSource: string | null;
   pollAttempts: number;

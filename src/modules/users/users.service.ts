@@ -9,6 +9,7 @@ import {
   getInviteTtlMs,
   hashInviteToken,
 } from '../auth/invite-token';
+import { normalizeAllowedCompanyCnpjs } from '../auth/company-access';
 
 type PublicUser = {
   id: string;
@@ -16,6 +17,7 @@ type PublicUser = {
   email: string;
   role: string;
   status: string;
+  allowedCompanyCnpjs: string[];
   onboardingStatus?: string;
   invitedAt?: Date;
   inviteExpiresAt?: Date;
@@ -45,6 +47,7 @@ export class UsersService {
           email: 1,
           role: 1,
           status: 1,
+          allowedCompanyCnpjs: 1,
           onboardingStatus: 1,
           invitedAt: 1,
           inviteExpiresAt: 1,
@@ -65,6 +68,7 @@ export class UsersService {
       email: 1,
       role: 1,
       status: 1,
+      allowedCompanyCnpjs: 1,
       onboardingStatus: 1,
       invitedAt: 1,
       inviteExpiresAt: 1,
@@ -84,6 +88,7 @@ export class UsersService {
     password: string,
     role: UserRole = 'user',
     status: 'active' | 'inactive' = 'active',
+    allowedCompanyCnpjs: string[] = [],
   ): Promise<PublicUser> {
     const normalized = email.trim().toLowerCase();
     const passwordHash = await hashPassword(password);
@@ -95,6 +100,7 @@ export class UsersService {
         passwordHash,
         role,
         status,
+        allowedCompanyCnpjs: normalizeAllowedCompanyCnpjs(allowedCompanyCnpjs),
         onboardingStatus: 'manual',
       });
 
@@ -107,7 +113,12 @@ export class UsersService {
     }
   }
 
-  async invite(name: string, email: string, role: UserRole = 'user'): Promise<InviteUserResult> {
+  async invite(
+    name: string,
+    email: string,
+    role: UserRole = 'user',
+    allowedCompanyCnpjs: string[] = [],
+  ): Promise<InviteUserResult> {
     const normalized = email.trim().toLowerCase();
     const inviteToken = generateInviteToken();
     const now = new Date();
@@ -120,6 +131,7 @@ export class UsersService {
         email: normalized,
         passwordHash,
         role,
+        allowedCompanyCnpjs: normalizeAllowedCompanyCnpjs(allowedCompanyCnpjs),
         status: 'inactive',
         onboardingStatus: 'invited',
         invitedAt: now,
@@ -142,7 +154,14 @@ export class UsersService {
 
   async update(
     id: string,
-    payload: { name?: string; email?: string; password?: string; role?: string; status?: string },
+    payload: {
+      name?: string;
+      email?: string;
+      password?: string;
+      role?: string;
+      status?: string;
+      allowedCompanyCnpjs?: string[];
+    },
   ): Promise<PublicUser> {
     const update: {
       name?: string;
@@ -150,12 +169,16 @@ export class UsersService {
       passwordHash?: string;
       role?: string;
       status?: string;
+      allowedCompanyCnpjs?: string[];
     } = {};
     if (payload.name) update.name = payload.name.trim();
     if (payload.email) update.email = payload.email.trim().toLowerCase();
     if (payload.password) update.passwordHash = await hashPassword(payload.password);
     if (payload.role) update.role = payload.role;
     if (payload.status) update.status = payload.status;
+    if (payload.allowedCompanyCnpjs) {
+      update.allowedCompanyCnpjs = normalizeAllowedCompanyCnpjs(payload.allowedCompanyCnpjs);
+    }
 
     try {
       const user = await this.userModel.findByIdAndUpdate(id, update, {
@@ -165,6 +188,7 @@ export class UsersService {
           email: 1,
           role: 1,
           status: 1,
+          allowedCompanyCnpjs: 1,
           onboardingStatus: 1,
           invitedAt: 1,
           inviteExpiresAt: 1,
@@ -199,6 +223,7 @@ export class UsersService {
       email: user.email,
       role: user.role,
       status: user.status,
+      allowedCompanyCnpjs: normalizeAllowedCompanyCnpjs(user.allowedCompanyCnpjs),
       onboardingStatus: (user as any).onboardingStatus,
       invitedAt: (user as any).invitedAt,
       inviteExpiresAt: (user as any).inviteExpiresAt,

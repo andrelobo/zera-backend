@@ -3,6 +3,17 @@ import { FiscalController } from './fiscal.controller';
 import { NfseEmissionStatus } from '../../fiscal/domain/types/nfse-emission-status';
 
 describe('FiscalController', () => {
+  const adminReq = {
+    user: { id: 'admin-1', email: 'admin@jupati.local', role: 'admin', allowedCompanyCnpjs: [] },
+  } as any;
+  const scopedReq = {
+    user: {
+      id: 'user-1',
+      email: 'user@jupati.local',
+      role: 'user',
+      allowedCompanyCnpjs: ['43521115000134'],
+    },
+  } as any;
   const emitirNfseService = { execute: jest.fn() };
   const emitirNfseQuickService = { execute: jest.fn() };
   const servicoCatalog = {
@@ -43,6 +54,43 @@ describe('FiscalController', () => {
       webhookAudits as any,
       provider as any,
     );
+  });
+
+  it('filters list queries by the companies linked to the authenticated user', async () => {
+    repo.findPaginated.mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      limit: 20,
+      totalPages: 1,
+    });
+
+    await controller.list(
+      '1',
+      '20',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      scopedReq,
+    );
+
+    expect(repo.findPaginated).toHaveBeenCalledWith(
+      expect.objectContaining({ allowedCompanyCnpjs: ['43521115000134'] }),
+    );
+  });
+
+  it('blocks cross-company access to emission details', async () => {
+    repo.findById.mockResolvedValue({
+      _id: { toString: () => 'em-other' },
+      empresaCnpj: '99888777000166',
+      status: NfseEmissionStatus.AUTHORIZED,
+    });
+
+    await expect(controller.getById('em-other', scopedReq)).rejects.toMatchObject({
+      response: { code: 'COMPANY_ACCESS_DENIED' },
+    });
   });
 
   it('throws INVALID_PAGE when page is less than 1', async () => {
@@ -97,12 +145,14 @@ describe('FiscalController', () => {
       undefined,
       undefined,
       undefined,
+      adminReq,
     );
 
     expect(repo.findPaginated).toHaveBeenCalledWith({
       page: 1,
       limit: 20,
       provider: 'plugnotas',
+      allowedCompanyCnpjs: undefined,
       empresaCnpj: undefined,
       status: undefined,
       createdFrom: undefined,
@@ -137,12 +187,22 @@ describe('FiscalController', () => {
       totalPages: 1,
     });
 
-    await controller.list('2', '10', undefined, undefined, NfseEmissionStatus.AUTHORIZED);
+    await controller.list(
+      '2',
+      '10',
+      undefined,
+      undefined,
+      NfseEmissionStatus.AUTHORIZED,
+      undefined,
+      undefined,
+      adminReq,
+    );
 
     expect(repo.findPaginated).toHaveBeenCalledWith({
       page: 2,
       limit: 10,
       provider: undefined,
+      allowedCompanyCnpjs: undefined,
       empresaCnpj: undefined,
       status: NfseEmissionStatus.AUTHORIZED,
       createdFrom: undefined,
@@ -181,13 +241,23 @@ describe('FiscalController', () => {
       totalPages: 1,
     });
 
-    const out = await controller.list('1', '1', 'plugnotas', '43.521.115/0001-34');
+    const out = await controller.list(
+      '1',
+      '1',
+      'plugnotas',
+      '43.521.115/0001-34',
+      undefined,
+      undefined,
+      undefined,
+      adminReq,
+    );
 
     expect(repo.findPaginated).toHaveBeenCalledWith({
       page: 1,
       limit: 1,
       provider: 'plugnotas',
       empresaCnpj: '43521115000134',
+      allowedCompanyCnpjs: ['43521115000134'],
       status: undefined,
       createdFrom: undefined,
       createdTo: undefined,
@@ -220,12 +290,14 @@ describe('FiscalController', () => {
       '17.19.01',
       '2026-02-01',
       '2026-03-31',
+      adminReq,
     );
 
     expect(repo.getBiSummary).toHaveBeenCalledWith({
       provider: 'plugnotas',
       status: NfseEmissionStatus.AUTHORIZED,
       empresaCnpj: '43521115000134',
+      allowedCompanyCnpjs: ['43521115000134'],
       codigoServico: '171901',
       createdFrom: new Date('2026-02-01'),
       createdTo: new Date('2026-03-31'),
@@ -383,7 +455,7 @@ describe('FiscalController', () => {
       },
     };
 
-    await controller.emitirSubstituicao('em-1', payload as any);
+    await controller.emitirSubstituicao('em-1', payload as any, adminReq);
 
     expect(emitirNfseService.execute).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -414,7 +486,7 @@ describe('FiscalController', () => {
       result: { status: NfseEmissionStatus.PENDING, provider: 'LOBONOTAS' },
     });
 
-    await expect(controller.reemitir('em-error-1')).resolves.toMatchObject({
+    await expect(controller.reemitir('em-error-1', adminReq)).resolves.toMatchObject({
       emissionId: 'em-retry-1',
     });
     expect(emitirNfseService.execute).toHaveBeenCalledWith(
@@ -439,7 +511,7 @@ describe('FiscalController', () => {
       },
     });
 
-    await expect(controller.reemitir('em-error-sem-provider')).rejects.toMatchObject({
+    await expect(controller.reemitir('em-error-sem-provider', adminReq)).rejects.toMatchObject({
       response: { code: 'REEMISSAO_PROVIDER_INDISPONIVEL' },
     });
     expect(emitirNfseService.execute).not.toHaveBeenCalled();
@@ -460,7 +532,7 @@ describe('FiscalController', () => {
       },
     });
 
-    await expect(controller.reemitir('em-error-plugnotas')).rejects.toMatchObject({
+    await expect(controller.reemitir('em-error-plugnotas', adminReq)).rejects.toMatchObject({
       response: { code: 'PLUGNOTAS_DISABLED' },
     });
     expect(emitirNfseService.execute).not.toHaveBeenCalled();
@@ -475,7 +547,9 @@ describe('FiscalController', () => {
       providerResponse: { id: 'nota-plugnotas' },
     });
 
-    await expect(controller.solicitarCancelamento('em-auth-plugnotas')).rejects.toMatchObject({
+    await expect(
+      controller.solicitarCancelamento('em-auth-plugnotas', undefined, adminReq),
+    ).rejects.toMatchObject({
       response: { code: 'PLUGNOTAS_DISABLED' },
     });
     expect(provider.solicitarCancelamentoNfse).not.toHaveBeenCalled();
@@ -491,7 +565,7 @@ describe('FiscalController', () => {
     });
 
     await expect(
-      controller.downloadXmlFromProvider('em-xml-plugnotas', {} as any),
+      controller.downloadXmlFromProvider('em-xml-plugnotas', {} as any, adminReq),
     ).rejects.toMatchObject({
       response: { code: 'PLUGNOTAS_DISABLED' },
     });
@@ -515,8 +589,8 @@ describe('FiscalController', () => {
       send: jest.fn((value: Buffer) => value),
     };
 
-    await controller.downloadXml('em-lobonotas', xmlResponse as any);
-    await controller.downloadPdf('em-lobonotas', pdfResponse as any);
+    await controller.downloadXml('em-lobonotas', xmlResponse as any, adminReq);
+    await controller.downloadPdf('em-lobonotas', pdfResponse as any, adminReq);
 
     expect(xmlResponse.setHeader).toHaveBeenCalledWith('X-Fiscal-Provider', 'LOBONOTAS');
     expect(xmlResponse.setHeader).toHaveBeenCalledWith(
@@ -540,7 +614,7 @@ describe('FiscalController', () => {
       payload: {},
     });
 
-    await expect(controller.reemitir('em-error-transmitida')).rejects.toMatchObject({
+    await expect(controller.reemitir('em-error-transmitida', adminReq)).rejects.toMatchObject({
       response: { code: 'REEMISSAO_NAO_SEGURA' },
     });
     expect(emitirNfseService.execute).not.toHaveBeenCalled();
@@ -555,7 +629,7 @@ describe('FiscalController', () => {
       payload: {},
     });
 
-    await expect(controller.reemitir('em-error-provider')).rejects.toMatchObject({
+    await expect(controller.reemitir('em-error-provider', adminReq)).rejects.toMatchObject({
       response: { code: 'REEMISSAO_NAO_SEGURA' },
     });
     expect(emitirNfseService.execute).not.toHaveBeenCalled();
@@ -569,9 +643,13 @@ describe('FiscalController', () => {
     });
 
     await expect(
-      controller.emitirSubstituicao('em-1', {
-        referenciaExterna: 'sub-001',
-      } as any),
+      controller.emitirSubstituicao(
+        'em-1',
+        {
+          referenciaExterna: 'sub-001',
+        } as any,
+        adminReq,
+      ),
     ).rejects.toMatchObject({
       response: { code: 'SUBSTITUICAO_STATUS_INVALIDO' },
     });
@@ -607,7 +685,7 @@ describe('FiscalController', () => {
       updatedAt,
     });
 
-    const out = await controller.getObservability('em-obs-1');
+    const out = await controller.getObservability('em-obs-1', adminReq);
 
     expect(out.id).toBe('em-obs-1');
     expect(out.observability.providerRequest).toEqual({
@@ -654,7 +732,7 @@ describe('FiscalController', () => {
       updatedAt,
     });
 
-    const out = await controller.getObservabilityByExternalId('ext-obs-ext-1');
+    const out = await controller.getObservabilityByExternalId('ext-obs-ext-1', adminReq);
 
     expect(repo.findByExternalId).toHaveBeenCalledWith('ext-obs-ext-1');
     expect(out).toEqual(
@@ -679,7 +757,7 @@ describe('FiscalController', () => {
       updatedAt,
     });
 
-    const out = await controller.getArtifacts('em-art-1');
+    const out = await controller.getArtifacts('em-art-1', adminReq);
 
     expect(out).toEqual({
       id: 'em-art-1',

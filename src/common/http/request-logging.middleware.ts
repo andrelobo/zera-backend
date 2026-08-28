@@ -33,6 +33,11 @@ export function requestLoggingMiddleware(req: Request, res: Response, next: Next
   );
 
   res.on('finish', () => {
+    const actor = (
+      request as CorrelatedRequest & {
+        user?: { id?: string; role?: string };
+      }
+    ).user;
     const durationMs = Date.now() - startedAt;
     const statusCode = res.statusCode;
     const resContentLength = toSafeNumber(res.getHeader('content-length'));
@@ -47,6 +52,8 @@ export function requestLoggingMiddleware(req: Request, res: Response, next: Next
       reqContentLength,
       resContentLength,
       ip,
+      actorId: actor?.id,
+      actorRole: actor?.role,
     });
 
     if (level === 'error') {

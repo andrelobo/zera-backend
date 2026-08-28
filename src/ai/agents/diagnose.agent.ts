@@ -137,6 +137,7 @@ export class DiagnoseAgent {
     const evidence = {
       emissionId: emission._id.toString(),
       externalId: emission.externalId ?? null,
+      empresaCnpj: emission.empresaCnpj ?? null,
       status,
       lastUpdateSource,
       pollAttempts,
