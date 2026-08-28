@@ -44,7 +44,7 @@ jest.mock('node:https', () => {
 const mockState = () => (httpsRequest as any).__state;
 
 const cert = {
-  privateKeyPem: '-----BEGIN RSA PRIVATE KEY-----',
+  privateKeyPem: '-----BEGIN RSA PRIVATE KEY-----', // secret-scan: allow-test-fixture
   certificatePem: '-----BEGIN CERTIFICATE-----',
 };
 const CHAVE = `NFS${'1'.repeat(50)}`;

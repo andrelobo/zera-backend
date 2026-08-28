@@ -2814,3 +2814,28 @@ Com os endpoints acima, operacao consegue:
 1. diagnosticar rapidamente se o certificado em uso confere com o esperado da empresa;
 2. remover certificado incorreto sem intervencao manual em banco;
 3. reimportar o certificado correto e revalidar antes da proxima emissao.
+
+---
+
+# CHECKPOINT DE AUDITORIA ESTRATEGICA (26/08/2026)
+
+- Auditoria em modo diagnostico; nenhuma correcao dos achados foi implementada.
+- Evidencia: branch `docs/readme-jupati-sdd`, commit `e38dbfd`.
+- Gates: secret scan aprovado; 304/304 testes em 38 suites; build e integracao
+  mTLS/LOBONOTAS aprovados.
+- Seguranca: isolamento multi-tenant ausente; buscas fiscais por ID/CNPJ nao
+  derivam escopo do usuario; webhook aceita requisicoes se o shared secret
+  estiver ausente; JWT nao reflete imediatamente desativacao/troca de papel;
+  reset administrativo fica habilitado por padrao.
+- Historico Git anterior ainda contem credenciais removidas da arvore atual;
+  rotacao permanece obrigatoria e nao houve reescrita de historico.
+- Dependencias de producao: 13 alertas (8 altos, 4 moderados, 1 baixo), ainda
+  sujeitos a validacao de aplicabilidade antes de upgrade.
+- Arquitetura: deploy Oracle nao roda testes/lint/security scan; polling usa
+  `setInterval` sem lock distribuido; XML/PDF ficam em Base64 no MongoDB.
+- Fiscal: LOBONOTAS exclusivo e PlugNotas `LEGACY_DISABLED`; idempotencia e
+  reserva atomica de DPS implementadas; assinatura RSA-SHA256 e mTLS testados.
+- Gaps fiscais: retry HTTP configurado mas nao executado; `SEFIN_ENABLED` nao
+  bloqueia o provider; CNPJ alfanumerico incompativel; IBS/CBS ainda nao atestado.
+- Retomada: concluir matriz fiscal/CNPJ/IBS-CBS, depois frontend/acessibilidade,
+  escala, produto/comercial e relatorio final P0-P3.

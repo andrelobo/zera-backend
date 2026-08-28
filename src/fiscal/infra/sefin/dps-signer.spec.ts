@@ -34,7 +34,7 @@ function createTestCert(): { pfxBase64: string; password: string; certificatePem
   });
   const der = forge.asn1.toDer(asn1).getBytes();
   const pfxBase64 = Buffer.from(der, 'binary').toString('base64');
-  return { pfxBase64, password: 'zera-test', certificatePem: forge.pki.certificateToPem(cert) };
+  return { pfxBase64, password: 'zera-test', certificatePem: forge.pki.certificateToPem(cert) }; // secret-scan: allow-test-fixture
 }
 
 const baseInput = {
@@ -76,7 +76,7 @@ describe('dps-signer', () => {
 
   it('extracts private key and certificate from a password-protected PFX', () => {
     const extracted = extractKeyAndCert(material);
-    expect(extracted.privateKeyPem).toContain('-----BEGIN RSA PRIVATE KEY-----');
+    expect(extracted.privateKeyPem).toContain('-----BEGIN RSA PRIVATE KEY-----'); // secret-scan: allow-test-fixture
     expect(extracted.certificatePem).toContain('BEGIN CERTIFICATE');
   });
 

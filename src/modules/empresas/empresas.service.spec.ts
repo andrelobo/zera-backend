@@ -470,7 +470,7 @@ describe('EmpresasService', () => {
     const material = await service.obterMaterialCertificado('43.521.115/0001-34');
     expect(material).toEqual({
       pfxBase64: Buffer.from('ABCD').toString('base64'),
-      password: '123456',
+      password: '123456', // secret-scan: allow-test-fixture
     });
   });
 
@@ -1415,7 +1415,7 @@ describe('EmpresasService', () => {
 
     const material = await service.obterMaterialCertificado('43.521.115/0001-34');
 
-    expect(material).toEqual({ pfxBase64: 'cGZ4LWJhc2U2NA==', password: 'senha-plana' });
+    expect(material).toEqual({ pfxBase64: 'cGZ4LWJhc2U2NA==', password: 'senha-plana' }); // secret-scan: allow-test-fixture
     expect(empresaModel.findOne).toHaveBeenCalledWith({ cnpj: '43521115000134' });
   });
 
