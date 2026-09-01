@@ -5,6 +5,7 @@ import { Model } from 'mongoose';
 import { User, UserDocument } from './schemas/user.schema';
 import { hashPassword, verifyPassword } from './password';
 import { hashInviteToken } from './invite-token';
+import { normalizeAllowedCompanyCnpjs } from './company-access';
 
 @Injectable()
 export class AuthService {
@@ -93,6 +94,7 @@ export class AuthService {
         email: updated.email,
         role: updated.role,
         status: updated.status,
+        allowedCompanyCnpjs: normalizeAllowedCompanyCnpjs(updated.allowedCompanyCnpjs),
         onboardingStatus: (updated as any).onboardingStatus,
       },
     };
@@ -161,6 +163,7 @@ export class AuthService {
       email: user.email,
       role: user.role,
       status: user.status,
+      allowedCompanyCnpjs: normalizeAllowedCompanyCnpjs(user.allowedCompanyCnpjs),
       onboardingStatus: (user as any).onboardingStatus,
       invitedAt: (user as any).invitedAt ?? null,
       inviteExpiresAt: (user as any).inviteExpiresAt ?? null,

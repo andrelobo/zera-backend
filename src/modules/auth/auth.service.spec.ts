@@ -71,6 +71,7 @@ describe('AuthService', () => {
         email: 'andre@zera.app',
         role: 'user',
         status: 'active',
+        allowedCompanyCnpjs: [],
         onboardingStatus: 'accepted',
       },
     });

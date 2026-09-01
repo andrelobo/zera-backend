@@ -3,6 +3,17 @@
 > Leitura rapida operacional: veja `CURRENT_STATE.md` (snapshot atual).
 > Este documento (`CONTEXT.md`) permanece como historico completo e linha do tempo.
 
+## HANDOVER IMEDIATO (31/08/2026) - INCIDENTE 502 ENCERRADO; PRODUCAO NA MAIN
+
+Fonte: `GitHub Actions` + `SSH na Oracle VPS` + `Docker Compose` + `curl`.
+
+- O `502` observado no login era indisponibilidade do backend, nao autorizacao de usuario: o proxy Vercel nao alcancava `http://136.248.90.172:3000`.
+- O run `33180713358` de 28/08 foi cancelado durante `Deploy on Oracle VPS`, apos sincronizar arquivos, e deixou o Compose sem `zera-backend-api`.
+- Em 31/08 o servico foi reconstruido com `docker compose up -d --build`; container `healthy` e health 200 na VPS, no proxy Vercel e em `www.zera.net.br`.
+- O endpoint de login voltou a responder semanticamente (401 para credencial invalida em teste seguro).
+- Producao esta na `main` `d946c43`; `fix/multitenancy-authorization` ainda nao foi publicada. O P0 multiempresa continua exigindo rollout coordenado backend/frontend e atribuicao explicita de CNPJs aos usuarios nao-admin.
+- Runbook atualizado: `docs/lobonotas/05-OPERACAO-ORACLE-VPS.md`.
+
 ## HANDOVER IMEDIATO (05/08/2026) - PLUGNOTAS PERMANENTEMENTE DESATIVADO (KILL SWITCH + BARREIRA DUPLA)
 
 Fonte: `codigo local` + `testes locais` + `build local` + `lint local`. Validacao completa: **303 testes verdes**, lint 0 erros, build ok.

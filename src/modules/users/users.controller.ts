@@ -39,6 +39,7 @@ export class UsersController {
       dto.password,
       dto.role ?? 'user',
       dto.status ?? 'active',
+      dto.allowedCompanyCnpjs ?? [],
     );
   }
 
@@ -47,7 +48,12 @@ export class UsersController {
   @ApiBody({ type: InviteUserDto })
   @ApiResponse({ status: 201 })
   invite(@Body() dto: InviteUserDto) {
-    return this.users.invite(dto.name, dto.email, dto.role ?? 'user');
+    return this.users.invite(
+      dto.name,
+      dto.email,
+      dto.role ?? 'user',
+      dto.allowedCompanyCnpjs ?? [],
+    );
   }
 
   @Patch(':id')

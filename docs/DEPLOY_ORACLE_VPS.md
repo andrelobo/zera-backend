@@ -137,6 +137,8 @@ Configure em `Settings -> Secrets and variables -> Actions -> Secrets`:
 ## Observacoes operacionais
 
 - Sempre que entrar um novo dominio do frontend, atualize `CORS_ORIGINS` e faca redeploy.
+- Nao cancele o workflow depois que a etapa `Deploy on Oracle VPS` iniciar. O incidente de 28/08/2026 (run `33180713358`) mostrou que uma interrupcao apos o `rsync` pode deixar o Compose sem `zera-backend-api`; o sintoma publico e HTTP 502 no health e no login.
+- Depois de qualquer run cancelado ou falho, execute `docker compose ps -a` na VPS e valide `GET /health` local, via proxy Vercel e pelo dominio publico. Um build bem-sucedido no runner nao prova que o container ficou ativo.
 - Se o banco estiver vazio, `/auth/bootstrap` nao responde com `NODE_ENV=production`. Nesse caso, faca o bootstrap inicial antes de travar em producao ou use uma base ja inicializada.
 - O `docker-compose.yml` deste repo foi preparado para a Oracle VPS com `restart`, `healthcheck` e logs rotativos.
 
@@ -150,6 +152,7 @@ Configure em `Settings -> Secrets and variables -> Actions -> Secrets`:
 
 ### Troubleshooting de deploy vermelho
 
+- `502` com `Oracle backend proxy request failed`/`fetch failed`: confirme `docker compose ps -a` e `curl http://127.0.0.1:3000/health`. Se os arquivos e o `.env` ja foram sincronizados, restaure com `docker compose up -d --build`; na VPS de 1 GB, o `nest build` pode levar cerca de quatro minutos e usar swap.
 - Build local no host com Node 22 falha em `yarn build` por engine (`engines.node = "20.x"`). Usar `npx nest build` para validacao local.
 - Se o workflow passar no build mas o container ficar em `Restarting (1)` no VPS, a causa quase sempre e erro de boot do Nest (ex.: `UnknownDependenciesException` de injecao de dependencia). Diagnosticar com:
   ```bash

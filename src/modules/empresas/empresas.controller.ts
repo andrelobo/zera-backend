@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -22,9 +23,15 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { File as MulterFile } from 'multer';
+import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/guards/roles.decorator';
+import {
+  assertCompanyAccess,
+  resolveCompanyScope,
+  type AuthenticatedUser,
+} from '../auth/company-access';
 import { CreateEmpresaDto } from './dtos/create-empresa.dto';
 import { ImportCertificadoDto } from './dtos/import-certificado.dto';
 import { ImportCnaeCatalogDto } from './dtos/import-cnae-catalog.dto';
@@ -135,8 +142,9 @@ export class EmpresasController {
   @Get()
   @Roles('admin', 'manager', 'user', 'readonly')
   @ApiOperation({ summary: 'List empresas' })
-  list(@Query('q') q?: string, @Query('limit') limit?: number) {
-    return this.empresas.list({ q, limit });
+  list(@Req() req: Request, @Query('q') q?: string, @Query('limit') limit?: number) {
+    const scope = resolveCompanyScope((req as any).user as AuthenticatedUser);
+    return this.empresas.list({ q, limit, allowedCompanyCnpjs: scope });
   }
 
   @Get('lookup/municipios')
@@ -186,7 +194,8 @@ export class EmpresasController {
   @Get('cnpj/:cnpj')
   @Roles('admin', 'manager', 'user', 'readonly')
   @ApiOperation({ summary: 'Get empresa by CNPJ' })
-  async getByCnpj(@Param('cnpj') cnpj: string) {
+  async getByCnpj(@Req() req: Request, @Param('cnpj') cnpj: string) {
+    assertCompanyAccess((req as any).user as AuthenticatedUser, cnpj);
     const doc = await this.empresas.getByCnpjNormalized(cnpj);
     if (!doc) return { found: false };
     return doc;
@@ -195,9 +204,10 @@ export class EmpresasController {
   @Get(':id')
   @Roles('admin', 'manager', 'user', 'readonly')
   @ApiOperation({ summary: 'Get empresa by id' })
-  async getById(@Param('id') id: string) {
+  async getById(@Req() req: Request, @Param('id') id: string) {
     const doc = await this.empresas.getByIdNormalized(id);
     if (!doc) return { found: false };
+    assertCompanyAccess((req as any).user as AuthenticatedUser, String((doc as any).cnpj ?? ''));
     return doc;
   }
 

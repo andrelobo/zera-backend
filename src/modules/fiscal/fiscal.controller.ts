@@ -42,6 +42,11 @@ import { LOBONOTAS_PROVIDER, PLUGNOTAS_PROVIDER } from '../../fiscal/domain/prov
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/guards/roles.decorator';
+import {
+  assertCompanyAccess,
+  resolveCompanyScope,
+  type AuthenticatedUser,
+} from '../auth/company-access';
 import { WebhookDeliveryAuditRepository } from '../webhooks/webhook-delivery-audit.repository';
 
 class CancelarNfseDto {
@@ -137,6 +142,10 @@ export class FiscalController {
     }
   }
 
+  private assertRequestCompanyAccess(req: Request | undefined, companyCnpj?: string): void {
+    assertCompanyAccess((req as any)?.user as AuthenticatedUser, companyCnpj);
+  }
+
   private buildObservabilityResponse(doc: NfseEmissionDocument) {
     const createdAt = (doc as any).createdAt ?? null;
     const updatedAt = (doc as any).updatedAt ?? null;
@@ -230,7 +239,8 @@ export class FiscalController {
   @ApiOperation({ summary: 'Emitir NFSe (DPS)' })
   @ApiBody({ type: EmitirNfseDto })
   @ApiResponse({ status: 201, type: EmitirNfseResponseDto })
-  emitir(@Body() dto: EmitirNfseDto) {
+  emitir(@Body() dto: EmitirNfseDto, @Req() req?: Request) {
+    this.assertRequestCompanyAccess(req, dto.prestador?.cnpj);
     return this.emitirNfseService.execute(dto);
   }
 
@@ -244,7 +254,8 @@ export class FiscalController {
   })
   @ApiBody({ type: EmitirNfseQuickDto })
   @ApiResponse({ status: 201, type: EmitirNfseResponseDto })
-  emitirQuick(@Body() dto: EmitirNfseQuickDto) {
+  emitirQuick(@Body() dto: EmitirNfseQuickDto, @Req() req?: Request) {
+    this.assertRequestCompanyAccess(req, dto.cnpj);
     return this.emitirNfseQuickService.execute(dto);
   }
 
@@ -257,11 +268,12 @@ export class FiscalController {
       'Somente aceita emissao ERROR sem externalId e sem resposta do provider. Cria uma nova emissao e preserva a anterior para auditoria.',
   })
   @ApiResponse({ status: 201, type: EmitirNfseResponseDto })
-  async reemitir(@Param('id') id: string) {
+  async reemitir(@Param('id') id: string, @Req() req?: Request) {
     const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null;
     if (!doc) {
       throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
     }
+    this.assertRequestCompanyAccess(req, doc.empresaCnpj);
 
     if (
       doc.status !== NfseEmissionStatus.ERROR ||
@@ -317,11 +329,17 @@ export class FiscalController {
   })
   @ApiBody({ type: EmitirNfseDto })
   @ApiResponse({ status: 201, type: EmitirNfseResponseDto })
-  async emitirSubstituicao(@Param('id') id: string, @Body() dto: EmitirNfseDto) {
+  async emitirSubstituicao(
+    @Param('id') id: string,
+    @Body() dto: EmitirNfseDto,
+    @Req() req?: Request,
+  ) {
     const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null;
     if (!doc) {
       throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
     }
+    this.assertRequestCompanyAccess(req, doc.empresaCnpj);
+    this.assertRequestCompanyAccess(req, dto.prestador?.cnpj);
 
     if (doc.status !== NfseEmissionStatus.AUTHORIZED) {
       throw new BadRequestException({
@@ -355,11 +373,16 @@ export class FiscalController {
       'Só permite solicitar cancelamento de emissão AUTHORIZED. Se não informado, usa codigo=9 e motivo padrão.',
   })
   @ApiBody({ type: CancelarNfseDto, required: false })
-  async solicitarCancelamento(@Param('id') id: string, @Body() body?: CancelarNfseDto) {
+  async solicitarCancelamento(
+    @Param('id') id: string,
+    @Body() body?: CancelarNfseDto,
+    @Req() req?: Request,
+  ) {
     const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null;
     if (!doc) {
       throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
     }
+    this.assertRequestCompanyAccess(req, doc.empresaCnpj);
 
     if (doc.status !== NfseEmissionStatus.AUTHORIZED) {
       throw new BadRequestException({
@@ -407,6 +430,7 @@ export class FiscalController {
   }
 
   @Get('cancelamento/:cancellationProtocol')
+  @Roles('admin')
   @ApiOperation({ summary: 'Consultar solicitação de cancelamento da NFSe' })
   async consultarCancelamento(@Param('cancellationProtocol') cancellationProtocol: string) {
     if (!cancellationProtocol?.trim()) {
@@ -454,6 +478,7 @@ export class FiscalController {
     @Query('status') status?: string,
     @Query('dateFrom') dateFromRaw?: string,
     @Query('dateTo') dateToRaw?: string,
+    @Req() req?: Request,
   ) {
     const page = pageRaw ? Number(pageRaw) : 1;
     const limit = limitRaw ? Number(limitRaw) : 20;
@@ -499,11 +524,16 @@ export class FiscalController {
       createdTo = parsed;
     }
 
+    const companyScope = resolveCompanyScope(
+      (req as any)?.user as AuthenticatedUser,
+      empresaCnpjRaw,
+    );
     const result = await this.repo.findPaginated({
       page,
       limit,
       provider: provider?.trim() || undefined,
       empresaCnpj: empresaCnpjRaw?.replace(/\D/g, '') || undefined,
+      allowedCompanyCnpjs: companyScope,
       status: statusFilter,
       createdFrom,
       createdTo,
@@ -564,6 +594,7 @@ export class FiscalController {
     @Query('codigoServico') codigoServicoRaw?: string,
     @Query('dateFrom') dateFromRaw?: string,
     @Query('dateTo') dateToRaw?: string,
+    @Req() req?: Request,
   ) {
     const statusFilter =
       status && Object.values(NfseEmissionStatus).includes(status as NfseEmissionStatus)
@@ -601,10 +632,15 @@ export class FiscalController {
       createdTo = parsed;
     }
 
+    const companyScope = resolveCompanyScope(
+      (req as any)?.user as AuthenticatedUser,
+      empresaCnpjRaw,
+    );
     return this.repo.getBiSummary({
       provider: provider?.trim() || undefined,
       status: statusFilter,
       empresaCnpj: empresaCnpjRaw?.replace(/\D/g, '') || undefined,
+      allowedCompanyCnpjs: companyScope,
       codigoServico: codigoServicoRaw?.replace(/\D/g, '') || undefined,
       createdFrom,
       createdTo,
@@ -612,6 +648,7 @@ export class FiscalController {
   }
 
   @Get('webhook/diagnostico')
+  @Roles('admin')
   @ApiOperation({ summary: 'Diagnostico operacional do webhook fiscal' })
   async getWebhookDiagnostico() {
     const route = '/webhooks/fiscal';
@@ -738,6 +775,11 @@ export class FiscalController {
     @Req() req: Request,
     @Query('force') force?: string,
   ) {
+    const emission = (await this.repo.findById(id)) as NfseEmissionDocument | null;
+    if (!emission) {
+      throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
+    }
+    this.assertRequestCompanyAccess(req, emission.empresaCnpj);
     const user = (req as any)?.user;
     const requestedBy = user?.email ?? user?.sub ?? null;
     const ip = req.ip ?? null;
@@ -751,11 +793,12 @@ export class FiscalController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get emission by id' })
-  async getById(@Param('id') id: string) {
+  async getById(@Param('id') id: string, @Req() req?: Request) {
     const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null;
     if (!doc) {
       throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
     }
+    this.assertRequestCompanyAccess(req, doc.empresaCnpj);
 
     return {
       id: doc._id.toString(),
@@ -791,21 +834,23 @@ export class FiscalController {
 
   @Get(':id/observability')
   @ApiOperation({ summary: 'Get full observability trace for emission by id' })
-  async getObservability(@Param('id') id: string) {
+  async getObservability(@Param('id') id: string, @Req() req?: Request) {
     const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null;
     if (!doc) {
       throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
     }
+    this.assertRequestCompanyAccess(req, doc.empresaCnpj);
     return this.buildObservabilityResponse(doc);
   }
 
   @Get('external/:externalId')
   @ApiOperation({ summary: 'Get emission by externalId' })
-  async getByExternalId(@Param('externalId') externalId: string) {
+  async getByExternalId(@Param('externalId') externalId: string, @Req() req?: Request) {
     const doc = (await this.repo.findByExternalId(externalId)) as NfseEmissionDocument | null;
     if (!doc) {
       throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
     }
+    this.assertRequestCompanyAccess(req, doc.empresaCnpj);
 
     return {
       id: doc._id.toString(),
@@ -841,22 +886,30 @@ export class FiscalController {
 
   @Get('external/:externalId/observability')
   @ApiOperation({ summary: 'Get full observability trace for emission by externalId' })
-  async getObservabilityByExternalId(@Param('externalId') externalId: string) {
+  async getObservabilityByExternalId(
+    @Param('externalId') externalId: string,
+    @Req() req?: Request,
+  ) {
     const doc = (await this.repo.findByExternalId(externalId)) as NfseEmissionDocument | null;
     if (!doc) {
       throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
     }
+    this.assertRequestCompanyAccess(req, doc.empresaCnpj);
 
     return this.buildObservabilityResponse(doc);
   }
 
   @Get('external/:externalId/provider-response')
   @ApiOperation({ summary: 'Get provider response by externalId' })
-  async getProviderResponseByExternalId(@Param('externalId') externalId: string) {
+  async getProviderResponseByExternalId(
+    @Param('externalId') externalId: string,
+    @Req() req?: Request,
+  ) {
     const doc = (await this.repo.findByExternalId(externalId)) as NfseEmissionDocument | null;
     if (!doc) {
       throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
     }
+    this.assertRequestCompanyAccess(req, doc.empresaCnpj);
 
     return {
       id: doc._id.toString(),
@@ -873,11 +926,12 @@ export class FiscalController {
 
   @Get(':id/provider-response')
   @ApiOperation({ summary: 'Get provider response for emission' })
-  async getProviderResponse(@Param('id') id: string) {
+  async getProviderResponse(@Param('id') id: string, @Req() req?: Request) {
     const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null;
     if (!doc) {
       throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
     }
+    this.assertRequestCompanyAccess(req, doc.empresaCnpj);
 
     return {
       id: doc._id.toString(),
@@ -894,11 +948,12 @@ export class FiscalController {
 
   @Get(':id/artifacts')
   @ApiOperation({ summary: 'Get artifacts info' })
-  async getArtifacts(@Param('id') id: string) {
+  async getArtifacts(@Param('id') id: string, @Req() req?: Request) {
     const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null;
     if (!doc) {
       throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
     }
+    this.assertRequestCompanyAccess(req, doc.empresaCnpj);
 
     return {
       id: doc._id.toString(),
@@ -913,11 +968,12 @@ export class FiscalController {
   @Get(':id/xml')
   @ApiOperation({ summary: 'Download XML' })
   @ApiProduces('application/xml')
-  async downloadXml(@Param('id') id: string, @Res() res: Response) {
+  async downloadXml(@Param('id') id: string, @Res() res: Response, @Req() req?: Request) {
     const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null;
     if (!doc) {
       throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
     }
+    this.assertRequestCompanyAccess(req, doc.empresaCnpj);
 
     if (!doc.xmlBase64) {
       throw new NotFoundException({
@@ -939,11 +995,12 @@ export class FiscalController {
   @Get(':id/pdf')
   @ApiOperation({ summary: 'Download PDF' })
   @ApiProduces('application/pdf')
-  async downloadPdf(@Param('id') id: string, @Res() res: Response) {
+  async downloadPdf(@Param('id') id: string, @Res() res: Response, @Req() req?: Request) {
     const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null;
     if (!doc) {
       throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
     }
+    this.assertRequestCompanyAccess(req, doc.empresaCnpj);
 
     if (!doc.pdfBase64) {
       throw new NotFoundException({
@@ -965,11 +1022,16 @@ export class FiscalController {
   @Get(':id/remote/xml')
   @ApiOperation({ summary: 'Download XML directly from provider (by idNota)' })
   @ApiProduces('application/xml')
-  async downloadXmlFromProvider(@Param('id') id: string, @Res() res: Response) {
+  async downloadXmlFromProvider(
+    @Param('id') id: string,
+    @Res() res: Response,
+    @Req() req?: Request,
+  ) {
     const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null;
     if (!doc) {
       throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
     }
+    this.assertRequestCompanyAccess(req, doc.empresaCnpj);
 
     this.assertNotPlugNotas(doc);
 
@@ -994,11 +1056,16 @@ export class FiscalController {
   @Get(':id/remote/pdf')
   @ApiOperation({ summary: 'Download PDF directly from provider (by idNota)' })
   @ApiProduces('application/pdf')
-  async downloadPdfFromProvider(@Param('id') id: string, @Res() res: Response) {
+  async downloadPdfFromProvider(
+    @Param('id') id: string,
+    @Res() res: Response,
+    @Req() req?: Request,
+  ) {
     const doc = (await this.repo.findById(id)) as NfseEmissionDocument | null;
     if (!doc) {
       throw new NotFoundException({ code: 'EMISSION_NOT_FOUND', message: 'Emission not found' });
     }
+    this.assertRequestCompanyAccess(req, doc.empresaCnpj);
 
     this.assertNotPlugNotas(doc);
 

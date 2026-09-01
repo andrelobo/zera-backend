@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { UserRole } from '../../auth/schemas/user.schema';
-import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
 
 export class CreateUserDto {
   @ApiProperty({ example: 'Nome Completo' })
@@ -30,4 +30,11 @@ export class CreateUserDto {
   @IsString()
   @IsIn(['active', 'inactive'])
   status?: 'active' | 'inactive';
+
+  @ApiPropertyOptional({ type: [String], example: ['43521115000134'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @Matches(/^\d{14}$/, { each: true })
+  allowedCompanyCnpjs?: string[];
 }
