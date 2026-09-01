@@ -2,6 +2,23 @@
 
 Snapshot operacional do backend em **21/04/2026** (com atualizações rápidas abaixo).
 
+## 0. ATUALIZACAO (31/08/2026) - BACKEND RESTAURADO APOS DEPLOY CANCELADO
+
+Fonte: `GitHub Actions` + `SSH na Oracle VPS` + `Docker Compose` + `curl local e publico`.
+
+- Sintoma: login e `GET /api/health` retornavam **HTTP 502** no proxy Vercel (`Oracle backend proxy request failed`, `fetch failed`).
+- Causa raiz: o workflow `Deploy Oracle VPS` da `main`, run `33180713358` de 28/08/2026, foi cancelado na etapa `Deploy on Oracle VPS` depois de sincronizar os arquivos. O Compose ficou sem o container `zera-backend-api` e a porta `3000` passou a recusar conexao.
+- Restauracao em 31/08/2026: executado `docker compose up -d --build` em `/home/ubuntu/zera-backend`; imagem `zera-backend-api` reconstruida e container iniciado com `restart: unless-stopped`.
+- Validacao: container `healthy`; `GET http://127.0.0.1:3000/health` -> 200; `GET https://manaus-nfse-dashboard.vercel.app/api/health` -> 200; `GET https://www.zera.net.br/api/health` -> 200; `POST /api/auth/login` com credenciais deliberadamente invalidas -> 401, provando que proxy e autenticacao voltaram a responder.
+- Impacto: indisponibilidade geral do backend; **nao foi causada por role nao-admin nem por `allowedCompanyCnpjs`**. Uma negacao de escopo multiempresa deve ocorrer apos autenticacao como 403, nunca como 502.
+- Estado publicado: producao foi restaurada com a `main` sincronizada em 28/08/2026 (`d946c43`). A branch `fix/multitenancy-authorization` (`4c4ae43`) permanece fora de producao e exige deploy conjunto com o frontend.
+
+Prevencao operacional:
+1. nao cancelar um deploy depois que a etapa remota iniciar;
+2. tornar o script de deploy resiliente a interrupcao, preservando o container anterior ate a nova imagem estar pronta;
+3. adicionar verificacao/alerta externo para `/api/health` e confirmar `docker compose ps` apos todo run cancelado ou falho;
+4. manter rollback documentado e validar health local + proxy + dominio antes de encerrar incidente.
+
 ## 0. ATUALIZACAO (28/08/2026) - ISOLAMENTO MULTIEMPRESA FAIL-CLOSED (P0)
 
 Estado da implementacao na branch `fix/multitenancy-authorization`:

@@ -1,11 +1,13 @@
 # LOBONOTAS — 05. Operação na Oracle VPS
 
 > Estado atual conhecido da infraestrutura, acesso seguro, diretórios/containers esperados, health/logs, deploy/rollback e limites operacionais da frente LOBONOTAS.
-> Data: **01/08/2026**.
+> Ultima verificacao: **31/08/2026**.
 
 ---
 
 ## 1. Estado atual (o que sabemos)
+
+> **Incidente encerrado em 31/08/2026**: o workflow `Deploy Oracle VPS` run `33180713358` foi cancelado em 28/08 durante a etapa remota, depois da sincronizacao dos arquivos, deixando o Compose sem o container `zera-backend-api`. O sintoma publico foi `502` no health e no login. O servico foi restaurado manualmente com `docker compose up -d --build`; container, health local, proxy Vercel e dominio publico voltaram a responder. Producao permanece na `main` `d946c43`; a branch multiempresa ainda nao foi publicada.
 
 > **Verificação ao vivo (01/08/2026)**: `https://manaus-nfse-dashboard.vercel.app/login` respondeu HTTP 200 e `…/api/health` respondeu HTTP 200 — a cadeia **frontend (Vercel) → proxy → Oracle :3000** está operante. Esse domínio já consta no CORS do backend (`src/main.ts:16`, `vercelPreviewPattern`) e em `render.yaml:18`.
 
@@ -15,18 +17,18 @@
 | IP | `136.248.90.172` | `api/proxy.ts` (`DEFAULT_UPSTREAM`), docs | configurado |
 | Usuário | `ubuntu` | SSH | **funcional** |
 | Path app | `/home/ubuntu/zera-backend` | SSH (01/08/2026) | **verificado** |
-| Container | `zera-backend-api` | `docker ps` | **Up (healthy)** — redeployado 01/08/2026 via Actions |
+| Container | `zera-backend-api` | `docker ps` | **Up (healthy)** — restaurado 31/08/2026 via Compose |
 | Porta | `3000` (`0.0.0.0:3000->3000/tcp`) | `docker ps` | **verificado** |
-| Health | `GET /health` → `{"status":"ok","env":"production"}` | SSH/curl (01/08/2026) | **verificado** |
+| Health | `GET /health` → `{"status":"ok","env":"production"}` | SSH/curl (31/08/2026) | **verificado** |
 | Portainer | `portainer` (`9000`, `9443`) | `docker ps` | **verificado** |
 | Frontend | Vercel (`VITE_API_BASE_URL=/api` + proxy) | frontend | — |
 | Frontend URL | `https://manaus-nfse-dashboard.vercel.app` | Vercel | **verificado 01/08/2026** |
 | Login | `https://manaus-nfse-dashboard.vercel.app/login` | Vercel | **HTTP 200 (verificado)** |
-| Health via proxy | `https://manaus-nfse-dashboard.vercel.app/api/health` | Vercel → Oracle | **HTTP 200 (verificado)** |
+| Health via proxy | `https://manaus-nfse-dashboard.vercel.app/api/health` | Vercel → Oracle | **HTTP 200 (verificado 31/08/2026)** |
 | OS | Ubuntu 20.04.6 LTS (kernel 5.15.0-1081-oracle) | SSH | **verificado** |
 | Recursos | 952MB RAM (≈508MB avail), 2GB swap, 45GB disco (39GB avail), 2 vCPU | SSH | **verificado** |
 | Git no host | **sem `.git`** (`NO_GIT_DIR`) — deploy é por cópia de arquivos + `docker compose up -d --build` | SSH | **verificado** |
-| Envs LOBONOTAS | nenhuma `LOBONOTAS_*`/`FISCAL_PROVIDER_ACTIVE` presente | SSH | **verificado (esperado — frente não implementada)** |
+| Provider fiscal | LOBONOTAS / SEFIN Nacional | politica operacional vigente | **unico provider operacional; PlugNotas desativado** |
 
 ## 2. Acesso (estado real do ambiente de trabalho)
 
@@ -50,7 +52,7 @@
 - [x] Path do app: `/home/ubuntu/zera-backend` (com `.env`, `docker-compose.yml`, `Dockerfile`).
 - [x] Container e estado: `zera-backend-api` Up (healthy) — redeployado 01/08/2026 via GitHub Actions; `portainer` também ativo.
 - [x] Health local: `{"status":"ok","env":"production"}`.
-- [x] Envs: sem `FISCAL_PROVIDER_ACTIVE`/`LOBONOTAS_*` (frente ainda não implementada — correto nesta fase).
+- [x] Politica fiscal: LOBONOTAS e o provider operacional exclusivo; configuracoes e credenciais permanecem no `.env`/secret manager e nao sao exibidas no runbook.
 - [x] Recursos: RAM 952MB (≈508 avail), swap 2GB, disco 45GB (39GB avail), 2 vCPU.
 - [ ] Commit em produção vs `be18106`: **N/A** — host sem `.git`; impossível comparar por git. Comparar por build/`dist` ou hash de arquivos se necessário.
 - [ ] Logs: `docker logs --tail 200 zera-backend-api` (não inspecionados nesta sessão).
@@ -78,17 +80,40 @@ docker logs --tail 200 --follow zera-backend-api
 # 2) rebuild:
 docker compose up -d --build
 
-# rollback LOBONOTAS (kill switch)
-docker compose exec -T zera-backend-api sh -c \
-  'echo "FISCAL_PROVIDER_ACTIVE=PLUGNOTAS" > /tmp/killswitch.env'
-# (a forma definitiva depende de como as envs são aplicadas ao container; ver §5)
+# rollback de aplicacao deve restaurar uma imagem/versao anterior conhecida.
+# Nunca usar PlugNotas como fallback ou kill switch operacional.
 ```
+
+### 4.1 Recuperacao de `502` no proxy Vercel
+
+O `502` com corpo `Oracle backend proxy request failed` significa que a Function da Vercel nao conseguiu conectar ao upstream; nao e uma resposta de autenticacao ou autorizacao do NestJS.
+
+```bash
+# 1. Confirmar cadeia publica
+curl -i https://manaus-nfse-dashboard.vercel.app/api/health
+
+# 2. Confirmar container e health na VPS
+ssh lobojow
+cd /home/ubuntu/zera-backend
+docker compose ps -a
+curl -i http://127.0.0.1:3000/health
+
+# 3. Se o Compose estiver vazio, reconstruir os arquivos ja sincronizados
+docker compose up -d --build
+
+# 4. Encerrar somente depois dos tres checks
+docker compose ps
+curl -i http://127.0.0.1:3000/health
+curl -i https://www.zera.net.br/api/health
+```
+
+Depois de qualquer workflow cancelado ou falho, verificar `docker compose ps -a`. Nao presumir que o container anterior foi preservado. Na VPS de 1 GB, `nest build` pode levar cerca de quatro minutos e usar swap; ausencia temporaria de output nao significa travamento se o processo continua consumindo CPU.
 
 ## 5. Limites operacionais da frente LOBONOTAS
 
-- **Sem fallback automático**: se `FISCAL_PROVIDER_ACTIVE=LOBONOTAS` e o provider falhar, emissão vai a `ERROR`/reconciliação. **Nunca** reenvia para PlugNotas (D4/D5).
+- **Provider exclusivo**: LOBONOTAS/SEFIN Nacional e o unico caminho operacional. Falhas seguem para `ERROR`/reconciliacao e **nunca** sao reenviadas para PlugNotas.
 - **Timeout pós-DPS** ⇒ **reconciliar com a autoridade fiscal** (consultar por chave/protocolo) antes de qualquer retry (D5).
-- **Kill switch**: `FISCAL_PROVIDER_ACTIVE=PLUGNOTAS` restaura o comportamento legado. Deve estar documentado e testado antes do piloto (roadmap Slice 5).
+- **PlugNotas desativado permanentemente**: codigo e registros historicos permanecem para leitura, parser e auditoria; nao reativar emissao, download remoto, sincronizacao ou fallback.
 - **Ambiente Nacional**: Produção Restrita (homologação) primeiro; produção real só após piloto Manaus aprovado (roadmap Slice 6). URLs/credenciais ficam no `.env` do host, **não** no código nem no Git.
 - **Certificados A1**: administrados via API de empresas (schema `CertificadoDigital`). Nenhuma chave/senha/certificado em logs ou docs.
 
